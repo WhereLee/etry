@@ -1,0 +1,21 @@
+# 本地文档，不入库
+docs/
+
+# Java / Maven
+target/
+*.class
+
+# Node / 前端
+node_modules/
+dist/
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 本地环境与日志
+.env
+*.local
+*.log
