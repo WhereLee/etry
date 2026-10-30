@@ -27,3 +27,18 @@ jobs:
       - name: Build and test
         working-directory: server
         run: mvn -B -ntp verify
+
+      # 把每个测试类的结果直接写到 Actions 页面的 Summary 里，
+      # 不用翻日志就能看出哪些过了、哪些没过。
+      # if: always() 保证测试失败时也执行——失败时才最需要看报告。
+      - name: Test summary
+        if: always()
+        run: python3 .github/scripts/surefire-summary.py server/target/surefire-reports
+
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: server/target/surefire-reports/
+          retention-days: 7
