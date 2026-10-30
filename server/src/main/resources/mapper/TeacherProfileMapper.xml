@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.teacher.TeacherProfileMapper">
+
+    <sql id="pageCondition">
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findPage" resultType="com.wherelee.edu.teacher.TeacherProfile">
+        SELECT id, user_id, real_name, title, bio, avatar_key, years, status, reject_reason, created_at, updated_at
+        FROM t_teacher_profile
+        <include refid="pageCondition"/>
+        ORDER BY id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(*) FROM t_teacher_profile
+        <include refid="pageCondition"/>
+    </select>
+
+</mapper>

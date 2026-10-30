@@ -1,0 +1,56 @@
+server:
+  port: 8082
+  shutdown: graceful
+
+spring:
+  application:
+    name: edu
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/edu?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 3000
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+mybatis:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    default-statement-timeout: 30
+
+app:
+  jwt:
+    # 生产必须用环境变量覆盖，长度不少于 32 字节
+    secret: ${JWT_SECRET:edu-dev-only-secret-key-change-in-prod-2026}
+    ttl-minutes: 120
+  security:
+    # 连续登录失败达到阈值后锁定，窗口内不再校验密码
+    login-fail-threshold: 5
+    login-lock-minutes: 15
+    # 登录失败计数在 Redis 中的存活时间，与锁定时长一致
+    login-fail-ttl-minutes: 15
+
+logging:
+  level:
+    com.wherelee.edu: debug
+    # 开发期看 SQL；生产改为 info 并只打慢 SQL
+    com.wherelee.edu.mapper: debug

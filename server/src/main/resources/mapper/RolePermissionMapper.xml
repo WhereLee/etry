@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.rbac.RolePermissionMapper">
+
+    <!--
+      批量绑定权限：一条 INSERT 插入多行。
+      逐条插在权限多的时候会产生大量往返，这里一次说完。
+    -->
+    <insert id="batchInsert">
+        INSERT INTO t_role_permission (role_id, permission_id)
+        VALUES
+        <foreach collection="permissionIds" item="permissionId" separator=",">
+            (#{roleId}, #{permissionId})
+        </foreach>
+    </insert>
+
+</mapper>

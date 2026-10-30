@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.notice.NoticeMapper">
+
+    <!--
+      排序固定为「置顶优先 + 时间倒序」，与索引 idx_notice_status_top_time(status, is_top, created_at) 对齐。
+      前台传 status='PUBLISHED'，后台传 null 看全部。
+    -->
+    <sql id="pageCondition">
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findPage" resultType="com.wherelee.edu.notice.Notice">
+        SELECT id, title, content, publisher_id, status, is_top, published_at, created_at, updated_at
+        FROM t_notice
+        <include refid="pageCondition"/>
+        ORDER BY is_top DESC, created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(*) FROM t_notice
+        <include refid="pageCondition"/>
+    </select>
+
+</mapper>

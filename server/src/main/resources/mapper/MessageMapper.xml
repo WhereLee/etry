@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.message.MessageMapper">
+
+    <sql id="pageCondition">
+        WHERE receiver_id = #{receiverId}
+        <if test="isRead != null">
+            AND is_read = #{isRead}
+        </if>
+    </sql>
+
+    <select id="findPage" resultType="com.wherelee.edu.message.Message">
+        SELECT id, receiver_id, sender_id, title, content, is_read, read_at, created_at
+        FROM t_message
+        <include refid="pageCondition"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(*) FROM t_message
+        <include refid="pageCondition"/>
+    </select>
+
+    <insert id="batchInsert">
+        INSERT INTO t_message (receiver_id, sender_id, title, content)
+        VALUES
+        <foreach collection="messages" item="m" separator=",">
+            (#{m.receiverId}, #{m.senderId}, #{m.title}, #{m.content})
+        </foreach>
+    </insert>
+
+</mapper>
