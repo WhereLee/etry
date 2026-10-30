@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>回收站 - etry</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: nav(${user}, 'trash')}"></header>
+
+<div class="container">
+    <div class="card">
+        <div class="row between">
+            <h2 style="margin:0">回收站</h2>
+            <span class="muted">保留 14 天，期间仍占用空间</span>
+        </div>
+        <table style="margin-top:12px">
+            <thead>
+            <tr><th>文件名</th><th style="width:110px">大小</th><th style="width:150px">删除时间</th><th style="width:110px">剩余</th><th style="width:190px">操作</th></tr>
+            </thead>
+            <tbody id="trashBody"></tbody>
+        </table>
+        <div class="empty" id="emptyTip" style="display:none">回收站是空的</div>
+        <div class="row between" style="margin-top:14px">
+            <button class="ghost small" id="prevBtn" type="button">上一页</button>
+            <span class="muted" id="pageInfo"></span>
+            <button class="ghost small" id="nextBtn" type="button">下一页</button>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+<script>
+    const state = {page: 0, size: 20};
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]));
+    }
+
+    async function load() {
+        const data = await api('/api/trash?page=' + state.page + '&size=' + state.size);
+        const body = document.getElementById('trashBody');
+        body.innerHTML = '';
+        data.items.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHtml(item.name)}</td>
+                <td>${formatSize(item.sizeBytes)}</td>
+                <td>${formatTime(item.deletedAt)}</td>
+                <td>${item.remainingDays} 天</td>
+                <td>
+                    <button class="ghost small" data-action="restore" data-id="${item.id}">恢复</button>
+                    <button class="ghost small" data-action="purge" data-id="${item.id}">彻底删除</button>
+                </td>`;
+            body.appendChild(tr);
+        });
+        document.getElementById('emptyTip').style.display = data.items.length ? 'none' : 'block';
+        const totalPages = Math.max(Math.ceil(data.total / state.size), 1);
+        document.getElementById('pageInfo').textContent = `第 ${state.page + 1} / ${totalPages} 页，共 ${data.total} 个文件`;
+        document.getElementById('prevBtn').disabled = state.page === 0;
+        document.getElementById('nextBtn').disabled = state.page + 1 >= totalPages;
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', () => {
+        if (state.page > 0) {
+            state.page--;
+            load();
+        }
+    });
+    document.getElementById('nextBtn').addEventListener('click', () => {
+        state.page++;
+        load();
+    });
+
+    document.addEventListener('click', async event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) {
+            return;
+        }
+        try {
+            if (button.dataset.action === 'restore') {
+                await api('/api/trash/' + button.dataset.id + '/restore', {method: 'POST'});
+                toast('已恢复');
+            } else if (button.dataset.action === 'purge') {
+                if (!confirm('彻底删除后无法恢复，空间立刻释放。确认？')) {
+                    return;
+                }
+                await api('/api/trash/' + button.dataset.id, {method: 'DELETE'});
+                toast('已彻底删除');
+            }
+            load();
+        } catch (error) {
+            toast(error.message);
+        }
+    });
+
+    bindLogout();
+    load().catch(error => toast(error.message));
+</script>
+</body>
+</html>

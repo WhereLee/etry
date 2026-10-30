@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: ${ETRY_DB_URL:jdbc:mysql://127.0.0.1:3306/etry?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${ETRY_DB_USER:root}
+    password: ${ETRY_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${ETRY_REDIS_HOST:127.0.0.1}
+      port: ${ETRY_REDIS_PORT:6379}
+      password: ${ETRY_REDIS_PASSWORD:}
+  servlet:
+    multipart:
+      # 仅本地开发打开：LocalStorage 要接收模拟直传，生产环境关闭
+      enabled: true
+      max-file-size: 60MB
+      max-request-size: 60MB
+
+etry:
+  storage:
+    type: local
+  mail:
+    type: captured
+  cache:
+    type: memory
+
+logging:
+  level:
+    com.wherelee.etry: DEBUG

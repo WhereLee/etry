@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>出错了 - etry</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="auth-wrap">
+    <div class="auth-card">
+        <h1>出错了</h1>
+        <p class="hint" th:text="${message} ?: '请求无法完成，请稍后再试'">请求无法完成</p>
+        <a th:href="@{/files}">返回我的文件</a>
+    </div>
+</div>
+</body>
+</html>

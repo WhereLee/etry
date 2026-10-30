@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>个人资料 - etry</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: nav(${user}, 'profile')}"></header>
+
+<div class="container">
+    <div class="card">
+        <h2>头像</h2>
+        <div class="row">
+            <img class="avatar-lg" id="avatarImg" th:if="${user.avatarUrl}" th:src="${user.avatarUrl}" alt="">
+            <div class="avatar-lg" id="avatarFallback" th:unless="${user.avatarUrl}"
+                 style="display:flex;align-items:center;justify-content:center;color:#868e9c">无</div>
+            <div>
+                <div class="row">
+                    <button class="small" type="button" id="avatarPick">上传头像</button>
+                    <button class="ghost small" type="button" id="avatarRemove">恢复默认</button>
+                </div>
+                <div class="muted" style="font-size:12px;margin-top:6px">支持 jpg/png/gif/webp，不超过 5MB，不计入配额</div>
+                <div class="progress-wrap" id="avatarProgressWrap">
+                    <div class="progress"><span id="avatarProgressBar"></span></div>
+                </div>
+            </div>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none">
+    </div>
+
+    <div class="card">
+        <h2>基本信息</h2>
+        <form id="profileForm">
+            <div class="field">
+                <label>邮箱</label>
+                <input type="text" th:value="${user.email}" disabled>
+            </div>
+            <div class="field">
+                <label>昵称</label>
+                <input type="text" id="nickname" th:value="${user.nickname}" maxlength="20" required>
+            </div>
+            <div class="field">
+                <label>简介</label>
+                <input type="text" id="bio" th:value="${user.bio}" maxlength="255" placeholder="一句话介绍自己">
+            </div>
+            <button type="submit" id="profileBtn">保存</button>
+            <div class="msg" id="profileMsg"></div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>修改密码</h2>
+        <form id="passwordForm">
+            <div class="field">
+                <label>原密码</label>
+                <input type="password" id="oldPassword" required autocomplete="current-password">
+            </div>
+            <div class="field">
+                <label>新密码</label>
+                <input type="password" id="newPassword" required autocomplete="new-password" placeholder="至少 8 位，含字母和数字">
+            </div>
+            <button type="submit" id="passwordBtn">修改密码</button>
+            <div class="msg" id="passwordMsg"></div>
+        </form>
+    </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+<script th:src="@{/js/upload.js}"></script>
+<script>
+    document.getElementById('profileForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const msg = document.getElementById('profileMsg');
+        const button = document.getElementById('profileBtn');
+        button.disabled = true;
+        try {
+            await api('/api/me', {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    nickname: document.getElementById('nickname').value.trim(),
+                    bio: document.getElementById('bio').value.trim()
+                })
+            });
+            showMessage(msg, '已保存', false);
+            setTimeout(() => location.reload(), 600);
+        } catch (error) {
+            showMessage(msg, error.message);
+            button.disabled = false;
+        }
+    });
+
+    document.getElementById('passwordForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const msg = document.getElementById('passwordMsg');
+        const button = document.getElementById('passwordBtn');
+        button.disabled = true;
+        try {
+            await api('/api/me/password', {
+                method: 'POST',
+                body: JSON.stringify({
+                    oldPassword: document.getElementById('oldPassword').value,
+                    newPassword: document.getElementById('newPassword').value
+                })
+            });
+            showMessage(msg, '密码已修改，其它设备需要重新登录', false);
+            document.getElementById('passwordForm').reset();
+        } catch (error) {
+            showMessage(msg, error.message);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    document.getElementById('avatarPick').addEventListener('click', () => document.getElementById('avatarInput').click());
+    document.getElementById('avatarInput').addEventListener('change', async event => {
+        const file = event.target.files[0];
+        event.target.value = '';
+        if (!file) {
+            return;
+        }
+        const wrap = document.getElementById('avatarProgressWrap');
+        const bar = document.getElementById('avatarProgressBar');
+        wrap.style.display = 'block';
+        try {
+            await uploadAvatar(file, percent => bar.style.width = percent + '%');
+            toast('头像已更新');
+            setTimeout(() => location.reload(), 500);
+        } catch (error) {
+            toast(error.message);
+        } finally {
+            wrap.style.display = 'none';
+        }
+    });
+
+    document.getElementById('avatarRemove').addEventListener('click', async () => {
+        if (!confirm('恢复默认头像？当前头像会被删除。')) {
+            return;
+        }
+        try {
+            await api('/api/me/avatar', {method: 'DELETE'});
+            toast('已恢复默认');
+            setTimeout(() => location.reload(), 500);
+        } catch (error) {
+            toast(error.message);
+        }
+    });
+
+    bindLogout();
+</script>
+</body>
+</html>

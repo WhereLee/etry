@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>找回密码 - etry</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="auth-wrap">
+    <form class="auth-card" id="forgotForm">
+        <h1>找回密码</h1>
+        <p class="hint">输入注册邮箱，如果账号存在会收到一封验证码邮件</p>
+        <div class="field">
+            <label>邮箱</label>
+            <input type="email" id="email" required placeholder="you@example.com">
+        </div>
+        <button class="block" type="submit" id="submitBtn">发送验证码</button>
+        <div class="msg" id="msg"></div>
+        <div class="row" style="margin-top:16px">
+            <a th:href="@{/login}">返回登录</a>
+        </div>
+    </form>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script>
+    document.getElementById('forgotForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const msg = document.getElementById('msg');
+        const button = document.getElementById('submitBtn');
+        const email = document.getElementById('email').value.trim();
+        button.disabled = true;
+        try {
+            await api('/api/auth/password/forgot', {
+                method: 'POST',
+                body: JSON.stringify({email})
+            });
+            window.location.href = '/reset?email=' + encodeURIComponent(email);
+        } catch (error) {
+            showMessage(msg, error.message);
+            button.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

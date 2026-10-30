@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>登录 - etry</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="auth-wrap">
+    <form class="auth-card" id="loginForm">
+        <h1>登录 etry</h1>
+        <p class="hint">用注册邮箱和你设置的密码登录</p>
+        <div class="field">
+            <label>邮箱</label>
+            <input type="email" id="email" required autocomplete="username" placeholder="you@example.com">
+        </div>
+        <div class="field">
+            <label>密码</label>
+            <input type="password" id="password" required autocomplete="current-password" placeholder="至少 8 位，含字母和数字">
+        </div>
+        <button class="block" type="submit" id="submitBtn">登录</button>
+        <div class="msg" id="msg"></div>
+        <div class="row between" style="margin-top:16px">
+            <a th:href="@{/register}">注册新账号</a>
+            <a th:href="@{/forgot}">忘记密码</a>
+        </div>
+    </form>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script>
+    if (new URLSearchParams(location.search).get('registered') === '1') {
+        showMessage(document.getElementById('msg'), '注册成功，请直接登录', false);
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const msg = document.getElementById('msg');
+        const button = document.getElementById('submitBtn');
+        button.disabled = true;
+        try {
+            await api('/api/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({
+                    email: document.getElementById('email').value.trim(),
+                    password: document.getElementById('password').value
+                })
+            });
+            window.location.href = '/files';
+        } catch (error) {
+            showMessage(msg, error.message);
+            button.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

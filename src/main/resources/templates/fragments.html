@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header class="nav" th:fragment="nav(user, page)">
+    <a class="brand" th:href="@{/files}">etry</a>
+    <nav>
+        <a th:href="@{/files}" th:classappend="${page == 'files'} ? 'active'">我的文件</a>
+        <a th:href="@{/trash}" th:classappend="${page == 'trash'} ? 'active'">回收站</a>
+        <a th:href="@{/shares}" th:classappend="${page == 'shares'} ? 'active'">我的分享</a>
+        <a th:href="@{/profile}" th:classappend="${page == 'profile'} ? 'active'">个人资料</a>
+    </nav>
+    <div class="account">
+        <img class="avatar-sm" th:if="${user.avatarUrl}" th:src="${user.avatarUrl}" alt="">
+        <span th:text="${user.nickname}">昵称</span>
+        <button class="ghost small" data-action="logout">登出</button>
+    </div>
+</header>
+</body>
+</html>

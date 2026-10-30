@@ -1,0 +1,15 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.env
+*.log
+logs/
+data/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.commit-msg
+
+# 本地运维资料：含服务器地址与凭据线索，绝不入库
+服务器运维手册.md
+git与CI操作手册.md

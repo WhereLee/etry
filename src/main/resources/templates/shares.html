@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>我的分享 - etry</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:replace="~{fragments :: nav(${user}, 'shares')}"></header>
+
+<div class="container">
+    <div class="card">
+        <div class="row between">
+            <h2 style="margin:0">我的分享</h2>
+            <span class="muted">链接一旦被复制，无法阻止别人继续下载</span>
+        </div>
+        <table style="margin-top:12px">
+            <thead>
+            <tr><th>文件</th><th style="width:110px">提取码</th><th style="width:110px">剩余</th><th style="width:300px">操作</th></tr>
+            </thead>
+            <tbody id="shareBody"></tbody>
+        </table>
+        <div class="empty" id="emptyTip" style="display:none">还没有分享过文件</div>
+    </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+<script>
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]));
+    }
+
+    async function load() {
+        const items = await api('/api/shares');
+        const body = document.getElementById('shareBody');
+        body.innerHTML = '';
+        items.forEach(item => {
+            const link = window.location.origin + item.shareUrl;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHtml(item.fileName)}</td>
+                <td>${item.needCode ? '有' : '无'}</td>
+                <td>${item.revoked ? '已取消' : item.remainingDays + ' 天'}</td>
+                <td>
+                    <button class="ghost small" data-action="copy" data-link="${escapeHtml(link)}">复制链接</button>
+                    <button class="ghost small" data-action="revoke" data-id="${item.id}" ${item.revoked ? 'disabled' : ''}>取消分享</button>
+                </td>`;
+            body.appendChild(tr);
+        });
+        document.getElementById('emptyTip').style.display = items.length ? 'none' : 'block';
+    }
+
+    document.addEventListener('click', async event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) {
+            return;
+        }
+        try {
+            if (button.dataset.action === 'copy') {
+                await navigator.clipboard.writeText(button.dataset.link);
+                toast('链接已复制');
+            } else if (button.dataset.action === 'revoke') {
+                if (!confirm('取消后这个链接立刻失效，确认？')) {
+                    return;
+                }
+                await api('/api/shares/' + button.dataset.id, {method: 'DELETE'});
+                toast('分享已取消');
+                load();
+            }
+        } catch (error) {
+            toast(error.message);
+        }
+    });
+
+    bindLogout();
+    load().catch(error => toast(error.message));
+</script>
+</body>
+</html>

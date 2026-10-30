@@ -1,0 +1,99 @@
+spring:
+  application:
+    name: etry
+  profiles:
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Shanghai
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      # 服务器不接收任何文件字节，用户文件直传对象存储
+      enabled: false
+  thymeleaf:
+    cache: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: native
+  error:
+    whitelabel:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+etry:
+  jwt:
+    # 生产必须通过环境变量覆盖，长度不少于 32 字节
+    secret: ${ETRY_JWT_SECRET:etry-dev-only-secret-key-change-me-32bytes}
+    expire-days: 7
+    cookie-name: etry_token
+    cookie-secure: ${ETRY_COOKIE_SECURE:false}
+  quota:
+    default-bytes: 524288000
+  upload:
+    max-file-bytes: 52428800
+    presign-expire-seconds: 600
+    download-expire-seconds: 300
+    pending-timeout-minutes: 30
+  avatar:
+    max-bytes: 5242880
+  trash:
+    retention-days: 14
+  mail:
+    type: ${ETRY_MAIL_TYPE:captured}
+    from-address: ${ETRY_MAIL_USERNAME:}
+    # 注册是否需要邮箱验证。关掉后注册即生效、不发信；找回密码不受影响
+    verify-register: ${ETRY_VERIFY_REGISTER:true}
+    smtp:
+      host: smtp.qq.com
+      port: 465
+      username: ${ETRY_MAIL_USERNAME:}
+      password: ${ETRY_MAIL_PASSWORD:}
+    code:
+      length: 6
+      expire-minutes: 15
+      max-attempts: 5
+      resend-cooldown-seconds: 60
+      daily-limit: 5
+  storage:
+    type: ${ETRY_STORAGE_TYPE:local}
+    local:
+      root: ${ETRY_LOCAL_STORAGE_ROOT:./data/storage}
+      # 相对路径：同一份配置在任意端口和多实例下都正确
+      base-url: ${ETRY_LOCAL_STORAGE_BASE:/local-storage}
+    cos:
+      bucket: ${ETRY_COS_BUCKET:rag-1325750042}
+      region: ${ETRY_COS_REGION:ap-shanghai}
+      secret-id: ${ETRY_COS_SECRET_ID:}
+      secret-key: ${ETRY_COS_SECRET_KEY:}
+  cache:
+    type: ${ETRY_CACHE_TYPE:memory}
+  share:
+    default-expire-days: 7
+    code-length: 4
+    code-max-attempts: 10
+    code-lock-minutes: 60
+  security:
+    login-max-failures: 5
+    login-lock-minutes: 15
+    login-ip-per-minute: 10
+  schedule:
+    pending-cleanup-cron: "0 * * * * *"
+    trash-cleanup-cron: "0 */10 * * * *"
+    reconcile-cron: "0 30 3 * * *"
