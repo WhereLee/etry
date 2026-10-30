@@ -1,0 +1,22 @@
+# Java
+server/target/
+*.class
+
+# Node
+web/node_modules/
+web/dist/
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 本地环境与日志
+.env
+*.log
+logs/
+
+# OS
+Thumbs.db
+.DS_Store

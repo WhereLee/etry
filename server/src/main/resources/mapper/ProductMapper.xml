@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.trade.product.ProductMapper">
+
+    <sql id="columns">
+        id, name, description, category, price_points, stock_total, stock_frozen, status, created_at, updated_at
+    </sql>
+
+    <sql id="onSaleCondition">
+        status = 'ON_SALE'
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+    </sql>
+
+    <select id="findPage" resultType="com.wherelee.trade.product.Product">
+        SELECT
+        <include refid="columns"/>
+        FROM t_product
+        WHERE
+        <include refid="onSaleCondition"/>
+        ORDER BY id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(*)
+        FROM t_product
+        WHERE
+        <include refid="onSaleCondition"/>
+    </select>
+
+    <select id="findById" resultType="com.wherelee.trade.product.Product">
+        SELECT
+        <include refid="columns"/>
+        FROM t_product
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByIds" resultType="com.wherelee.trade.product.Product">
+        SELECT
+        <include refid="columns"/>
+        FROM t_product
+        WHERE id IN
+        <foreach collection="ids" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        ORDER BY id
+    </select>
+
+    <update id="reserveStock">
+        UPDATE t_product
+        SET stock_frozen = stock_frozen + #{quantity}
+        WHERE id = #{id}
+          AND status = 'ON_SALE'
+          AND stock_total - stock_frozen &gt;= #{quantity}
+    </update>
+
+</mapper>

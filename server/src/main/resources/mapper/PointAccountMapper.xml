@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.trade.point.PointAccountMapper">
+
+    <update id="freeze">
+        UPDATE t_point_account
+        SET balance = balance - #{amount},
+            frozen  = frozen + #{amount}
+        WHERE user_id = #{userId}
+          AND balance &gt;= #{amount}
+    </update>
+
+</mapper>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.trade.order.OrderItemMapper">
+
+    <sql id="columns">
+        id, order_id, product_id, product_name, unit_points, quantity, subtotal_points
+    </sql>
+
+    <insert id="batchInsert">
+        INSERT INTO t_order_item (order_id, product_id, product_name, unit_points, quantity, subtotal_points)
+        VALUES
+        <foreach collection="items" item="item" separator=",">
+            (#{item.orderId}, #{item.productId}, #{item.productName}, #{item.unitPoints},
+             #{item.quantity}, #{item.subtotalPoints})
+        </foreach>
+    </insert>
+
+    <select id="findByOrderId" resultType="com.wherelee.trade.order.OrderItem">
+        SELECT
+        <include refid="columns"/>
+        FROM t_order_item WHERE order_id = #{orderId} ORDER BY id
+    </select>
+
+    <select id="findByOrderIds" resultType="com.wherelee.trade.order.OrderItem">
+        SELECT
+        <include refid="columns"/>
+        FROM t_order_item WHERE order_id IN
+        <foreach collection="orderIds" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        ORDER BY order_id, id
+    </select>
+
+</mapper>
