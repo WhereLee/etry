@@ -21,6 +21,7 @@
         <java.version>17</java.version>
         <mybatis-starter.version>3.0.3</mybatis-starter.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <cos.version>5.6.247</cos.version>
     </properties>
 
     <dependencies>
@@ -83,6 +84,12 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>${jjwt.version}</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.qcloud</groupId>
+            <artifactId>cos_api</artifactId>
+            <version>${cos.version}</version>
         </dependency>
 
         <dependency>

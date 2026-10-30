@@ -5,6 +5,7 @@ import com.wherelee.edu.auth.dto.RegisterRequest;
 import com.wherelee.edu.auth.dto.UserMeVO;
 import com.wherelee.edu.common.BizException;
 import com.wherelee.edu.common.ErrorCode;
+import com.wherelee.edu.config.ConfigService;
 import com.wherelee.edu.rbac.PermissionService;
 import com.wherelee.edu.security.JwtService;
 import com.wherelee.edu.security.LoginAttemptService;
@@ -29,6 +30,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuthService {
 
+    /** 后台「系统配置」里的注册开关，关掉后注册接口直接拒绝 */
+    private static final String CONFIG_REGISTER_ENABLED = "register.enabled";
+
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
     private final PasswordEncoder passwordEncoder;
@@ -36,6 +40,7 @@ public class AuthService {
     private final TokenBlacklistService blacklistService;
     private final LoginAttemptService loginAttemptService;
     private final PermissionService permissionService;
+    private final ConfigService configService;
 
     /**
      * 注册即登录。新用户默认分配 STUDENT 角色，
@@ -43,6 +48,10 @@ public class AuthService {
      */
     @Transactional
     public LoginResponse register(RegisterRequest request) {
+        // 缺配置项时默认放行，避免有人误删一条记录导致注册全干涸
+        if (!configService.isEnabled(CONFIG_REGISTER_ENABLED, true)) {
+            throw BizException.of(ErrorCode.REGISTER_DISABLED);
+        }
         if (userMapper.findByUsername(request.username()) != null) {
             throw BizException.of(ErrorCode.USERNAME_EXISTS);
         }

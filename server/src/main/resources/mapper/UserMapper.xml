@@ -13,8 +13,9 @@
                 AND status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (username LIKE CONCAT('%', #{keyword}, '%')
-                     OR nickname LIKE CONCAT('%', #{keyword}, '%'))
+                <!-- ESCAPE '\\' 让用户输入的 % 和 _ 按字面意思匹配，不再当通配符 -->
+                AND (username LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
+                     OR nickname LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\')
             </if>
         </where>
     </sql>
@@ -30,6 +31,17 @@
     <select id="countPage" resultType="long">
         SELECT COUNT(*) FROM t_user
         <include refid="pageCondition"/>
+    </select>
+
+    <!--
+      群发前批量校验收件人：一次 IN 查出存在的 ID，
+      不逐个 findById（发 200 人就是 200 次往返）。
+    -->
+    <select id="findExistingIds" resultType="long">
+        SELECT id FROM t_user WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
     </select>
 
 </mapper>

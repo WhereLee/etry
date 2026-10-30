@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,6 +22,8 @@ import java.util.Set;
 public class MessageService {
 
     private static final int MAX_PAGE_SIZE = 50;
+    /** 页码硬上限，防止 (page-1)*size 溢出成负 offset */
+    private static final int MAX_PAGE = 10_000;
 
     private final MessageMapper messageMapper;
     private final UserMapper userMapper;
@@ -34,12 +37,15 @@ public class MessageService {
         Set<Long> receivers = new LinkedHashSet<>();
 
         if (request.receiverIds() != null && !request.receiverIds().isEmpty()) {
-            for (Long id : request.receiverIds()) {
-                if (userMapper.findById(id) == null) {
+            Set<Long> requested = new LinkedHashSet<>(request.receiverIds());
+            // 一次 IN 查出真实存在的收件人，避免逐个 findById 造成 N+1
+            Set<Long> existing = new HashSet<>(userMapper.findExistingIds(List.copyOf(requested)));
+            for (Long id : requested) {
+                if (!existing.contains(id)) {
                     throw new BizException(ErrorCode.USER_NOT_FOUND, "收件人不存在: " + id);
                 }
-                receivers.add(id);
             }
+            receivers.addAll(requested);
         } else if (request.roleCode() != null && !request.roleCode().isBlank()) {
             receivers.addAll(userMapper.findIdsByRoleCode(request.roleCode()));
         } else {
@@ -66,7 +72,7 @@ public class MessageService {
     }
 
     public PageResult<MessageDtos.MessageSummaryVO> inbox(Long receiverId, Boolean isRead, int page, int size) {
-        int safePage = Math.max(page, 1);
+        int safePage = Math.min(Math.max(page, 1), MAX_PAGE);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         long total = messageMapper.countPage(receiverId, isRead);
         if (total == 0) {

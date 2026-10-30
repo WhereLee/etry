@@ -43,6 +43,9 @@ public final class NoticeDtos {
             String title,
 
             @jakarta.validation.constraints.NotBlank(message = "正文不能为空")
+            // 列是 TEXT（65535 字节），中文 3 字节/字，2 万字留出安全余量；
+            // 不限的话超长会直接抛 DataIntegrityViolationException，前端只看到「系统繁忙」
+            @jakarta.validation.constraints.Size(max = 20000, message = "正文不能超过 20000 字")
             String content,
 
             @jakarta.validation.constraints.Pattern(

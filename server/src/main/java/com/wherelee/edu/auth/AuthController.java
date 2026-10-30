@@ -1,5 +1,6 @@
 package com.wherelee.edu.auth;
 
+import com.wherelee.edu.audit.AuditLog;
 import com.wherelee.edu.auth.dto.ChangePasswordRequest;
 import com.wherelee.edu.auth.dto.LoginRequest;
 import com.wherelee.edu.auth.dto.LoginResponse;
@@ -29,18 +30,25 @@ public class AuthController {
         return ApiResponse.ok(authService.register(request));
     }
 
+    /**
+     * 登录成功与失败都要留痕：失败请求会被切面记成 success=false，
+     * 这是发现暴力破解的唯一线索。detail 里的密码字段已由切面脱敏。
+     */
     @PostMapping("/login")
+    @AuditLog(action = "USER_LOGIN", targetType = "USER")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request.username(), request.password()));
     }
 
     @PostMapping("/logout")
+    @AuditLog(action = "USER_LOGOUT", targetType = "USER")
     public ApiResponse<Void> logout() {
         authService.logout();
         return ApiResponse.ok();
     }
 
     @PutMapping("/password")
+    @AuditLog(action = "PASSWORD_CHANGE", targetType = "USER")
     public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(request.oldPassword(), request.newPassword());
         return ApiResponse.ok();

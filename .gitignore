@@ -19,3 +19,12 @@ npm-debug.log*
 .env
 *.local
 *.log
+
+# 本地上传目录（STORAGE_TYPE=local 时的用户文件，不进仓库）
+server/data/
+
+# 测试脚本生成的临时文件
+tools/*.png
+tools/*.bin
+tools/not-image.txt
+tools/chunked-body.json

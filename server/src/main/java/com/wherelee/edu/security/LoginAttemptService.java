@@ -40,7 +40,7 @@ public class LoginAttemptService {
         try {
             Long count = redisTemplate.opsForValue().increment(key);
             if (count != null && count == 1L) {
-                redisTemplate.expire(key, Duration.ofMinutes(properties.loginFailTtlMinutes()));
+                redisTemplate.expire(key, Duration.ofMinutes(properties.loginLockMinutes()));
             }
         } catch (Exception e) {
             log.warn("记录登录失败次数失败 username={}", username, e);

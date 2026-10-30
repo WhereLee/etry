@@ -44,8 +44,11 @@ public final class MessageDtos {
             String title,
 
             @jakarta.validation.constraints.NotBlank(message = "正文不能为空")
+            @jakarta.validation.constraints.Size(max = 20000, message = "正文不能超过 20000 字")
             String content,
 
+            // 上限 500：再多应该走「按角色群发」，否则一条请求会拼出巨型 IN 和多行 INSERT
+            @jakarta.validation.constraints.Size(max = 500, message = "一次最多指定 500 个收件人")
             java.util.List<Long> receiverIds,
 
             String roleCode

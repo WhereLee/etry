@@ -14,6 +14,7 @@ public enum ErrorCode {
     LOGIN_FAILED(40102, "账号或密码错误"),
     ACCOUNT_DISABLED(40103, "账号已被禁用"),
     LOGIN_LOCKED(40104, "登录失败次数过多，请稍后再试"),
+    REGISTER_DISABLED(40105, "当前未开放注册"),
     FORBIDDEN(40301, "无权访问"),
     NOT_FOUND(40400, "资源不存在"),
 
@@ -24,6 +25,7 @@ public enum ErrorCode {
     ROLE_NOT_FOUND(40402, "角色不存在"),
     ROLE_CODE_EXISTS(40004, "角色编码已存在"),
     ROLE_IN_USE(40005, "角色下仍有用户，不能删除"),
+    LAST_ADMIN(40012, "系统必须保留至少一个可用的管理员"),
 
     TEACHER_NOT_FOUND(40403, "讲师档案不存在"),
     TEACHER_PROFILE_EXISTS(40006, "你已经提交过讲师申请"),

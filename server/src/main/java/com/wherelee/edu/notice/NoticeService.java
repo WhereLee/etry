@@ -18,6 +18,8 @@ import java.util.List;
 public class NoticeService {
 
     private static final int MAX_PAGE_SIZE = 50;
+    /** 页码硬上限，防止 (page-1)*size 溢出成负 offset */
+    private static final int MAX_PAGE = 10_000;
 
     private final NoticeMapper noticeMapper;
 
@@ -91,7 +93,7 @@ public class NoticeService {
     }
 
     private PageResult<NoticeDtos.NoticeSummaryVO> page(String status, int page, int size) {
-        int safePage = Math.max(page, 1);
+        int safePage = Math.min(Math.max(page, 1), MAX_PAGE);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         long total = noticeMapper.countPage(status);
         if (total == 0) {

@@ -39,4 +39,15 @@ public class ConfigService {
         ConfigItem item = configMapper.findByKey(key);
         return item == null ? defaultValue : item.getConfigValue();
     }
+
+    /**
+     * 布尔开关。缺该项时按 defaultValue 处理，避免删错一条配置把所有入口锁死。
+     */
+    public boolean isEnabled(String key, boolean defaultValue) {
+        String value = get(key, null);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return Boolean.parseBoolean(value.trim());
+    }
 }

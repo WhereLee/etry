@@ -19,9 +19,15 @@ public class JwtService {
     private final Duration ttl;
 
     public JwtService(JwtProperties properties) {
-        byte[] bytes = properties.secret().getBytes(StandardCharsets.UTF_8);
+        String secret = properties.secret();
+        if (secret == null || secret.isBlank()) {
+            // 配置里没有默认值，漏配时占位符会解析成空串，这里给出可操作的提示
+            throw new IllegalStateException(
+                    "未配置 JWT 签名密钥：请通过环境变量 JWT_SECRET 注入，长度不少于 32 字节");
+        }
+        byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
-            throw new IllegalStateException("app.jwt.secret 长度不足 32 字节");
+            throw new IllegalStateException("环境变量 JWT_SECRET 长度不足 32 字节");
         }
         this.key = Keys.hmacShaKeyFor(bytes);
         this.ttl = Duration.ofMinutes(properties.ttlMinutes());

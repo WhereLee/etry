@@ -30,6 +30,11 @@ spring:
           min-idle: 0
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  servlet:
+    multipart:
+      # 头像上限 2MB：超过这个尺寸的头像在页面上已经没意义了，不如压一压再传
+      max-file-size: 2MB
+      max-request-size: 3MB
 
 mybatis:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -38,16 +43,33 @@ mybatis:
     default-statement-timeout: 30
 
 app:
+  storage:
+    # cos：文件直接进对象存储，服务器不落盘（默认）
+    # local：存本机磁盘，仅用于没配 COS 密钥的本地调试
+    type: ${STORAGE_TYPE:cos}
+    local-dir: ${STORAGE_LOCAL_DIR:./data/uploads}
+    cos:
+      bucket: ${COS_BUCKET:rag-1325750042}
+      region: ${COS_REGION:ap-shanghai}
+      secret-id: ${COS_SECRET_ID:}
+      secret-key: ${COS_SECRET_KEY:}
+      key-prefix: ${COS_KEY_PREFIX:edu/}
+      # 头像等私有对象靠预签名访问，过期后前端重新拉接口即可拿到新链接
+      url-ttl-minutes: ${COS_URL_TTL_MINUTES:120}
   jwt:
-    # 生产必须用环境变量覆盖，长度不少于 32 字节
-    secret: ${JWT_SECRET:edu-dev-only-secret-key-change-in-prod-2026}
+    # 不提供默认值：未注入 JWT_SECRET 时启动失败。
+    # 用 ${JWT_SECRET:} 而不是 ${JWT_SECRET}：后者解析不到时会把字面量塞进来，
+    # 报出来的是「长度不足」，而不是「没配置」。
+    secret: ${JWT_SECRET:}
     ttl-minutes: 120
   security:
     # 连续登录失败达到阈值后锁定，窗口内不再校验密码
     login-fail-threshold: 5
+    # 锁定时长，同时也是失败计数在 Redis 里的存活时间（一个数说清一件事）
     login-lock-minutes: 15
-    # 登录失败计数在 Redis 中的存活时间，与锁定时长一致
-    login-fail-ttl-minutes: 15
+    # X-Forwarded-For 是客户端可伪造的请求头。只有部署在反向代理后面才能信，
+    # 否则审计里的来源 IP 等于随便填。
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
 
 logging:
   level:

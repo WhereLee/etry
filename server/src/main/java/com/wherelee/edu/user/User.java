@@ -16,6 +16,10 @@ public class User {
     private String username;
     private String passwordHash;
     private String nickname;
+    /** 头像对象键，实际访问 URL 由服务端拼装 */
+    private String avatarKey;
+    /** 个人简介 */
+    private String bio;
     private String status;
     /** 令牌版本：改密码或强制下线时 +1，使此前签发的所有 token 立即失效 */
     private Integer tokenVersion;

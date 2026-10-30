@@ -1,0 +1,70 @@
+package com.wherelee.edu.storage;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
+
+/**
+ * 本地磁盘存储：仅在 app.storage.type=local 时启用，用于没配 COS 凭据的本地调试。
+ * 生产环境一律走 {@link CosFileStorage}，服务器磁盘不落用户文件。
+ */
+@Slf4j
+@Component
+@ConditionalOnProperty(name = "app.storage.type", havingValue = "local")
+public class LocalFileStorage implements FileStorage {
+
+    private static final String URL_PREFIX = "/files/";
+
+    private final Path root;
+
+    public LocalFileStorage(StorageProperties properties) {
+        this.root = Paths.get(properties.localDir()).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(root);
+        } catch (IOException e) {
+            throw new UncheckedIOException("无法创建上传目录: " + root, e);
+        }
+        log.info("本地文件存储根目录 {}", root);
+    }
+
+    @Override
+    public String store(byte[] content, String extension, String directory) {
+        String key = directory + "/" + UUID.randomUUID().toString().replace("-", "") + "." + extension;
+        Path target = root.resolve(key).normalize();
+        if (!target.startsWith(root)) {
+            // 防目录穿越：key 由本方法生成，这里是兜底
+            throw new IllegalArgumentException("非法的存储路径: " + key);
+        }
+        try {
+            Files.createDirectories(target.getParent());
+            Files.write(target, content);
+        } catch (IOException e) {
+            throw new UncheckedIOException("写入文件失败: " + key, e);
+        }
+        return key;
+    }
+
+    @Override
+    public void delete(String key) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(root.resolve(key).normalize());
+        } catch (IOException e) {
+            log.warn("删除文件失败 key={}", key, e);
+        }
+    }
+
+    @Override
+    public String url(String key) {
+        return key == null || key.isBlank() ? null : URL_PREFIX + key;
+    }
+}

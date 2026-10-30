@@ -5,6 +5,7 @@ import com.wherelee.edu.common.ApiResponse;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.rbac.RequirePermission;
 import com.wherelee.edu.security.CurrentUser;
+import com.wherelee.edu.user.dto.AdminResetPasswordRequest;
 import com.wherelee.edu.user.dto.AssignRolesRequest;
 import com.wherelee.edu.user.dto.ChangeStatusRequest;
 import com.wherelee.edu.user.dto.UserListItemVO;
@@ -50,6 +51,25 @@ public class UserAdminController {
     public ApiResponse<Void> assignRoles(@PathVariable Long id,
                                          @Valid @RequestBody AssignRolesRequest request) {
         userAdminService.assignRoles(id, request.roleIds());
+        return ApiResponse.ok();
+    }
+
+    /** 管理员重置他人密码：不需要旧密码，重置后该用户所有设备下线 */
+    @PutMapping("/{id}/password")
+    @RequirePermission("user:manage")
+    @AuditLog(action = "USER_PASSWORD_RESET", targetType = "USER", targetIdIndex = 0)
+    public ApiResponse<Void> resetPassword(@PathVariable Long id,
+                                           @Valid @RequestBody AdminResetPasswordRequest request) {
+        userAdminService.resetPassword(id, request.newPassword());
+        return ApiResponse.ok();
+    }
+
+    /** 强制下线：只作废 token，账号本身不动 */
+    @PutMapping("/{id}/kick")
+    @RequirePermission("user:manage")
+    @AuditLog(action = "USER_KICK", targetType = "USER", targetIdIndex = 0)
+    public ApiResponse<Void> kick(@PathVariable Long id) {
+        userAdminService.kick(id);
         return ApiResponse.ok();
     }
 }

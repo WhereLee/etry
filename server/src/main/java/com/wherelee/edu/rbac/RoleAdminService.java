@@ -45,18 +45,34 @@ public class RoleAdminService {
     /**
      * 整体覆盖某个角色的权限。
      * 在一个事务里「先删后插」：中途失败会回滚，不会留下权限被清空的中间态。
+     *
+     * 管理员角色必须保留 role:manage：改完这一次如果连权限管理都没了，
+     * 就再也没人能进后台把权限改回来，只能改库。
      */
     @Transactional
     public void assignPermissions(Long roleId, List<Long> permissionIds) {
-        requireRole(roleId);
+        Role role = requireRole(roleId);
 
-        Set<Long> allPermissionIds = permissionMapper.findAll().stream()
+        List<Permission> allPermissions = permissionMapper.findAll();
+        Set<Long> allPermissionIds = allPermissions.stream()
                 .map(Permission::getId)
                 .collect(Collectors.toSet());
         Set<Long> requested = new HashSet<>(permissionIds);
         for (Long id : requested) {
             if (!allPermissionIds.contains(id)) {
                 throw new BizException(ErrorCode.INVALID_PARAM, "权限不存在: " + id);
+            }
+        }
+
+        if (Role.CODE_ADMIN.equals(role.getCode())) {
+            Long roleManageId = allPermissions.stream()
+                    .filter(p -> "role:manage".equals(p.getCode()))
+                    .map(Permission::getId)
+                    .findFirst()
+                    .orElse(null);
+            if (roleManageId == null || !requested.contains(roleManageId)) {
+                throw new BizException(ErrorCode.INVALID_PARAM,
+                        "管理员角色必须保留 role:manage，否则将无人能再修改权限");
             }
         }
 

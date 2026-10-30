@@ -34,6 +34,18 @@ public interface RoleMapper {
     @Select("SELECT COUNT(*) FROM t_user_role WHERE role_id = #{roleId}")
     long countUsersByRole(@Param("roleId") Long roleId);
 
+    /**
+     * 加锁读出某个角色下所有可用用户的 ID。
+     * 「先查后改」在并发下会被绕过（两人同时撤销对方，各自都读到 2 个），
+     * 用 FOR UPDATE 把行锁住，让两个事务串行，第二个能看到第一个的结果。
+     * 调用方必须在事务内。
+     */
+    @Select("SELECT u.id FROM t_user u "
+            + "JOIN t_user_role ur ON u.id = ur.user_id "
+            + "JOIN t_role r ON r.id = ur.role_id "
+            + "WHERE r.code = #{roleCode} AND u.status = 'ACTIVE' FOR UPDATE")
+    List<Long> lockActiveUserIdsByRoleCode(@Param("roleCode") String roleCode);
+
     /** 批量取多个用户的角色，避免列表页 N+1，SQL 在 RoleMapper.xml */
     List<UserRoleRow> findRolesByUserIds(@Param("userIds") List<Long> userIds);
 }

@@ -108,11 +108,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 公开路径：完全匹配的白名单 + 公告前缀（列表与详情都不需要登录）。
-     * 注意 /api/admin/notices 不会被这个前缀命中。
+     * 公开路径：完全匹配的白名单 + 公告前缀 + 讲师主页前缀。
+     * /api/teachers 带 s，不会误伤 /api/teacher/apply（那是讲师本人操作，必须登录）。
+     * 同理 /api/admin/notices 不会被 /api/notices 前缀命中。
      */
     private boolean isPublicPath(String path) {
-        return WHITE_LIST.contains(path) || path.startsWith("/api/notices");
+        return WHITE_LIST.contains(path)
+                || path.startsWith("/api/notices")
+                || path.startsWith("/api/teachers");
     }
 
     private void writeError(HttpServletResponse response, ErrorCode errorCode, String message) throws IOException {

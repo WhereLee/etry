@@ -33,6 +33,16 @@ public class NoticeAdminController {
         return ApiResponse.ok(noticeService.adminPage(status, page, size));
     }
 
+    /**
+     * 后台看详情：草稿和已下架也要能取回正文。
+     * 前台那个 /api/notices/{id} 只给已发布的，拿它编辑草稿会 40405。
+     */
+    @GetMapping("/{id}")
+    @RequirePermission("notice:manage")
+    public ApiResponse<NoticeDtos.NoticeVO> detail(@PathVariable Long id) {
+        return ApiResponse.ok(noticeService.detail(id));
+    }
+
     @PostMapping
     @RequirePermission("notice:manage")
     @AuditLog(action = "NOTICE_CREATE", targetType = "NOTICE")

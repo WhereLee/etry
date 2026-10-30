@@ -23,6 +23,8 @@ import java.util.List;
 public class TeacherService {
 
     private static final int MAX_PAGE_SIZE = 50;
+    /** 页码硬上限，防止 (page-1)*size 溢出成负 offset */
+    private static final int MAX_PAGE = 10_000;
 
     private final TeacherProfileMapper profileMapper;
     private final TeacherSubjectMapper teacherSubjectMapper;
@@ -115,7 +117,7 @@ public class TeacherService {
     }
 
     public PageResult<TeacherProfileVO> page(String status, int page, int size) {
-        int safePage = Math.max(page, 1);
+        int safePage = Math.min(Math.max(page, 1), MAX_PAGE);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         long total = profileMapper.countPage(status);
         if (total == 0) {
