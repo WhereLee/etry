@@ -113,10 +113,11 @@ public class LearningService {
                 .toList();
     }
 
+    /** 百分比封顶 100：删课时留下的历史脏进度不能再抛 150% 这种值给前端 */
     private int percent(long completed, long total) {
         if (total <= 0) {
             return 0;
         }
-        return (int) (completed * 100 / total);
+        return (int) Math.min(100, completed * 100 / total);
     }
 }

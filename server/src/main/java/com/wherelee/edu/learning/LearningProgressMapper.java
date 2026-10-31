@@ -56,12 +56,23 @@ public interface LearningProgressMapper {
     int deleteByCourse(@Param("courseId") Long courseId);
 
     /**
+     * 删课时时清进度。不清的话，分母（有视频课时数）变小、分子（已完成数）不变，
+     * 学员那边会出现 150%、200% 这种进度，讲师工作台还会把人算成已完课。
+     */
+    @org.apache.ibatis.annotations.Delete("DELETE FROM t_learning_progress WHERE lesson_id = #{lessonId}")
+    int deleteByLesson(@Param("lessonId") Long lessonId);
+
+    @org.apache.ibatis.annotations.Delete("DELETE FROM t_learning_progress WHERE lesson_id IN "
+            + "(SELECT id FROM t_course_lesson WHERE chapter_id = #{chapterId})")
+    int deleteByChapter(@Param("chapterId") Long chapterId);
+
+    /**
      * 我的学习：按最近学习时间倒序列出课程，带进度。
      * 走 idx_progress_user_course(user_id, course_id, updated_at)。
      */
     @Select("SELECT c.id AS course_id, c.title, c.cover_key, c.status, "
             + "(SELECT COUNT(*) FROM t_course_lesson l WHERE l.course_id = c.id "
-            + "AND l.video_key IS NOT NULL AND l.video_key <> '') AS total_lessons, "
+            + "AND l.video_key IS NOT NULL AND l.video_key != '') AS total_lessons, "
             + "COUNT(CASE WHEN p.completed = 1 THEN 1 END) AS completed_lessons, "
             + "MAX(p.updated_at) AS last_learned_at "
             + "FROM t_learning_progress p "

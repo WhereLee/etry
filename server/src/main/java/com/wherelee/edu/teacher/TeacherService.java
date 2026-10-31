@@ -3,6 +3,7 @@ package com.wherelee.edu.teacher;
 import com.wherelee.edu.common.BizException;
 import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.PageResult;
+import com.wherelee.edu.course.CourseMapper;
 import com.wherelee.edu.storage.FileStorage;
 import com.wherelee.edu.teacher.dto.SubjectVO;
 import com.wherelee.edu.teacher.dto.TeacherApplyRequest;
@@ -35,6 +36,7 @@ public class TeacherService {
     private final SubjectMapper subjectMapper;
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
+    private final CourseMapper courseMapper;
     private final FileStorage fileStorage;
     private final AvatarService avatarService;
 
@@ -163,7 +165,9 @@ public class TeacherService {
             if (teacherRole != null) {
                 roleMapper.unbindRole(profile.getUserId(), teacherRole.getId());
             }
-            log.info("讲师归档 profileId={} userId={}", profileId, profile.getUserId());
+            // 离职讲师的课程不能无人维护地继续对外提供：统一下架，回归时由管理员重新上架
+            int offline = courseMapper.offlineAllByTeacher(profileId);
+            log.info("讲师归档 profileId={} userId={} 下架课程数={}", profileId, profile.getUserId(), offline);
         } else {
             if (!TeacherProfile.STATUS_ARCHIVED.equals(profile.getStatus())) {
                 throw new BizException(ErrorCode.TEACHER_STATUS_INVALID, "只有已归档讲师才能恢复");

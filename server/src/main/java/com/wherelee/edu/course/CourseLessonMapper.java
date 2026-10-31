@@ -27,7 +27,7 @@ public interface CourseLessonMapper {
      * 一旦计入顺序，它后面的课时会被永久锁死。
      */
     @Select("SELECT l.* FROM t_course_lesson l JOIN t_course_chapter c ON c.id = l.chapter_id "
-            + "WHERE l.course_id = #{courseId} AND l.video_key IS NOT NULL AND l.video_key <> '' "
+            + "WHERE l.course_id = #{courseId} AND l.video_key IS NOT NULL AND l.video_key != '' "
             + "ORDER BY c.sort, c.id, l.sort, l.id")
     List<CourseLesson> findOrderedByCourseId(@Param("courseId") Long courseId);
 
@@ -40,9 +40,14 @@ public interface CourseLessonMapper {
     @Select("SELECT COUNT(*) FROM t_course_lesson WHERE course_id = #{courseId}")
     long countByCourse(@Param("courseId") Long courseId);
 
-    /** 列表页用：一次查出多门课的课时数，避免每行一次 count */
-    @Select("<script>SELECT course_id, COUNT(*) AS cnt FROM t_course_lesson "
-            + "WHERE course_id IN "
+    /**
+     * 列表页用：一次查出多门课的课时数，避免每行一次 count。
+     * 同时给出「能学的课时数」：列表显示全量，学习页的分母只算有视频的，
+     * 两个数都给前端，避免「列表说 5 节、进去说共 3 节」。
+     */
+    @Select("<script>SELECT course_id, COUNT(*) AS cnt, "
+            + "SUM(CASE WHEN video_key IS NOT NULL AND video_key != '' THEN 1 ELSE 0 END) AS video_cnt "
+            + "FROM t_course_lesson WHERE course_id IN "
             + "<foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach> "
             + "GROUP BY course_id</script>")
     List<CourseLessonCount> countByCourseIds(@Param("ids") List<Long> ids);

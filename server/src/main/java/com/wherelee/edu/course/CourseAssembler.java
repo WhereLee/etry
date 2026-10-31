@@ -40,12 +40,13 @@ public class CourseAssembler {
         List<Long> courseIds = courses.stream().map(Course::getId).toList();
         List<Long> teacherIds = courses.stream().map(Course::getTeacherId).distinct().toList();
 
-        Map<Long, Long> lessonCounts = lessonMapper.countByCourseIds(courseIds).stream()
-                .collect(Collectors.toMap(CourseLessonCount::courseId, CourseLessonCount::cnt));
+        Map<Long, CourseLessonCount> lessonCounts = lessonMapper.countByCourseIds(courseIds).stream()
+                .collect(Collectors.toMap(CourseLessonCount::courseId, c -> c));
         Map<Long, TeacherProfile> teachers = profileMapper.findByIds(teacherIds);
 
         return courses.stream().map(course -> {
             TeacherProfile teacher = teachers.get(course.getTeacherId());
+            CourseLessonCount counts = lessonCounts.get(course.getId());
             return new CourseDtos.CourseSummaryVO(
                     course.getId(),
                     course.getTitle(),
@@ -56,7 +57,8 @@ public class CourseAssembler {
                     teacher == null ? null : teacher.getRealName(),
                     course.getSubjectId(),
                     course.getLevel(),
-                    lessonCounts.getOrDefault(course.getId(), 0L),
+                    counts == null ? 0L : counts.cnt(),
+                    counts == null ? 0L : counts.videoCnt(),
                     course.getPublishedAt(),
                     course.getUpdatedAt());
         }).toList();

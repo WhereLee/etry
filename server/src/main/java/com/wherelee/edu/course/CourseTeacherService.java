@@ -216,6 +216,7 @@ public class CourseTeacherService {
         for (CourseLesson lesson : lessonMapper.findByChapterId(chapterId)) {
             fileStorage.delete(lesson.getVideoKey());
         }
+        progressMapper.deleteByChapter(chapterId);
         lessonMapper.deleteByChapterId(chapterId);
         chapterMapper.deleteById(chapterId);
         log.info("章节删除 chapterId={}", chapterId);
@@ -272,6 +273,7 @@ public class CourseTeacherService {
         requireEditable(requireOwnCourse(userId, lesson.getCourseId()));
 
         fileStorage.delete(lesson.getVideoKey());
+        progressMapper.deleteByLesson(lessonId);
         lessonMapper.deleteById(lessonId);
         log.info("课时删除 lessonId={}", lessonId);
     }

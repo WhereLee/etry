@@ -42,6 +42,13 @@ public interface CourseMapper {
     @Delete("DELETE FROM t_course WHERE id = #{id}")
     int deleteById(@Param("id") Long id);
 
+    /**
+     * 讲师归档时把他的上架课程统一置为下架。
+     * 离职的人不再维护内容，课程不能无人维护地留在架上继续对外提供。
+     */
+    @Update("UPDATE t_course SET status = 'OFFLINE' WHERE teacher_id = #{teacherId} AND status = 'PUBLISHED'")
+    int offlineAllByTeacher(@Param("teacherId") Long teacherId);
+
     /** 老师自己的课程列表，走 idx_course_teacher(teacher_id, status) */
     List<Course> findPageByTeacher(@Param("teacherId") Long teacherId,
                                    @Param("status") String status,

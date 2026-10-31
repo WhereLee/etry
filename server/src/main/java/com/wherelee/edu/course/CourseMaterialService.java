@@ -129,6 +129,10 @@ public class CourseMaterialService {
      * 不看就审，等于闭眼点通过——课件也是学员会拿到的东西。
      */
     public List<MaterialDtos.MaterialVO> listForAdmin(Long courseId) {
+        // 课程不存在时抛 40408，而不是返回空数组：否则审核员会误判成「这门课没课件」
+        if (courseMapper.findById(courseId) == null) {
+            throw BizException.of(ErrorCode.COURSE_NOT_FOUND);
+        }
         return toVOs(materialMapper.findByCourseId(courseId));
     }
 

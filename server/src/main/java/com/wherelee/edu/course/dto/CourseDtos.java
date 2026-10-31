@@ -107,6 +107,8 @@ public final class CourseDtos {
             Long subjectId,
             String level,
             long lessonCount,
+            /** 其中已上传视频、实际能学的课时数（学习页的分母用这个） */
+            long videoLessonCount,
             LocalDateTime publishedAt,
             LocalDateTime updatedAt
     ) {
