@@ -76,3 +76,26 @@ logging:
     com.wherelee.edu: debug
     # 开发期看 SQL；生产改为 info 并只打慢 SQL
     com.wherelee.edu.mapper: debug
+
+# 运维端点单独走 9090 并只监听本机：
+# 挂到业务端口上会让 /actuator/** 跟着对外暴露，metrics 里有 JVM 和连接池细节。
+# 生产上通过 SSH 隧道或只允许内网访问。
+management:
+  server:
+    port: ${MANAGEMENT_PORT:9090}
+    address: ${MANAGEMENT_ADDRESS:127.0.0.1}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      # 只监听了本机，所以允许详情，方便直接看出是 DB 挂了还是 Redis 挂了
+      show-details: always
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: ping
+        readiness:
+          include: db,redis

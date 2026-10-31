@@ -40,9 +40,17 @@ public class UserProfileService {
         log.info("用户更新资料 userId={}", userId);
     }
 
+    /**
+     * 换头像：先存新图、再改库、最后删旧图。
+     * 中途失败最多在对象存储里留一个孤儿文件，不会出现头像指向已删文件。
+     */
     public UserProfileVO uploadAvatar(Long userId, MultipartFile file) {
         User user = requireUser(userId);
-        user.setAvatarKey(avatarService.replace(user, file));
+        String newKey = avatarService.store(file);
+        String oldKey = user.getAvatarKey();
+        userMapper.updateAvatar(userId, newKey);
+        avatarService.deleteQuietly(oldKey);
+        user.setAvatarKey(newKey);
         return toVO(user);
     }
 

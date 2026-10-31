@@ -12,15 +12,13 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * 头像的校验与替换。
+ * 图片上传。只管「校验 + 存对象存储」，不关心这张图属于谁。
  *
- * 从 UserProfileService 里单独拿出来的原因：这里的逻辑和「改昵称/简介」没有任何关系，
- * 只跟文件存储打交道。以后换存储实现、加图片压缩、加多尺寸缩略图，
- * 改动都收在这个类里，不会碰到资料那部分。
+ * 用户头像和讲师头像是两张不同的表，共用这里的校验与存储；
+ * 具体写哪张表、什么时候删旧图，由调用方决定。
+ * 这样加第三种图片（比如课程封面）时不用改这个类。
  *
- * 刻意不加 @Transactional：store / delete 是跨网 RPC（COS 上传与删除），
- * 包在事务里会一直占着数据库连接，COS 一慢就把连接池（20 个）拖垮。
- * 而 updateAvatar 只有一条语句，本身就是原子的。
+ * 刻意不加 @Transactional：store / delete 是跨网 RPC，包在事务里会占着数据库连接。
  */
 @Slf4j
 @Service
@@ -37,21 +35,20 @@ public class AvatarService {
             "image/webp", "webp"
     );
 
-    private final UserMapper userMapper;
     private final FileStorage fileStorage;
 
     /**
-     * 校验并替换头像，返回新的对象键。
+     * 校验并存入对象存储，返回对象键。调用方负责把键写进自己的表。
      *
-     * 顺序是「先写新再删旧」：中途失败最多在对象存储里留一个孤儿文件，
-     * 不会出现用户头像指向一个已被删掉的文件。
+     * 顺序上应该「先存新、再改库、最后删旧」：中途失败最多在对象存储里留一个孤儿文件，
+     * 不会出现头像指向一个已被删掉的文件。
      */
-    public String replace(User user, MultipartFile file) {
+    public String store(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.INVALID_PARAM, "请选择要上传的图片");
         }
         if (file.getSize() > MAX_AVATAR_BYTES) {
-            throw new BizException(ErrorCode.INVALID_PARAM, "头像不能超过 2MB");
+            throw new BizException(ErrorCode.INVALID_PARAM, "图片不能超过 2MB");
         }
         String contentType = file.getContentType();
         String extension = contentType == null ? null : ALLOWED_TYPES.get(contentType.toLowerCase());
@@ -72,14 +69,17 @@ public class AvatarService {
             throw new BizException(ErrorCode.INVALID_PARAM, "文件内容与声明的图片格式不符");
         }
 
-        String newKey = fileStorage.store(content, extension, AVATAR_DIR);
-        String oldKey = user.getAvatarKey();
-        userMapper.updateAvatar(user.getId(), newKey);
-        if (oldKey != null && !oldKey.isBlank()) {
-            fileStorage.delete(oldKey);
+        String key = fileStorage.store(content, extension, AVATAR_DIR);
+        log.info("图片已存入对象存储 key={} size={}", key, content.length);
+        return key;
+    }
+
+    /** 删旧图。对象已不存在或存储侧报错都不影响主流程 */
+    public void deleteQuietly(String key) {
+        if (key == null || key.isBlank()) {
+            return;
         }
-        log.info("用户更新头像 userId={} key={}", user.getId(), newKey);
-        return newKey;
+        fileStorage.delete(key);
     }
 
     /**

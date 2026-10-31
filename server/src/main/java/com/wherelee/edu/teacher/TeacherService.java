@@ -3,10 +3,12 @@ package com.wherelee.edu.teacher;
 import com.wherelee.edu.common.BizException;
 import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.PageResult;
+import com.wherelee.edu.storage.FileStorage;
 import com.wherelee.edu.teacher.dto.SubjectVO;
 import com.wherelee.edu.teacher.dto.TeacherApplyRequest;
 import com.wherelee.edu.teacher.dto.TeacherProfileInput;
 import com.wherelee.edu.teacher.dto.TeacherProfileVO;
+import com.wherelee.edu.user.AvatarService;
 import com.wherelee.edu.user.Role;
 import com.wherelee.edu.user.RoleMapper;
 import com.wherelee.edu.user.User;
@@ -15,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -32,6 +35,8 @@ public class TeacherService {
     private final SubjectMapper subjectMapper;
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
+    private final FileStorage fileStorage;
+    private final AvatarService avatarService;
 
     /**
      * 提交讲师申请。一人一档：已经提交过的直接拒绝，让他去改档案。
@@ -130,6 +135,61 @@ public class TeacherService {
         return PageResult.of(records, total, safePage, safeSize);
     }
 
+    /**
+     * 讲师离职 / 复职。离职不是销号：
+     * 档案置 ARCHIVED（审计还要对得上人），只解绑 TEACHER 角色，
+     * 账号和它可能同时拥有的学员身份都保留。
+     */
+    @Transactional
+    public void changeArchiveStatus(Long profileId, boolean archived) {
+        TeacherProfile profile = profileMapper.findById(profileId);
+        if (profile == null) {
+            throw BizException.of(ErrorCode.TEACHER_NOT_FOUND);
+        }
+        Role teacherRole = roleMapper.findByCode(Role.CODE_TEACHER);
+
+        if (archived) {
+            if (TeacherProfile.STATUS_ARCHIVED.equals(profile.getStatus())) {
+                return;
+            }
+            if (!TeacherProfile.STATUS_APPROVED.equals(profile.getStatus())) {
+                throw new BizException(ErrorCode.TEACHER_STATUS_INVALID, "只有在职讲师才能归档");
+            }
+            profileMapper.updateStatus(profileId, TeacherProfile.STATUS_ARCHIVED, null);
+            if (teacherRole != null) {
+                roleMapper.unbindRole(profile.getUserId(), teacherRole.getId());
+            }
+            log.info("讲师归档 profileId={} userId={}", profileId, profile.getUserId());
+        } else {
+            if (!TeacherProfile.STATUS_ARCHIVED.equals(profile.getStatus())) {
+                throw new BizException(ErrorCode.TEACHER_STATUS_INVALID, "只有已归档讲师才能恢复");
+            }
+            profileMapper.updateStatus(profileId, TeacherProfile.STATUS_APPROVED, null);
+            if (teacherRole != null
+                    && !roleMapper.findCodesByUserId(profile.getUserId()).contains(Role.CODE_TEACHER)) {
+                roleMapper.bindRole(profile.getUserId(), teacherRole.getId());
+            }
+            log.info("讲师恢复 profileId={} userId={}", profileId, profile.getUserId());
+        }
+    }
+
+    /**
+     * 讲师本人换头像。写 t_teacher_profile.avatar_key，和用户表那个头像互不影响。
+     * 返回的 VO 里是可直接访问的 URL，不是对象键。
+     */
+    public TeacherProfileVO uploadMyAvatar(Long userId, MultipartFile file) {
+        TeacherProfile profile = profileMapper.findByUserId(userId);
+        if (profile == null) {
+            throw BizException.of(ErrorCode.TEACHER_NOT_FOUND);
+        }
+        String newKey = avatarService.store(file);
+        String oldKey = profile.getAvatarKey();
+        profileMapper.updateAvatar(profile.getId(), newKey);
+        avatarService.deleteQuietly(oldKey);
+        profile.setAvatarKey(newKey);
+        return toVO(profile);
+    }
+
     /** 前台可见的讲师详情：只有审核通过的才对外 */
     public TeacherProfileVO publicDetail(Long profileId) {
         TeacherProfile profile = profileMapper.findById(profileId);
@@ -189,7 +249,7 @@ public class TeacherService {
                 profile.getRealName(),
                 profile.getTitle(),
                 profile.getBio(),
-                profile.getAvatarKey(),
+                fileStorage.url(profile.getAvatarKey()),
                 profile.getYears(),
                 profile.getStatus(),
                 profile.getRejectReason(),

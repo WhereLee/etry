@@ -33,6 +33,9 @@ public interface TeacherProfileMapper {
     int updateStatus(@Param("id") Long id, @Param("status") String status,
                      @Param("rejectReason") String rejectReason);
 
+    @Update("UPDATE t_teacher_profile SET avatar_key = #{avatarKey} WHERE id = #{id}")
+    int updateAvatar(@Param("id") Long id, @Param("avatarKey") String avatarKey);
+
     /** 审核列表：按状态筛 + 时间倒序，走 idx_teacher_status */
     List<TeacherProfile> findPage(@Param("status") String status,
                                   @Param("offset") int offset,

@@ -44,6 +44,13 @@ public interface RoleMapper {
     @Delete("DELETE FROM t_user_role WHERE user_id = #{userId}")
     int unbindAll(@Param("userId") Long userId);
 
+    /**
+     * 解绑单个角色。讲师归档时用这个，不能用 unbindAll：
+     * 一个老师往往同时是学员，清空会把学员身份也一并搞掉。
+     */
+    @Delete("DELETE FROM t_user_role WHERE user_id = #{userId} AND role_id = #{roleId}")
+    int unbindRole(@Param("userId") Long userId, @Param("roleId") Long roleId);
+
     @Select("SELECT COUNT(*) FROM t_user_role WHERE role_id = #{roleId}")
     long countUsersByRole(@Param("roleId") Long roleId);
 

@@ -45,4 +45,25 @@ public class TeacherAdminController {
         teacherService.review(id, Boolean.TRUE.equals(request.approved()), request.rejectReason(), operatorId);
         return ApiResponse.ok();
     }
+
+    /**
+     * 讲师离职归档：档案保留（审计还要对得上人），只解绑 TEACHER 角色，账号不动。
+     * 不物理删用户——删了审计里的 user_id 就对不上具体是谁了。
+     */
+    @PutMapping("/{id}/archive")
+    @RequirePermission("teacher:review")
+    @AuditLog(action = "TEACHER_ARCHIVE", targetType = "TEACHER", targetIdIndex = 0)
+    public ApiResponse<Void> archive(@PathVariable Long id) {
+        teacherService.changeArchiveStatus(id, true);
+        return ApiResponse.ok();
+    }
+
+    /** 复职：把归档的档案恢复成在职，并重新授予 TEACHER 角色 */
+    @PutMapping("/{id}/restore")
+    @RequirePermission("teacher:review")
+    @AuditLog(action = "TEACHER_RESTORE", targetType = "TEACHER", targetIdIndex = 0)
+    public ApiResponse<Void> restore(@PathVariable Long id) {
+        teacherService.changeArchiveStatus(id, false);
+        return ApiResponse.ok();
+    }
 }

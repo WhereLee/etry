@@ -10,7 +10,7 @@ public record TeacherProfileVO(
         String realName,
         String title,
         String bio,
-        String avatarKey,
+        String avatarUrl,
         Integer years,
         String status,
         String rejectReason,
