@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getCourse, playLesson } from '../api/course'
 import { courseProgress, reportProgress } from '../api/learning'
@@ -61,9 +61,13 @@ async function refreshProgress() {
 async function select(lesson) {
   if (!lesson.hasVideo) {
     error.value = '这个课时还没上传视频'
+    // 不清空会留着上一节的视频，看着像这个课时真的有内容
+    playUrl.value = ''
     return
   }
   error.value = ''
+  // 换课时是用户主动行为，重试额度重新给满
+  retriedOnce = false
   reportNow()
   await loadPlayUrl(lesson)
 }
@@ -71,9 +75,15 @@ async function select(lesson) {
 async function loadPlayUrl(lesson) {
   try {
     const data = await playLesson(lesson.id)
+    const sameUrl = playUrl.value === data.playUrl
     current.value = lesson
     playUrl.value = data.playUrl
-    retriedOnce = false
+    // 签名没变时 Vue 不会重新赋值 src，浏览器会一直卡在上一次失败的加载上。
+    // 不主动 load() 一次，坏文件就是「纯黑播放器 + 后台无限重试」。
+    if (sameUrl && videoRef.value) {
+      await nextTick()
+      videoRef.value.load()
+    }
     // 续播用 positionSeconds（最后停在哪），不用最远位置
     const saved = progressOf(lesson.id)?.positionSeconds || 0
     setTimeout(() => {
@@ -99,11 +109,15 @@ async function onVideoError() {
   await loadPlayUrl(current.value)
 }
 
-function retry() {
+async function retry() {
   if (!current.value) return
   error.value = ''
   retriedOnce = false
-  loadPlayUrl(current.value)
+  await loadPlayUrl(current.value)
+  // 点重试本身就是用户操作，浏览器允许这时自动播放；不然用户会以为没生效
+  if (!error.value) {
+    videoRef.value?.play().catch(() => {})
+  }
 }
 
 function reportNow() {
@@ -185,7 +199,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page learn">
-    <p class="error" v-if="error">{{ error }}</p>
     <p class="notice" v-if="lessonNotice">{{ lessonNotice }}</p>
     <div class="empty" v-if="loading">加载中…</div>
 
@@ -224,8 +237,9 @@ onBeforeUnmount(() => {
       </aside>
 
       <main class="main">
-        <div class="player" v-if="playUrl">
+        <div class="player" v-if="playUrl || error">
           <video
+            v-if="playUrl"
             ref="videoRef"
             :src="playUrl"
             controls
@@ -235,7 +249,8 @@ onBeforeUnmount(() => {
             @ended="onEnded"
             @error="onVideoError"
           ></video>
-          <button v-if="error" class="retry-btn" @click="retry">重试播放</button>
+          <p class="error" v-if="error">{{ error }}</p>
+          <button v-if="playUrl && error" class="retry-btn" @click="retry">重试播放</button>
         </div>
         <div class="empty panel" v-else>从左侧选一个课时开始</div>
 

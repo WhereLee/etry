@@ -39,7 +39,11 @@ http.interceptors.response.use(
     return body
   },
   (error) => {
-    const message = error?.response?.data?.message || error.message || '网络错误'
+    // 没有 response 说明请求没到服务端（断网、DNS、被拦），axios 自带的
+    // "Network Error" 是英文，直接抛给用户看不懂
+    const message = error?.response
+      ? (error.response.data?.message || '请求失败')
+      : '网络连不上，检查网络后重试'
     const wrapped = new Error(message)
     wrapped.code = error?.response?.status || -1
     return Promise.reject(wrapped)
