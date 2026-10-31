@@ -137,6 +137,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/teachers")
                 // 标签列表给前台筛选用，和 /api/admin/tags 不冲突
                 || path.startsWith("/api/tags")
+                // 接口文档：本身不带业务数据，要调通接口还得自己拿 token
+                || path.startsWith("/swagger-ui")
+                || path.startsWith("/v3/api-docs")
                 || isPublicCoursePath(path);
     }
 
