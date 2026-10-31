@@ -2,6 +2,7 @@ package com.wherelee.edu.user;
 
 import com.wherelee.edu.common.BizException;
 import com.wherelee.edu.common.ErrorCode;
+import com.wherelee.edu.common.Keywords;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.teacher.TeacherService;
 import com.wherelee.edu.user.dto.CreateUserRequest;
@@ -33,7 +34,7 @@ public class UserAdminService {
     public PageResult<UserListItemVO> page(String keyword, String status, int page, int size) {
         int safePage = Math.min(Math.max(page, 1), MAX_PAGE);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        String safeKeyword = escapeLike(keyword);
+        String safeKeyword = Keywords.escapeLike(keyword);
 
         long total = userMapper.countPage(safeKeyword, status);
         if (total == 0) {
@@ -217,19 +218,5 @@ public class UserAdminService {
     private boolean isLastActiveAdmin() {
         List<Long> activeAdmins = roleMapper.lockActiveUserIdsByRoleCode(Role.CODE_ADMIN);
         return activeAdmins.size() <= 1;
-    }
-
-    /**
-     * LIKE 里的 % 和 _ 是通配符，用户输一个 % 就会变成全表扫描。
-     * 转义后再交给 SQL，配合 XML 里的 ESCAPE '\\' 生效。
-     */
-    private static String escapeLike(String keyword) {
-        if (keyword == null || keyword.isBlank()) {
-            return keyword;
-        }
-        return keyword.trim()
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
     }
 }

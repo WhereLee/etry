@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
 import java.net.URL;
+import java.time.Duration;
 import java.util.Date;
 import java.util.UUID;
 
@@ -52,7 +53,7 @@ public class CosFileStorage implements FileStorage {
 
     @Override
     public String store(byte[] content, String extension, String directory) {
-        String key = keyPrefix + directory + "/" + UUID.randomUUID().toString().replace("-", "") + "." + extension;
+        String key = newKey(directory, extension);
 
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(content.length);
@@ -61,6 +62,24 @@ public class CosFileStorage implements FileStorage {
         client.putObject(new PutObjectRequest(bucket, key, new ByteArrayInputStream(content), metadata));
         log.info("文件已上传到对象存储 key={} size={}", key, content.length);
         return key;
+    }
+
+    @Override
+    public String newKey(String directory, String extension) {
+        return keyPrefix + directory + "/" + UUID.randomUUID().toString().replace("-", "") + "." + extension;
+    }
+
+    /**
+     * 预签名 PUT。Content-Type 必须进签名：
+     * 前端上传时带的头与这里不一致，COS 会直接 403。
+     */
+    @Override
+    public String presignedPutUrl(String key, String contentType, Duration ttl) {
+        GeneratePresignedUrlRequest request =
+                new GeneratePresignedUrlRequest(bucket, key, HttpMethodName.PUT);
+        request.setExpiration(new Date(System.currentTimeMillis() + ttl.toMillis()));
+        request.putCustomRequestHeader("Content-Type", contentType);
+        return client.generatePresignedUrl(request).toString();
     }
 
     @Override

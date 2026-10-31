@@ -1,10 +1,10 @@
 package com.wherelee.edu.storage;
 
+import java.time.Duration;
+
 /**
- * 文件存储抽象。当前只有本地实现，将来接对象存储时新增一个实现并在配置里切换，
- * 上层业务代码不用动。
- *
- * 只存「对象键」，对外 URL 由实现拼装：本地是 /files/xxx，对象存储是签名 URL。
+ * 文件存储抽象。只存「对象键」，对外 URL 由实现拼装：
+ * 本地是 /files/xxx，对象存储是预签名 URL。
  */
 public interface FileStorage {
 
@@ -16,6 +16,19 @@ public interface FileStorage {
      * @param directory 逻辑目录，如 avatar
      */
     String store(byte[] content, String extension, String directory);
+
+    /**
+     * 只生成对象键，不写文件。
+     * 用于前端直传：先发签名，传完再由调用方把 key 写进业务表。
+     */
+    String newKey(String directory, String extension);
+
+    /**
+     * 预签名 PUT 地址，前端直接上传到对象存储，字节不经过服务器。
+     *
+     * Content-Type 必须绑进签名：上传时带的头与这里不一致会 403。
+     */
+    String presignedPutUrl(String key, String contentType, Duration ttl);
 
     /** 删除对象，键不存在时静默忽略 */
     void delete(String key);

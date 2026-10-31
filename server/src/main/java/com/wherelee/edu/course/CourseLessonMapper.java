@@ -1,0 +1,57 @@
+package com.wherelee.edu.course;
+
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+
+import java.util.List;
+
+@Mapper
+public interface CourseLessonMapper {
+
+    String COLUMNS = "id, course_id, chapter_id, title, video_key, duration_seconds, size_bytes, "
+            + "sort, created_at, updated_at";
+
+    @Select("SELECT " + COLUMNS + " FROM t_course_lesson WHERE course_id = #{courseId} "
+            + "ORDER BY chapter_id, sort, id")
+    List<CourseLesson> findByCourseId(@Param("courseId") Long courseId);
+
+    @Select("SELECT " + COLUMNS + " FROM t_course_lesson WHERE chapter_id = #{chapterId} ORDER BY sort, id")
+    List<CourseLesson> findByChapterId(@Param("chapterId") Long chapterId);
+
+    @Select("SELECT " + COLUMNS + " FROM t_course_lesson WHERE id = #{id}")
+    CourseLesson findById(@Param("id") Long id);
+
+    @Select("SELECT COUNT(*) FROM t_course_lesson WHERE course_id = #{courseId}")
+    long countByCourse(@Param("courseId") Long courseId);
+
+    @Insert("INSERT INTO t_course_lesson (course_id, chapter_id, title, video_key, duration_seconds, "
+            + "size_bytes, sort) VALUES (#{courseId}, #{chapterId}, #{title}, #{videoKey}, "
+            + "#{durationSeconds}, #{sizeBytes}, #{sort})")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    int insert(CourseLesson lesson);
+
+    @Update("UPDATE t_course_lesson SET title = #{title}, sort = #{sort} WHERE id = #{id}")
+    int update(CourseLesson lesson);
+
+    /** 视频信息由前端上传完回填，单独一个方法避免和标题修改互相覆盖 */
+    @Update("UPDATE t_course_lesson SET video_key = #{videoKey}, duration_seconds = #{durationSeconds}, "
+            + "size_bytes = #{sizeBytes} WHERE id = #{id}")
+    int updateVideo(@Param("id") Long id,
+                    @Param("videoKey") String videoKey,
+                    @Param("durationSeconds") Integer durationSeconds,
+                    @Param("sizeBytes") Long sizeBytes);
+
+    @Delete("DELETE FROM t_course_lesson WHERE id = #{id}")
+    int deleteById(@Param("id") Long id);
+
+    @Delete("DELETE FROM t_course_lesson WHERE chapter_id = #{chapterId}")
+    int deleteByChapterId(@Param("chapterId") Long chapterId);
+
+    @Delete("DELETE FROM t_course_lesson WHERE course_id = #{courseId}")
+    int deleteByCourseId(@Param("courseId") Long courseId);
+}

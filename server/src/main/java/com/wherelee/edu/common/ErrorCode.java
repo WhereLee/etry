@@ -17,6 +17,7 @@ public enum ErrorCode {
     REGISTER_DISABLED(40105, "当前未开放注册"),
     MUST_CHANGE_PASSWORD(40106, "请先修改初始密码"),
     FORBIDDEN(40301, "无权访问"),
+    TEACHER_REQUIRED(40302, "需要先通过讲师认证"),
     NOT_FOUND(40400, "资源不存在"),
 
     USERNAME_EXISTS(40002, "用户名已被占用"),
@@ -43,6 +44,12 @@ public enum ErrorCode {
     MESSAGE_NOT_OWNER(40011, "不能操作他人的消息"),
 
     CONFIG_NOT_FOUND(40407, "配置项不存在"),
+
+    COURSE_NOT_FOUND(40408, "课程不存在"),
+    COURSE_STATUS_INVALID(40013, "课程当前状态不允许该操作"),
+    CHAPTER_NOT_FOUND(40409, "章节不存在"),
+    LESSON_NOT_FOUND(40410, "课时不存在"),
+    VIDEO_TYPE_INVALID(40014, "只支持 mp4 格式的视频"),
 
     INTERNAL_ERROR(50000, "系统繁忙，请稍后重试");
 

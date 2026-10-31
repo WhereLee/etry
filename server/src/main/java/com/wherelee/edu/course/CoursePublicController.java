@@ -1,0 +1,45 @@
+package com.wherelee.edu.course;
+
+import com.wherelee.edu.common.ApiResponse;
+import com.wherelee.edu.common.PageResult;
+import com.wherelee.edu.course.dto.CourseDtos;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * 前台课程。需要登录（不在白名单里）。
+ *
+ * 目前没有购买功能，所以已上架课程对登录用户全部可见。
+ * 等购买做完，把这里和 play() 的准入条件收成「已购」即可，接口形态不用变。
+ */
+@RestController
+@RequestMapping("/api/courses")
+@RequiredArgsConstructor
+public class CoursePublicController {
+
+    private final CoursePublicService coursePublicService;
+
+    @GetMapping
+    public ApiResponse<PageResult<CourseDtos.CourseSummaryVO>> page(
+            @RequestParam(required = false) Long subjectId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.ok(coursePublicService.page(subjectId, keyword, page, size));
+    }
+
+    @GetMapping("/{id}")
+    public ApiResponse<CourseDtos.CourseDetailVO> detail(@PathVariable Long id) {
+        return ApiResponse.ok(coursePublicService.detail(id));
+    }
+
+    /** 播放地址：预签名 GET，默认 2 小时有效 */
+    @GetMapping("/lessons/{id}/play")
+    public ApiResponse<CourseDtos.PlayVO> play(@PathVariable Long id) {
+        return ApiResponse.ok(coursePublicService.play(id));
+    }
+}

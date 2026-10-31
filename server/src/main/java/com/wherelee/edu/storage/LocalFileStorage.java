@@ -9,6 +9,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.UUID;
 
 /**
@@ -49,6 +50,21 @@ public class LocalFileStorage implements FileStorage {
             throw new UncheckedIOException("写入文件失败: " + key, e);
         }
         return key;
+    }
+
+    @Override
+    public String newKey(String directory, String extension) {
+        return directory + "/" + UUID.randomUUID().toString().replace("-", "") + "." + extension;
+    }
+
+    /**
+     * 本地存储没法直传：前端拿不到可直接 PUT 的地址。
+     * 想测视频上传必须配 COS 凭据（STORAGE_TYPE=cos）。
+     */
+    @Override
+    public String presignedPutUrl(String key, String contentType, Duration ttl) {
+        throw new UnsupportedOperationException(
+                "本地存储不支持直传，请配置 COS 凭据并使用 STORAGE_TYPE=cos");
     }
 
     @Override

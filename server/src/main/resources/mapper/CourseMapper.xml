@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.course.CourseMapper">
+
+    <sql id="columns">
+        id, teacher_id, subject_id, title, summary, description, cover_key, status,
+        reject_reason, published_at, created_at, updated_at
+    </sql>
+
+    <!-- 老师自己的课：固定按 teacher_id 过滤，状态可选 -->
+    <sql id="teacherCondition">
+        <where>
+            AND teacher_id = #{teacherId}
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findPageByTeacher" resultType="com.wherelee.edu.course.Course">
+        SELECT <include refid="columns"/>
+        FROM t_course
+        <include refid="teacherCondition"/>
+        ORDER BY id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByTeacher" resultType="long">
+        SELECT COUNT(*) FROM t_course
+        <include refid="teacherCondition"/>
+    </select>
+
+    <!-- 后台：状态可选，标题模糊；关键词已在 Service 层转义通配符 -->
+    <sql id="adminCondition">
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND title LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
+            </if>
+        </where>
+    </sql>
+
+    <select id="findAdminPage" resultType="com.wherelee.edu.course.Course">
+        SELECT <include refid="columns"/>
+        FROM t_course
+        <include refid="adminCondition"/>
+        ORDER BY
+            CASE status WHEN 'PENDING' THEN 0 ELSE 1 END,
+            id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdmin" resultType="long">
+        SELECT COUNT(*) FROM t_course
+        <include refid="adminCondition"/>
+    </select>
+
+    <!-- 前台：状态写死在 SQL 里，不给调用方传参的口子，避免误传出草稿 -->
+    <sql id="publicCondition">
+        <where>
+            AND status = 'PUBLISHED'
+            <if test="subjectId != null">
+                AND subject_id = #{subjectId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND title LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'
+            </if>
+        </where>
+    </sql>
+
+    <select id="findPublicPage" resultType="com.wherelee.edu.course.Course">
+        SELECT <include refid="columns"/>
+        FROM t_course
+        <include refid="publicCondition"/>
+        ORDER BY published_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countPublic" resultType="long">
+        SELECT COUNT(*) FROM t_course
+        <include refid="publicCondition"/>
+    </select>
+
+</mapper>
