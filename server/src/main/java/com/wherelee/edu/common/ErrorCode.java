@@ -50,6 +50,7 @@ public enum ErrorCode {
     CHAPTER_NOT_FOUND(40409, "章节不存在"),
     LESSON_NOT_FOUND(40410, "课时不存在"),
     QUESTION_NOT_FOUND(40411, "问题不存在"),
+    MATERIAL_NOT_FOUND(40412, "课件资料不存在"),
     VIDEO_TYPE_INVALID(40014, "只支持 mp4 格式的视频"),
 
     INTERNAL_ERROR(50000, "系统繁忙，请稍后重试");

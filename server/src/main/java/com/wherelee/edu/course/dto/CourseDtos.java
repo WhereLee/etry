@@ -134,6 +134,8 @@ public final class CourseDtos {
             /** 评分均分，没评价时为 0 */
             double ratingAvg,
             long ratingCount,
+            /** 当前登录用户是否收藏；匿名访问恒为 false */
+            boolean favorited,
             List<ChapterVO> chapters
     ) {
     }

@@ -95,7 +95,8 @@ public class CourseAdminService {
      * 否则审核人就只能看个标题就点通过了。
      */
     public CourseDtos.CourseDetailVO detail(Long courseId) {
-        return assembler.detail(requireCourse(courseId));
+        // 管理员看详情不需要 favorited，传 null
+        return assembler.detail(requireCourse(courseId), null);
     }
 
     /**

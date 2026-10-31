@@ -24,6 +24,7 @@ public class CourseAssembler {
     private final CourseChapterMapper chapterMapper;
     private final CourseLessonMapper lessonMapper;
     private final CourseReviewMapper reviewMapper;
+    private final CourseFavoriteMapper favoriteMapper;
     private final FileStorage fileStorage;
 
     /**
@@ -58,8 +59,11 @@ public class CourseAssembler {
         }).toList();
     }
 
-    /** 详情带章节课时。课时里只给「有没有视频」，不给 videoKey */
-    public CourseDtos.CourseDetailVO detail(Course course) {
+    /**
+     * 详情带章节课时。课时里只给「有没有视频」，不给 videoKey。
+     * userId 为 null 表示匿名访问，favorited 恒为 false。
+     */
+    public CourseDtos.CourseDetailVO detail(Course course, Long userId) {
         List<CourseChapter> chapters = chapterMapper.findByCourseId(course.getId());
         List<CourseLesson> lessons = lessonMapper.findByCourseId(course.getId());
         Map<Long, List<CourseLesson>> byChapter = lessons.stream()
@@ -75,6 +79,7 @@ public class CourseAssembler {
                 .toList();
 
         RatingStat rating = reviewMapper.statByCourse(course.getId());
+        boolean favorited = userId != null && favoriteMapper.count(userId, course.getId()) > 0;
 
         return new CourseDtos.CourseDetailVO(
                 course.getId(),
@@ -92,6 +97,7 @@ public class CourseAssembler {
                 // 保留一位小数，避免前端拿到 4.3333333 这种值
                 Math.round(rating.avgRating() * 10) / 10.0,
                 rating.total(),
+                favorited,
                 chapterVOs);
     }
 

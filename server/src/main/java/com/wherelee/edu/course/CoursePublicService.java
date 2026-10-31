@@ -45,13 +45,16 @@ public class CoursePublicService {
         return PageResult.of(records, total, safePage, safeSize);
     }
 
-    /** 前台详情：非上架状态一律按不存在处理，不泄露「有这门课但在草稿里」 */
-    public CourseDtos.CourseDetailVO detail(Long courseId) {
+    /**
+     * 前台详情：非上架状态一律按不存在处理，不泄露「有这门课但在草稿里」。
+     * userId 为 null 表示匿名访问，只影响 favorited 字段。
+     */
+    public CourseDtos.CourseDetailVO detail(Long courseId, Long userId) {
         Course course = courseMapper.findById(courseId);
         if (course == null || !Course.STATUS_PUBLISHED.equals(course.getStatus())) {
             throw BizException.of(ErrorCode.COURSE_NOT_FOUND);
         }
-        return assembler.detail(course);
+        return assembler.detail(course, userId);
     }
 
     /**

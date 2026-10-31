@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -30,6 +31,10 @@ public interface SubjectMapper {
     @Insert("INSERT INTO t_subject (code, name, sort) VALUES (#{code}, #{name}, #{sort})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Subject subject);
+
+    /** 只允许改名称和排序：code 被历史数据引用，改了会让已有的关联对不上 */
+    @Update("UPDATE t_subject SET name = #{name}, sort = #{sort} WHERE id = #{id}")
+    int update(Subject subject);
 
     @Delete("DELETE FROM t_subject WHERE id = #{id}")
     int deleteById(@Param("id") Long id);

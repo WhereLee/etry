@@ -33,6 +33,7 @@ public class CourseTeacherService {
     private final CourseMapper courseMapper;
     private final CourseChapterMapper chapterMapper;
     private final CourseLessonMapper lessonMapper;
+    private final CourseMaterialMapper materialMapper;
     private final TeacherProfileMapper profileMapper;
     private final CourseAssembler assembler;
     private final FileStorage fileStorage;
@@ -83,11 +84,15 @@ public class CourseTeacherService {
         if (!course.isDeletable()) {
             throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "上架过的课程不能删除，只能下架");
         }
-        // 先清子表，再删课程；视频对象一并清掉，避免对象存储里堆垃圾
+        // 先清子表，再删课程；视频与资料对象一并清掉，避免对象存储里堆垃圾
         for (CourseLesson lesson : lessonMapper.findByCourseId(courseId)) {
             fileStorage.delete(lesson.getVideoKey());
         }
+        for (CourseMaterial material : materialMapper.findByCourseId(courseId)) {
+            fileStorage.delete(material.getFileKey());
+        }
         lessonMapper.deleteByCourseId(courseId);
+        materialMapper.deleteByCourse(courseId);
         chapterMapper.deleteByCourseId(courseId);
         courseMapper.deleteById(courseId);
         log.info("课程删除 courseId={}", courseId);
@@ -141,7 +146,7 @@ public class CourseTeacherService {
     }
 
     public CourseDtos.CourseDetailVO detail(Long userId, Long courseId) {
-        return assembler.detail(requireOwnCourse(userId, courseId));
+        return assembler.detail(requireOwnCourse(userId, courseId), userId);
     }
 
     // ------------------------------------------------------------------ 章节

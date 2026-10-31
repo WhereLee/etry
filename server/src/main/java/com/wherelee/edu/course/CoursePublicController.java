@@ -3,6 +3,7 @@ package com.wherelee.edu.course;
 import com.wherelee.edu.common.ApiResponse;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.course.dto.CourseDtos;
+import com.wherelee.edu.security.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,9 +33,15 @@ public class CoursePublicController {
         return ApiResponse.ok(coursePublicService.page(subjectId, keyword, page, size));
     }
 
+    /**
+     * 详情。匿名也能访问，所以不用 @CurrentUser（它取不到人会抛异常）；
+     * 直接从 UserContext 拿，拿不到就当匿名。
+     */
     @GetMapping("/{id}")
     public ApiResponse<CourseDtos.CourseDetailVO> detail(@PathVariable Long id) {
-        return ApiResponse.ok(coursePublicService.detail(id));
+        UserContext.Principal principal = UserContext.get();
+        Long userId = principal == null ? null : principal.userId();
+        return ApiResponse.ok(coursePublicService.detail(id, userId));
     }
 
     /** 播放地址：预签名 GET，默认 2 小时有效 */

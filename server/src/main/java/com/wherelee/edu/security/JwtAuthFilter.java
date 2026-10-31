@@ -52,7 +52,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         String path = request.getRequestURI();
-        if (isPublicPath(path) || !path.startsWith("/api/")) {
+        if (isPublicPath(path)) {
+            // 公开路径：带 token 就认一下身份（课程详情的 favorited 靠它），
+            // 没带或无效都当匿名，绝不返回 401。
+            resolveIdentityQuietly(request);
+            try {
+                chain.doFilter(request, response);
+            } finally {
+                UserContext.clear();
+                permissionService.clear();
+            }
+            return;
+        }
+        if (!path.startsWith("/api/")) {
             chain.doFilter(request, response);
             return;
         }
@@ -153,6 +165,38 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         return "/api/auth/password".equals(path)
                 || "/api/auth/me".equals(path)
                 || "/api/auth/logout".equals(path);
+    }
+
+    /**
+     * 公开路径上的「尽力识别」：解析成功就写入 UserContext，任何一步失败都静默当匿名。
+     * 与下面强制认证的区别：这里绝不写错误响应——链接是分享给未登录的人看的。
+     */
+    private void resolveIdentityQuietly(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith(BEARER)) {
+            return;
+        }
+        try {
+            Claims claims = jwtService.parse(header.substring(BEARER.length()));
+            String jti = claims.getId();
+            if (blacklistService.isBlacklisted(jti)) {
+                return;
+            }
+            Long userId = Long.valueOf(claims.getSubject());
+            User user = userMapper.findById(userId);
+            if (user == null || !user.isActive()) {
+                return;
+            }
+            Integer version = claims.get("ver", Integer.class);
+            if (version == null || !version.equals(user.getTokenVersion())) {
+                return;
+            }
+            List<String> roles = roleMapper.findCodesByUserId(userId);
+            UserContext.set(user.getId(), user.getUsername(), roles, jti, claims.getExpiration().toInstant());
+            MDC.put(MdcTraceFilter.USER_ID, String.valueOf(userId));
+        } catch (Exception e) {
+            // 公开路径上的无效 token 直接忽略
+        }
     }
 
     private void writeError(HttpServletResponse response, ErrorCode errorCode, String message) throws IOException {

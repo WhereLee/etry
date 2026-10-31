@@ -4,6 +4,7 @@ import com.wherelee.edu.common.BizException;
 import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.teacher.dto.CreateSubjectRequest;
 import com.wherelee.edu.teacher.dto.SubjectVO;
+import com.wherelee.edu.teacher.dto.UpdateSubjectRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,24 @@ public class SubjectService {
         subjectMapper.insert(subject);
         log.info("新增学科 code={} name={}", subject.getCode(), subject.getName());
         return SubjectVO.from(subject);
+    }
+
+    /**
+     * 改学科。只允许改名称和排序：
+     * code 是被历史数据引用的标识，改了会让已有关联对不上，且无法回滚。
+     */
+    @Transactional
+    public void update(Long id, UpdateSubjectRequest request) {
+        Subject subject = subjectMapper.findById(id);
+        if (subject == null) {
+            throw BizException.of(ErrorCode.SUBJECT_NOT_FOUND);
+        }
+        subject.setName(request.name().trim());
+        if (request.sort() != null) {
+            subject.setSort(request.sort());
+        }
+        subjectMapper.update(subject);
+        log.info("学科修改 id={} name={} sort={}", id, subject.getName(), subject.getSort());
     }
 
     /**
