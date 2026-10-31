@@ -83,8 +83,9 @@ public class AuthService {
 
     public LoginResponse login(String username, String password, String ip) {
         if (loginAttemptService.isLocked(username, ip)) {
-            log.warn("登录被锁定 username={} ip={}", username, ip);
-            throw BizException.of(ErrorCode.LOGIN_LOCKED);
+            long minutes = loginAttemptService.lockedMinutesRemaining(username, ip);
+            log.warn("登录被锁定 username={} ip={} remainingMinutes={}", username, ip, minutes);
+            throw new BizException(ErrorCode.LOGIN_LOCKED, "登录失败次数过多，请 " + minutes + " 分钟后再试");
         }
 
         User user = userMapper.findByUsername(username);
@@ -115,7 +116,11 @@ public class AuthService {
     }
 
     /**
-     * 修改密码：令牌版本 +1，该用户所有设备的 token 立即失效。
+     * 修改密码：令牌版本 +1，该用户其他设备的 token 立即失效。
+     *
+     * 但当前这台设备不该被踢下去：改密是首次登录的必经一步，
+     * 用户刚完成一件有阻力的事，此时退回登录页是流程倒退。
+     * 用新版本重签一个 token 返回，前端直接接着用。
      */
     @Transactional
     public PasswordChangeResult changePassword(String oldPassword, String newPassword) {
@@ -129,8 +134,13 @@ public class AuthService {
         }
         userMapper.updatePasswordAndBumpVersion(userId, passwordEncoder.encode(newPassword));
         log.info("用户修改密码 userId={}", userId);
-        // 版本号已变，刚才这个 token 也失效了，前端必须重新登录
-        return new PasswordChangeResult(true);
+
+        // 重新查一次：SQL 是原子 +1，用旧值自己加 1 在并发改密/管理员重置时会算错，
+        // 发出去的 token 版本号对不上，用户刚改完就被踢回登录页。
+        // update 语句默认 flushCache，这里拿到的一定是新值。
+        User fresh = userMapper.findById(userId);
+        String token = jwtService.issue(userId, fresh.getTokenVersion());
+        return new PasswordChangeResult(false, token);
     }
 
     public UserMeVO me() {

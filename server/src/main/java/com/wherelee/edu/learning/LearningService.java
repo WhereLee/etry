@@ -7,6 +7,8 @@ import com.wherelee.edu.course.CourseLesson;
 import com.wherelee.edu.course.CourseLessonMapper;
 import com.wherelee.edu.course.CourseMapper;
 import com.wherelee.edu.course.SequentialChecker;
+import com.wherelee.edu.course.enrollment.CourseEnrollmentMapper;
+import com.wherelee.edu.course.enrollment.CourseEnrollmentService;
 import com.wherelee.edu.learning.dto.LearningDtos;
 import com.wherelee.edu.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,8 @@ public class LearningService {
     private final FileStorage fileStorage;
     private final SequentialChecker sequentialChecker;
     private final LearningProperties learningProperties;
+    private final CourseEnrollmentMapper enrollmentMapper;
+    private final CourseEnrollmentService enrollmentService;
 
     /**
      * 上报进度。播放器大概每 10 秒调一次，所以这里不能做重逻辑：
@@ -63,11 +67,30 @@ public class LearningService {
         if (duration > 0 && position > duration) {
             position = duration;
         }
-        boolean reachedEnd = LearningProgress.isCompleted(position, duration);
+
+        LearningProgress existing = progressMapper.findByUserAndLesson(userId, lesson.getId());
+        // 完成判定看「最远到过哪」，不看「此刻停在哪」：回看开头不该把已到过的进度抹掉
+        int furthest = Math.max(position,
+                existing == null || existing.getFurthestSeconds() == null ? 0 : existing.getFurthestSeconds());
+        boolean reachedEnd = LearningProgress.isCompleted(furthest, duration);
         boolean completed = reachedEnd
-                && (!learningProperties.strictMode() || enoughTimeElapsed(userId, lesson.getId(), duration));
+                && (!learningProperties.strictMode() || enoughTimeElapsed(existing, duration));
 
         progressMapper.upsert(userId, course.getId(), lesson.getId(), position, duration, completed);
+
+        // 播放本身就是最强的「加入」信号：没加入过的人在这里补一条关系。
+        // 正常路径只有一条 UPDATE，不数课时——这是每 10 秒走一次的路径
+        enrollmentService.markLearning(userId, course.getId());
+
+        // 只有「本次上报刚好把这节学完」才去数一遍总课时和已完成数
+        boolean justCompleted = completed && (existing == null || !Boolean.TRUE.equals(existing.getCompleted()));
+        if (justCompleted) {
+            int lessonCount = enrollmentMapper.countLearnableLessons(course.getId());
+            if (lessonCount > 0
+                    && progressMapper.countCompletedByUserAndCourse(userId, course.getId()) >= lessonCount) {
+                enrollmentService.markCompleted(userId, course.getId(), lessonCount);
+            }
+        }
     }
 
     /**
@@ -76,11 +99,10 @@ public class LearningService {
      * 挡的是「一次请求直接把位置报到底」：那时 first_reported_at 就是此刻，
      * 经过时间为 0，永远不成立。正常看到结尾的人，从开头第一条上报算起，时间自然够。
      */
-    private boolean enoughTimeElapsed(Long userId, Long lessonId, int duration) {
+    private boolean enoughTimeElapsed(LearningProgress existing, int duration) {
         if (duration <= 0) {
             return false;
         }
-        LearningProgress existing = progressMapper.findByUserAndLesson(userId, lessonId);
         if (existing == null || existing.getFirstReportedAt() == null) {
             return false;
         }
@@ -110,6 +132,7 @@ public class LearningService {
                     lesson.getId(),
                     lesson.getTitle(),
                     progress == null ? 0 : progress.getPositionSeconds(),
+                    progress == null || progress.getFurthestSeconds() == null ? 0 : progress.getFurthestSeconds(),
                     lesson.getDurationSeconds(),
                     progress != null && Boolean.TRUE.equals(progress.getCompleted()));
         }).toList();
@@ -120,20 +143,40 @@ public class LearningService {
                 percent(completedLessons, lessons.size()), lessonVOs);
     }
 
-    /** 我的学习：按最近学习时间倒序 */
+    /** 我的学习：以关系表为主干，按最近活跃倒序 */
     public List<LearningDtos.MyCourseVO> myCourses(Long userId, int limit) {
         int safeLimit = Math.min(Math.max(limit, 1), MAX_MY_COURSES);
-        return progressMapper.findRecentCourses(userId, safeLimit).stream()
-                .map(row -> new LearningDtos.MyCourseVO(
-                        row.courseId(),
-                        row.title(),
-                        fileStorage.url(row.coverKey()),
-                        row.status(),
-                        row.totalLessons(),
-                        row.completedLessons(),
-                        percent(row.completedLessons(), row.totalLessons()),
-                        row.lastLearnedAt()))
+        return enrollmentMapper.findActiveByUser(userId, safeLimit).stream()
+                .map(row -> {
+                    long total = row.totalLessons() == null ? 0 : row.totalLessons();
+                    long done = row.completedLessons() == null ? 0 : row.completedLessons();
+                    return new LearningDtos.MyCourseVO(
+                            row.courseId(),
+                            row.title(),
+                            fileStorage.url(row.coverKey()),
+                            row.courseStatus(),
+                            resolveRelation(row.relationStatus(), done, total),
+                            total,
+                            done,
+                            percent(done, total),
+                            row.lastActiveAt());
+                })
                 .toList();
+    }
+
+    /**
+     * 状态按事实算，不完全信字面值。
+     *
+     * 学员学完一课后，讲师加了新课时，库里状态还停在 COMPLETED，
+     * 但实际已完成的节数已经少于总节数。这种时候不能给用户看「已学完 + 83%」。
+     * 读的时候降一级，不靠写入方去补——讲师端不需要知道学员的关系表。
+     */
+    private static String resolveRelation(String status, long done, long total) {
+        if (com.wherelee.edu.course.enrollment.CourseEnrollment.STATUS_COMPLETED.equals(status)
+                && total > 0 && done < total) {
+            return com.wherelee.edu.course.enrollment.CourseEnrollment.STATUS_LEARNING;
+        }
+        return status;
     }
 
     /** 百分比封顶 100：删课时留下的历史脏进度不能再抛 150% 这种值给前端 */

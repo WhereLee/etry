@@ -10,7 +10,7 @@ import java.util.List;
 @Mapper
 public interface LearningProgressMapper {
 
-    String COLUMNS = "id, user_id, course_id, lesson_id, position_seconds, duration_seconds, "
+    String COLUMNS = "id, user_id, course_id, lesson_id, position_seconds, furthest_seconds, duration_seconds, "
             + "completed, first_reported_at, created_at, updated_at";
 
     /**
@@ -22,14 +22,18 @@ public interface LearningProgressMapper {
      * completed 用 GREATEST 而不是直接赋值：看到过结尾就算学过，
      * 回看开头时不能把它清回 false。
      *
+     * furthest_seconds 同理只增不减：它是"到达过的最远位置"，
+     * 回看开头不该让它退回去。position_seconds 则如实覆盖，用于下次续播。
+     *
      * first_reported_at 用 COALESCE 保持第一次的值：严格模式靠它算「看了多久」。
      */
     @Insert("INSERT INTO t_learning_progress "
-            + "(user_id, course_id, lesson_id, position_seconds, duration_seconds, completed, first_reported_at) "
-            + "VALUES (#{userId}, #{courseId}, #{lessonId}, #{positionSeconds}, #{durationSeconds}, #{completed}, NOW(3)) "
+            + "(user_id, course_id, lesson_id, position_seconds, furthest_seconds, duration_seconds, completed, first_reported_at) "
+            + "VALUES (#{userId}, #{courseId}, #{lessonId}, #{positionSeconds}, #{positionSeconds}, #{durationSeconds}, #{completed}, NOW(3)) "
             + "ON DUPLICATE KEY UPDATE "
             + "course_id = VALUES(course_id), "
             + "position_seconds = VALUES(position_seconds), "
+            + "furthest_seconds = GREATEST(furthest_seconds, VALUES(furthest_seconds)), "
             + "duration_seconds = VALUES(duration_seconds), "
             + "first_reported_at = COALESCE(first_reported_at, VALUES(first_reported_at)), "
             + "completed = GREATEST(completed, VALUES(completed))")

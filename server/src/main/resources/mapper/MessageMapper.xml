@@ -11,7 +11,7 @@
     </sql>
 
     <select id="findPage" resultType="com.wherelee.edu.message.Message">
-        SELECT id, receiver_id, sender_id, title, content, is_read, read_at, created_at
+        SELECT id, receiver_id, sender_id, title, content, link, is_read, read_at, created_at
         FROM t_message
         <include refid="pageCondition"/>
         ORDER BY created_at DESC, id DESC
@@ -24,10 +24,10 @@
     </select>
 
     <insert id="batchInsert">
-        INSERT INTO t_message (receiver_id, sender_id, title, content)
+        INSERT INTO t_message (receiver_id, sender_id, title, content, link)
         VALUES
         <foreach collection="messages" item="m" separator=",">
-            (#{m.receiverId}, #{m.senderId}, #{m.title}, #{m.content})
+            (#{m.receiverId}, #{m.senderId}, #{m.title}, #{m.content}, #{m.link})
         </foreach>
     </insert>
 

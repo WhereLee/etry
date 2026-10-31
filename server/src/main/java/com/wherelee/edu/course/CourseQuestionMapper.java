@@ -47,6 +47,24 @@ public interface CourseQuestionMapper {
     @Update("UPDATE t_course_question SET resolved = #{resolved} WHERE id = #{id}")
     int updateResolved(@Param("id") Long id, @Param("resolved") boolean resolved);
 
+    @Delete("DELETE FROM t_course_question WHERE id = #{id}")
+    int deleteById(@Param("id") Long id);
+
+    /** 我的提问：带上课程名和回答数，按时间倒序 */
+    @Select("SELECT q.id, q.course_id, c.title, q.content, q.resolved, "
+            + "(SELECT COUNT(*) FROM t_course_answer a WHERE a.question_id = q.id) AS answer_count, "
+            + "q.created_at "
+            + "FROM t_course_question q JOIN t_course c ON c.id = q.course_id "
+            + "WHERE q.user_id = #{userId} "
+            + "ORDER BY q.created_at DESC, q.id DESC "
+            + "LIMIT #{limit} OFFSET #{offset}")
+    List<MyQuestionRow> findPageByUser(@Param("userId") Long userId,
+                                       @Param("offset") int offset,
+                                       @Param("limit") int limit);
+
+    @Select("SELECT COUNT(*) FROM t_course_question WHERE user_id = #{userId}")
+    long countByUser(@Param("userId") Long userId);
+
     @Delete("DELETE FROM t_course_question WHERE course_id = #{courseId}")
     int deleteByCourse(@Param("courseId") Long courseId);
 

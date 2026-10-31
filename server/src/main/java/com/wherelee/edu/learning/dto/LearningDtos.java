@@ -23,7 +23,10 @@ public final class LearningDtos {
     public record LessonProgressVO(
             Long lessonId,
             String title,
+            /** 最后播到哪。回看会退，用于下次续播 */
             Integer positionSeconds,
+            /** 到达过的最远位置。只增不减，用于进度展示 */
+            Integer furthestSeconds,
             Integer durationSeconds,
             boolean completed
     ) {
@@ -47,6 +50,8 @@ public final class LearningDtos {
             String coverUrl,
             /** 课程状态：非 PUBLISHED 时前端应置灰，不要点进去才发现课程已下架 */
             String status,
+            /** 我和这门课的关系：JOINED / LEARNING / COMPLETED */
+            String relationStatus,
             long totalLessons,
             long completedLessons,
             int percent,

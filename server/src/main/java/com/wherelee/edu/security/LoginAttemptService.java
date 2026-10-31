@@ -11,6 +11,7 @@ import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 登录失败计数，防止密码爆破。
@@ -80,6 +81,26 @@ public class LoginAttemptService {
             used = localCount(key, Duration.ofMinutes(properties.loginLockMinutes()));
         }
         return Math.max(0, properties.loginFailThreshold() - used);
+    }
+
+    /**
+     * 还要锁多久（分钟）。
+     *
+     * 只提示「已锁定」会让人反复试，反而把锁定时间一次次拖长；
+     * 告诉他还剩几分钟，他才会真的去等。
+     */
+    public long lockedMinutesRemaining(String username, String ip) {
+        String key = userKey(username, ip);
+        try {
+            Long ttl = redisTemplate.getExpire(key, TimeUnit.SECONDS);
+            if (ttl != null && ttl > 0) {
+                // 向上取整：还剩 30 秒就告诉用户还有 1 分钟，不要显示 0
+                return Math.max(1, (ttl + 59) / 60);
+            }
+        } catch (Exception e) {
+            log.warn("Redis 不可用，无法读取锁定剩余时间 key={}", key, e);
+        }
+        return properties.loginLockMinutes();
     }
 
     private boolean exceeds(String key, int threshold, Duration ttl) {

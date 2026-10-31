@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { changePassword } from '../api/auth'
-import { clearSession, session } from '../store/session'
+import { setSession, session } from '../store/session'
 
 const router = useRouter()
 const route = useRoute()
@@ -29,15 +29,31 @@ async function submit() {
   }
   busy.value = true
   try {
-    await changePassword(form.value.oldPassword, form.value.newPassword)
-    // token_version 变了，当前 token 已失效，必须重新登录
+    const data = await changePassword(form.value.oldPassword, form.value.newPassword)
+    // 后端用新的 token_version 重签了一个，直接换掉就行。
+    // 退回登录页会让用户刚做完的事白做，这里要的是往前推，不是重新开始。
+    if (data?.token) {
+      setSession({
+        token: data.token,
+        userId: session.userId,
+        username: session.username,
+        nickname: session.nickname,
+        roles: session.roles,
+        mustChangePassword: false
+      })
+    }
     done.value = true
-    clearSession()
   } catch (e) {
     error.value = e.message
   } finally {
     busy.value = false
   }
+}
+
+/** 改完密码接着往下走：优先回到本来要去的地方 */
+function goNext() {
+  const redirect = route.query.redirect
+  router.push(redirect || '/')
 }
 </script>
 
@@ -47,8 +63,9 @@ async function submit() {
       <h2>修改密码</h2>
 
       <div v-if="done">
-        <p>密码已修改。当前登录状态已失效，请用新密码重新登录。</p>
-        <button class="primary" @click="router.push({ name: 'login' })">去登录</button>
+        <p>密码已修改，可以直接继续使用。</p>
+        <p class="muted small">其他设备上的登录已失效，需要用新密码重新登录。</p>
+        <button class="primary" @click="goNext">继续</button>
       </div>
 
       <div v-else>

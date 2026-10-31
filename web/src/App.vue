@@ -36,6 +36,8 @@ async function onLogout() {
         <RouterLink to="/">课程</RouterLink>
         <RouterLink v-if="isLoggedIn()" to="/me/learning">我的学习</RouterLink>
         <RouterLink v-if="isLoggedIn()" to="/me/favorites">收藏</RouterLink>
+        <RouterLink v-if="isLoggedIn()" to="/me/questions">我的提问</RouterLink>
+        <RouterLink v-if="isLoggedIn()" to="/me/messages">消息</RouterLink>
         <RouterLink v-if="showTeacher" to="/teacher/courses">我的课程</RouterLink>
         <RouterLink v-if="showTeacher" to="/teacher/dashboard">工作台</RouterLink>
         <RouterLink v-if="showAdmin" to="/admin/review">审核</RouterLink>

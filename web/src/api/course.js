@@ -67,3 +67,23 @@ export function listSubjects() {
 export function getTeacher(id) {
   return get(`/teachers/${id}`)
 }
+
+/** 加入我的学习。重复点不会报错 */
+export function enroll(courseId) {
+  return post(`/courses/${courseId}/enroll`)
+}
+
+/** 从我的学习里移出。进度不清，以后再看还在 */
+export function unenroll(courseId) {
+  return del(`/courses/${courseId}/enroll`)
+}
+
+/** 我的提问：带课程名和回答数 */
+export function myQuestions(page = 1, size = 10) {
+  return get('/my/questions', { page, size })
+}
+
+/** 撤回自己的提问 */
+export function withdrawQuestion(id) {
+  return del(`/questions/${id}`)
+}

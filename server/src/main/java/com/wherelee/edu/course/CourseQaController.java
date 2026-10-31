@@ -6,6 +6,7 @@ import com.wherelee.edu.course.dto.QaDtos;
 import com.wherelee.edu.security.CurrentUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -59,5 +60,23 @@ public class CourseQaController {
                                      @RequestParam boolean resolved) {
         qaService.resolve(userId, id, resolved);
         return ApiResponse.ok();
+    }
+
+    /** 撤回自己的提问。只有提问人能撤 */
+    @DeleteMapping("/api/questions/{id}")
+    public ApiResponse<Void> withdraw(@CurrentUser Long userId, @PathVariable Long id) {
+        qaService.withdraw(userId, id);
+        return ApiResponse.ok();
+    }
+
+    /**
+     * 我的提问。路径用 /api/my/questions 而不是 /api/questions/mine：
+     * 后者和 /api/questions/{id} 靠「字面量优先」区分，虽然能工作，但太依赖匹配规则。
+     */
+    @GetMapping("/api/my/questions")
+    public ApiResponse<PageResult<QaDtos.MyQuestionVO>> mine(@CurrentUser Long userId,
+                                                              @RequestParam(defaultValue = "1") int page,
+                                                              @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.ok(qaService.myQuestions(userId, page, size));
     }
 }

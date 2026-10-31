@@ -153,6 +153,8 @@ public final class CourseDtos {
             long ratingCount,
             /** 当前登录用户是否收藏；匿名访问恒为 false */
             boolean favorited,
+            /** 当前用户与这门课的关系：JOINED/LEARNING/COMPLETED；匿名或未加入为 null */
+            String enrollmentStatus,
             List<ChapterVO> chapters
     ) {
     }

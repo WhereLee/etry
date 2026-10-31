@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -69,6 +71,54 @@ public class MessageService {
         messageMapper.batchInsert(messages);
         log.info("站内信发送 sender={} receivers={} title={}", senderId, messages.size(), request.title());
         return messages.size();
+    }
+
+    /**
+     * 业务动作产生通知时调用。
+     *
+     * 必须在主事务提交之后再发，理由有三条：
+     *   1. 主事务回滚时通知不会发出，不会出现「通知指向一条不存在的数据」；
+     *   2. 不用 REQUIRES_NEW 另开事务，不会在业务事务里多占一条连接；
+     *   3. 发送失败只影响通知，不会把提问/回答本身带死。
+     */
+    public void notifyAfterCommit(Long receiverId, String title, String content, String link) {
+        if (receiverId == null) {
+            return;
+        }
+        Runnable task = () -> safeNotify(receiverId, title, content, link);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
+        } else {
+            task.run();
+        }
+    }
+
+    /** 真正写消息的地方。这里在事务之外，try/catch 才拦得住失败 */
+    private void safeNotify(Long receiverId, String title, String content, String link) {
+        try {
+            Message m = new Message();
+            m.setReceiverId(receiverId);
+            m.setSenderId(null);
+            m.setTitle(title);
+            m.setContent(content);
+            m.setLink(link);
+            messageMapper.insert(m);
+        } catch (Exception e) {
+            log.warn("系统通知发送失败 receiver={} title={}", receiverId, title, e);
+        }
+    }
+
+    /**
+     * 通知指向的问题被撤回后，把链接置空。消息本身留着——
+     * 那是用户已经收到的内容，不能因为他撤了提问就把别人收到的信也删了。
+     */
+    public int clearLinkForQuestion(Long courseId, Long questionId) {
+        return messageMapper.clearLink("/courses/" + courseId + "?question=" + questionId);
     }
 
     public PageResult<MessageDtos.MessageSummaryVO> inbox(Long receiverId, Boolean isRead, int page, int size) {

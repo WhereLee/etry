@@ -57,4 +57,16 @@ public final class QaDtos {
             List<AnswerVO> answers
     ) {
     }
+
+    /** 我的提问：带课程名和回答数，提问人一眼看出有没有人理 */
+    public record MyQuestionVO(
+            Long id,
+            Long courseId,
+            String courseTitle,
+            String content,
+            boolean resolved,
+            long answerCount,
+            LocalDateTime createdAt
+    ) {
+    }
 }

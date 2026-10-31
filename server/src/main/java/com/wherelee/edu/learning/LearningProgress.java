@@ -17,6 +17,13 @@ public class LearningProgress {
     private Long courseId;
     private Long lessonId;
     private Integer positionSeconds;
+    /**
+     * 到达过的最远位置，只增不减。
+     *
+     * 与 positionSeconds 分工：position 是"最后播到哪"，回看会退回去，用于续播；
+     * furthest 是"最远看到哪"，回看不影响，用于完成判定和进度展示。
+     */
+    private Integer furthestSeconds;
     private Integer durationSeconds;
     private Boolean completed;
     /** 第一次上报的时间，严格模式靠它判断「真实过了多久」 */

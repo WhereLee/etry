@@ -11,13 +11,15 @@ public final class MessageDtos {
             Long senderId,
             String title,
             String content,
+            /** 系统通知的跳转路径，手动群发为空 */
+            String link,
             Boolean isRead,
             LocalDateTime readAt,
             LocalDateTime createdAt
     ) {
         public static MessageVO from(Message m) {
             return new MessageVO(m.getId(), m.getSenderId(), m.getTitle(), m.getContent(),
-                    m.getIsRead(), m.getReadAt(), m.getCreatedAt());
+                    m.getLink(), m.getIsRead(), m.getReadAt(), m.getCreatedAt());
         }
     }
 

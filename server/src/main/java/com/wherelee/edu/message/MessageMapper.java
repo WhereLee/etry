@@ -12,13 +12,13 @@ import java.util.List;
 @Mapper
 public interface MessageMapper {
 
-    String COLUMNS = "id, receiver_id, sender_id, title, content, is_read, read_at, created_at";
+    String COLUMNS = "id, receiver_id, sender_id, title, content, link, is_read, read_at, created_at";
 
     @Select("SELECT " + COLUMNS + " FROM t_message WHERE id = #{id}")
     Message findById(@Param("id") Long id);
 
-    @Insert("INSERT INTO t_message (receiver_id, sender_id, title, content) "
-            + "VALUES (#{receiverId}, #{senderId}, #{title}, #{content})")
+    @Insert("INSERT INTO t_message (receiver_id, sender_id, title, content, link) "
+            + "VALUES (#{receiverId}, #{senderId}, #{title}, #{content}, #{link})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Message message);
 
@@ -44,4 +44,13 @@ public interface MessageMapper {
     @Update("UPDATE t_message SET is_read = 1, read_at = NOW(3) "
             + "WHERE receiver_id = #{receiverId} AND is_read = 0")
     int markAllRead(@Param("receiverId") Long receiverId);
+
+    /**
+     * 把指向某个页面的通知链接置空。
+     *
+     * 用在“提问被撤回”上：通知已经发出去了，不能逐个删人家的消息，
+     * 但链接必须失效，否则点“去看看”会落到一个空页面。
+     */
+    @Update("UPDATE t_message SET link = NULL WHERE link = #{link}")
+    int clearLink(@Param("link") String link);
 }

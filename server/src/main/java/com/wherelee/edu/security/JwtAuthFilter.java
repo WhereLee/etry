@@ -52,7 +52,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         String path = request.getRequestURI();
-        if (isPublicPath(path)) {
+        if (isPublicPath(path, request.getMethod())) {
             // 公开路径：带 token 就认一下身份（课程详情的 favorited 靠它），
             // 没带或无效都当匿名，绝不返回 401。
             resolveIdentityQuietly(request);
@@ -127,11 +127,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 公开路径：完全匹配的白名单 + 公告前缀 + 讲师主页前缀 + 课程列表与详情。
+     * 公开路径：完全匹配的白名单 + 公告前缀 + 讲师主页前缀 + 课程列表与详情 + 公开只读的评价问答。
      * /api/teachers 带 s，不会误伤 /api/teacher/apply（那是讲师本人操作，必须登录）。
      * 同理 /api/admin/notices 不会被 /api/notices 前缀命中。
      */
-    private boolean isPublicPath(String path) {
+    private boolean isPublicPath(String path, String method) {
         return WHITE_LIST.contains(path)
                 || path.startsWith("/api/notices")
                 || path.startsWith("/api/teachers")
@@ -140,7 +140,34 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 // 接口文档：本身不带业务数据，要调通接口还得自己拿 token
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
-                || isPublicCoursePath(path);
+                || isPublicCoursePath(path)
+                || (HttpMethod.GET.matches(method) && isPublicReadPath(path));
+    }
+
+    /**
+     * 匿名可读的评价与问答：
+     *   GET /api/courses/{数字}/reviews
+     *   GET /api/courses/{数字}/questions
+     *   GET /api/questions/{数字}
+     *
+     * 只放 GET。评价、提问、回答、标记仍然要登录——
+     * 陌生访客需要先看别人怎么说才能决定学不学，但不需要匿名发言。
+     */
+    private boolean isPublicReadPath(String path) {
+        String[] parts = path.split("/");
+        // /api/courses/{id}/reviews|questions
+        if (parts.length == 5 && "api".equals(parts[1]) && "courses".equals(parts[2])
+                && isNumeric(parts[3])
+                && ("reviews".equals(parts[4]) || "questions".equals(parts[4]))) {
+            return true;
+        }
+        // /api/questions/{id}
+        return parts.length == 4 && "api".equals(parts[1]) && "questions".equals(parts[2])
+                && isNumeric(parts[3]);
+    }
+
+    private boolean isNumeric(String s) {
+        return s != null && !s.isEmpty() && s.chars().allMatch(Character::isDigit);
     }
 
     /**
@@ -159,7 +186,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return false;
         }
         String rest = path.substring(prefix.length());
-        return !rest.isEmpty() && rest.chars().allMatch(Character::isDigit);
+        return isNumeric(rest);
     }
 
     /**

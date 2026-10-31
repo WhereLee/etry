@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   askQuestion,
+  enroll,
   favorite,
   getCourse,
   listMaterials,
@@ -10,7 +11,8 @@ import {
   listReviews,
   myReview,
   submitReview,
-  unfavorite
+  unfavorite,
+  unenroll
 } from '../api/course'
 import { isLoggedIn } from '../store/session'
 
@@ -122,15 +124,71 @@ async function ask() {
   }
 }
 
-function startLearn() {
+// 我和这门课的关系：null = 还没加入，JOINED = 想学没开始，LEARNING = 在学，COMPLETED = 学完了
+const relation = computed(() => course.value?.enrollmentStatus || null)
+
+const primaryLabel = computed(() => {
+  if (relation.value === 'COMPLETED') return '再学一遍'
+  if (relation.value === 'LEARNING') return '继续学习'
+  if (relation.value === 'JOINED') return '开始学习'
+  return '加入学习'
+})
+
+const enrolling = ref(false)
+
+/** 主按钮：没加入先加入，已加入直接进学习页 */
+async function onPrimary() {
+  if (!isLoggedIn()) {
+    router.push({ name: 'login', query: { redirect: route.fullPath } })
+    return
+  }
+  if (!relation.value) {
+    enrolling.value = true
+    try {
+      await enroll(courseId)
+      await load()
+    } catch (e) {
+      notice.value = e.message
+      return
+    } finally {
+      enrolling.value = false
+    }
+  }
+  startLearn()
+}
+
+async function onUnenroll() {
+  try {
+    await unenroll(courseId)
+    await load()
+    notice.value = '已从我的学习里移出。进度不会清，以后回来还在'
+  } catch (e) {
+    notice.value = e.message
+  }
+}
+
+function startLearn(lessonId) {
   if (!isLoggedIn()) {
     router.push({ name: 'login', query: { redirect: `/courses/${courseId}/learn` } })
     return
   }
-  router.push({ name: 'learn', params: { id: courseId } })
+  const query = lessonId ? { lesson: lessonId } : {}
+  router.push({ name: 'learn', params: { id: courseId }, query })
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  jumpToQuestion()
+})
+
+/** 从「我的提问」或站内信点进来时，直接滚到那一条 */
+function jumpToQuestion() {
+  const id = route.query.question
+  if (!id) return
+  setTimeout(() => {
+    document.getElementById(`q-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, 300)
+}
 </script>
 
 <template>
@@ -156,10 +214,13 @@ onMounted(load)
             </div>
             <p class="muted" style="margin: 0 0 12px">{{ course.summary || '暂无简介' }}</p>
             <div class="row">
-              <button class="primary" @click="startLearn">开始学习</button>
+              <button class="primary" :disabled="enrolling" @click="onPrimary">
+                {{ enrolling ? '处理中…' : primaryLabel }}
+              </button>
               <button v-if="isLoggedIn()" @click="toggleFavorite">
                 {{ course.favorited ? '取消收藏' : '收藏' }}
               </button>
+              <button v-if="relation" @click="onUnenroll">移出我的学习</button>
             </div>
           </div>
         </div>
@@ -171,7 +232,7 @@ onMounted(load)
         <h3>课程目录</h3>
         <div v-for="ch in course.chapters" :key="ch.id" class="chapter">
           <div class="chapter-title">{{ ch.title }}</div>
-          <div class="lesson" v-for="l in ch.lessons" :key="l.id" @click="startLearn">
+          <div class="lesson" v-for="l in ch.lessons" :key="l.id" @click="startLearn(l.id)">
             <span>{{ l.title }}</span>
             <span class="muted small">
               {{ Math.round((l.durationSeconds || 0) / 60) }} 分钟
@@ -228,9 +289,12 @@ onMounted(load)
           <input v-model="questionText" placeholder="有疑问？直接问" @keyup.enter="ask" />
           <button class="primary" @click="ask">提问</button>
         </div>
+        <p class="muted small" v-if="isLoggedIn()" style="margin: 6px 0 12px">
+          提问讲师会收到通知；有人回答时你也会收到站内信，可以在「我的提问」里看。
+        </p>
 
         <div class="empty" v-if="questions.length === 0">还没有人提问</div>
-        <div class="question" v-for="q in questions" :key="q.id">
+        <div class="question" v-for="q in questions" :key="q.id" :id="`q-${q.id}`">
           <div class="row small">
             <strong>{{ q.nickname || '匿名' }}</strong>
             <span class="tag plain" v-if="q.resolved">已解决</span>

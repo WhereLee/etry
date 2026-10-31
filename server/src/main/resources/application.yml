@@ -61,7 +61,10 @@ app:
     # 用 ${JWT_SECRET:} 而不是 ${JWT_SECRET}：后者解析不到时会把字面量塞进来，
     # 报出来的是「长度不足」，而不是「没配置」。
     secret: ${JWT_SECRET:}
-    ttl-minutes: 120
+    # 内部机构的使用节奏是“晚上学一会儿、第二天再学”，
+    # 两小时会在隔天回来时把人踢回登录页。7 天是折中：
+    # 改密和登出仍然会让旧 token 立即失效，不靠过期时间兜底。
+    ttl-minutes: ${JWT_TTL_MINUTES:10080}
   security:
     # 连续登录失败达到阈值后锁定，窗口内不再校验密码
     login-fail-threshold: 5

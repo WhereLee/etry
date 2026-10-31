@@ -2,6 +2,8 @@
 import { onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { listCourses, listSubjects, listTags } from '../api/course'
+import { myCourses } from '../api/learning'
+import { isLoggedIn } from '../store/session'
 
 const router = useRouter()
 
@@ -14,6 +16,8 @@ const total = ref(0)
 const records = ref([])
 const loading = ref(false)
 const error = ref('')
+/** 首页顶部的「接着上次」：不让用户回来还得自己翻列表 */
+const resumable = ref(null)
 
 const LEVELS = [
   { value: 'BEGINNER', label: '入门' },
@@ -69,6 +73,9 @@ function go(delta) {
 
 onMounted(async () => {
   load()
+  if (isLoggedIn()) {
+    loadResumable()
+  }
   try {
     subjects.value = await listSubjects()
     tags.value = await listTags()
@@ -77,6 +84,20 @@ onMounted(async () => {
   }
 })
 
+async function loadResumable() {
+  try {
+    const rows = (await myCourses(10)).filter((r) => r.status === 'PUBLISHED')
+    // 优先在学的，其次是想学没开始的，最后退到任意一门
+    resumable.value =
+      rows.find((r) => r.relationStatus === 'LEARNING') ||
+      rows.find((r) => r.relationStatus === 'JOINED') ||
+      rows[0] ||
+      null
+  } catch {
+    // 拿不到就不显示，不影响浏览课程
+  }
+}
+
 watch(() => filters.value.subjectId, search)
 watch(() => filters.value.tagId, search)
 watch(() => filters.value.level, search)
@@ -84,6 +105,17 @@ watch(() => filters.value.level, search)
 
 <template>
   <div class="page">
+    <div class="resume panel" v-if="resumable">
+      <div>
+        <div class="small muted">接着上次</div>
+        <div class="resume-title">{{ resumable.title }}</div>
+        <div class="small muted">已完成 {{ resumable.completedLessons }} / {{ resumable.totalLessons }} 节</div>
+      </div>
+      <button class="primary" @click="router.push({ name: 'learn', params: { id: resumable.courseId } })">
+        {{ resumable.relationStatus === 'JOINED' ? '开始学习' : '继续学习' }}
+      </button>
+    </div>
+
     <div class="row wrap" style="margin-bottom: 16px">
       <input
         v-model.trim="filters.keyword"
@@ -135,6 +167,19 @@ watch(() => filters.value.level, search)
 </template>
 
 <style scoped>
+.resume {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.resume-title {
+  font-weight: 600;
+  margin: 2px 0;
+}
+
 .card {
   cursor: pointer;
   transition: border-color 0.15s;

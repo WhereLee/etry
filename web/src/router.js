@@ -30,6 +30,18 @@ const routes = [
     meta: { auth: true }
   },
   {
+    path: '/me/questions',
+    name: 'myQuestions',
+    component: () => import('./views/MyQuestions.vue'),
+    meta: { auth: true }
+  },
+  {
+    path: '/me/messages',
+    name: 'messages',
+    component: () => import('./views/Messages.vue'),
+    meta: { auth: true }
+  },
+  {
     path: '/teacher/courses',
     name: 'teacherCourses',
     component: () => import('./views/TeacherCourses.vue'),

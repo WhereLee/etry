@@ -2,6 +2,8 @@ package com.wherelee.edu.course;
 
 import com.wherelee.edu.course.dto.CourseDtos;
 import com.wherelee.edu.course.dto.TagDtos;
+import com.wherelee.edu.course.enrollment.CourseEnrollment;
+import com.wherelee.edu.course.enrollment.CourseEnrollmentMapper;
 import com.wherelee.edu.storage.FileStorage;
 import com.wherelee.edu.teacher.TeacherProfile;
 import com.wherelee.edu.teacher.TeacherProfileMapper;
@@ -27,6 +29,7 @@ public class CourseAssembler {
     private final CourseReviewMapper reviewMapper;
     private final CourseFavoriteMapper favoriteMapper;
     private final CourseTagMapper courseTagMapper;
+    private final CourseEnrollmentMapper enrollmentMapper;
     private final FileStorage fileStorage;
 
     /**
@@ -85,6 +88,23 @@ public class CourseAssembler {
 
         RatingStat rating = reviewMapper.statByCourse(course.getId());
         boolean favorited = userId != null && favoriteMapper.count(userId, course.getId()) > 0;
+        // 关系状态：详情页靠它决定按钮是「加入学习」「开始学习」还是「继续学习」
+        String enrollmentStatus = null;
+        if (userId != null) {
+            CourseEnrollment enrollment = enrollmentMapper.findByUserAndCourse(userId, course.getId());
+            if (enrollment != null && !CourseEnrollment.STATUS_QUIT.equals(enrollment.getStatus())) {
+                enrollmentStatus = enrollment.getStatus();
+                // 与「我的学习」同一个口径：讲师加了课时后，库里可能还停在 COMPLETED，
+                // 按实际完成数降一级，不能出现「已学完但还没学完」的矛盾按钮
+                if (CourseEnrollment.STATUS_COMPLETED.equals(enrollmentStatus)) {
+                    int total = enrollmentMapper.countLearnableLessons(course.getId());
+                    int done = enrollmentMapper.countCompletedLessons(userId, course.getId());
+                    if (total > 0 && done < total) {
+                        enrollmentStatus = CourseEnrollment.STATUS_LEARNING;
+                    }
+                }
+            }
+        }
         List<TagDtos.TagVO> tags = courseTagMapper.findTagsByCourse(course.getId()).stream()
                 .map(tag -> new TagDtos.TagVO(tag.getId(), tag.getName(), tag.getSort()))
                 .toList();
@@ -109,6 +129,7 @@ public class CourseAssembler {
                 Math.round(rating.avgRating() * 10) / 10.0,
                 rating.total(),
                 favorited,
+                enrollmentStatus,
                 chapterVOs);
     }
 
