@@ -5,10 +5,12 @@ import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.Keywords;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.course.dto.CourseDtos;
+import com.wherelee.edu.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,7 +32,9 @@ public class CourseAdminService {
     private static final int MAX_PAGE = 10_000;
 
     private final CourseMapper courseMapper;
+    private final CourseLessonMapper lessonMapper;
     private final CourseAssembler assembler;
+    private final FileStorage fileStorage;
 
     public PageResult<CourseDtos.CourseSummaryVO> page(String status, String keyword, int page, int size) {
         int safePage = Math.min(Math.max(page, 1), MAX_PAGE);
@@ -85,6 +89,27 @@ public class CourseAdminService {
         }
         courseMapper.updateStatus(courseId, Course.STATUS_PUBLISHED, null, course.getPublishedAt());
         log.info("课程重新上架 courseId={}", courseId);
+    }
+
+    /**
+     * 审核用的详情：比前台多一层——不限状态，草稿和待审的也能看，
+     * 否则审核人就只能看个标题就点通过了。
+     */
+    public CourseDtos.CourseDetailVO detail(Long courseId) {
+        return assembler.detail(requireCourse(courseId));
+    }
+
+    /**
+     * 审核用的视频预览：不要求课程已上架。
+     * 前台那个 play 接口要求 PUBLISHED，待审的课根本调不出来。
+     */
+    public CourseDtos.PlayVO previewPlay(Long lessonId) {
+        CourseLesson lesson = lessonMapper.findById(lessonId);
+        if (lesson == null || !StringUtils.hasText(lesson.getVideoKey())) {
+            throw BizException.of(ErrorCode.LESSON_NOT_FOUND);
+        }
+        return new CourseDtos.PlayVO(lesson.getId(), lesson.getTitle(),
+                fileStorage.url(lesson.getVideoKey()));
     }
 
     private Course requireCourse(Long courseId) {

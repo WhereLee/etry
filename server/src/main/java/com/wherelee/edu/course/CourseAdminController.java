@@ -38,6 +38,20 @@ public class CourseAdminController {
         return ApiResponse.ok(courseAdminService.page(status, keyword, page, size));
     }
 
+    /** 审核详情：不限状态，待审的课也能看到章节、课时和时长 */
+    @GetMapping("/{id}")
+    @RequirePermission("course:review")
+    public ApiResponse<CourseDtos.CourseDetailVO> detail(@PathVariable Long id) {
+        return ApiResponse.ok(courseAdminService.detail(id));
+    }
+
+    /** 审核时的视频预览：不要求课程已上架 */
+    @GetMapping("/lessons/{id}/play")
+    @RequirePermission("course:review")
+    public ApiResponse<CourseDtos.PlayVO> previewPlay(@PathVariable Long id) {
+        return ApiResponse.ok(courseAdminService.previewPlay(id));
+    }
+
     @PutMapping("/{id}/review")
     @RequirePermission("course:review")
     @AuditLog(action = "COURSE_REVIEW", targetType = "COURSE", targetIdIndex = 0)

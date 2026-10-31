@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -105,6 +106,20 @@ public class CourseTeacherService {
         log.info("课程提交审核 courseId={}", courseId);
     }
 
+    /**
+     * 老师自己下架。下架是收回自己的内容，不影响任何人，不需要管理员审批。
+     * 下架后才能改内容，改完重新提交审核。
+     */
+    @Transactional
+    public void offline(Long userId, Long courseId) {
+        Course course = requireOwnCourse(userId, courseId);
+        if (!Course.STATUS_PUBLISHED.equals(course.getStatus())) {
+            throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "只有已上架的课程可以下架");
+        }
+        courseMapper.updateStatus(courseId, Course.STATUS_OFFLINE, null, course.getPublishedAt());
+        log.info("老师下架课程 courseId={}", courseId);
+    }
+
     public PageResult<CourseDtos.CourseSummaryVO> page(Long userId, String status, int page, int size) {
         TeacherProfile profile = requireApprovedTeacher(userId);
         int safePage = Math.min(Math.max(page, 1), MAX_PAGE);
@@ -175,7 +190,7 @@ public class CourseTeacherService {
         lesson.setCourseId(course.getId());
         lesson.setChapterId(chapterId);
         lesson.setTitle(request.title().trim());
-        lesson.setVideoKey(request.videoKey());
+        lesson.setVideoKey(StringUtils.hasText(request.videoKey()) ? request.videoKey().trim() : null);
         lesson.setDurationSeconds(request.durationSeconds() == null ? 0 : request.durationSeconds());
         lesson.setSizeBytes(request.sizeBytes() == null ? 0L : request.sizeBytes());
         lesson.setSort(request.sort() == null ? 0 : request.sort());
@@ -194,10 +209,12 @@ public class CourseTeacherService {
         lesson.setSort(request.sort() == null ? lesson.getSort() : request.sort());
         lessonMapper.update(lesson);
 
-        // 换了视频就回填新信息，并把旧对象删掉
-        if (request.videoKey() != null && !request.videoKey().equals(lesson.getVideoKey())) {
+        // 空串按「没换视频」处理：前端表单没填这一项时传的就是空串，
+        // 若当成换视频，会把已有视频清空并把对象存储里的文件删掉
+        String newKey = StringUtils.hasText(request.videoKey()) ? request.videoKey().trim() : null;
+        if (newKey != null && !newKey.equals(lesson.getVideoKey())) {
             String oldKey = lesson.getVideoKey();
-            lessonMapper.updateVideo(lessonId, request.videoKey(),
+            lessonMapper.updateVideo(lessonId, newKey,
                     request.durationSeconds() == null ? 0 : request.durationSeconds(),
                     request.sizeBytes() == null ? 0L : request.sizeBytes());
             fileStorage.delete(oldKey);

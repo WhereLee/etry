@@ -77,6 +77,14 @@ public class CourseTeacherController {
         return ApiResponse.ok();
     }
 
+    /** 自己下架：下架后才能改内容，改完重新提交审核 */
+    @PutMapping("/courses/{id}/offline")
+    @AuditLog(action = "COURSE_OFFLINE_BY_TEACHER", targetType = "COURSE", targetIdIndex = 1)
+    public ApiResponse<Void> offline(@CurrentUser Long userId, @PathVariable Long id) {
+        courseTeacherService.offline(userId, id);
+        return ApiResponse.ok();
+    }
+
     // ---------------------------------------------------------------- 章节
 
     @PostMapping("/courses/{id}/chapters")

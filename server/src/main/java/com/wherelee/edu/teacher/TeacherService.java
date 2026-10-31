@@ -80,6 +80,10 @@ public class TeacherService {
         if (TeacherProfile.STATUS_APPROVED.equals(profile.getStatus())) {
             throw new BizException(ErrorCode.TEACHER_STATUS_INVALID, "已通过审核的档案不能直接修改");
         }
+        // 归档是管理动作：离职后不能让本人自己改回待审队列重新复职
+        if (TeacherProfile.STATUS_ARCHIVED.equals(profile.getStatus())) {
+            throw new BizException(ErrorCode.TEACHER_STATUS_INVALID, "已归档的档案不能自行修改，请联系管理员恢复");
+        }
         validateSubjects(request.subjectIds());
 
         applyFields(profile, request);

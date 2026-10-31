@@ -29,12 +29,20 @@ public class Course {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    /** 只有草稿和被驳回的能改内容；待审和已上架的不允许改，避免审核中内容被换掉 */
+    /**
+     * 可编辑：草稿、被驳回、已下架。
+     *
+     * 上架中不允许直接改，避免审核通过后内容被换掉；
+     * 想改就先下架——下架是收回自己的内容，不影响任何人，所以老师自己就能做。
+     */
     public boolean isEditable() {
-        return STATUS_DRAFT.equals(status) || STATUS_REJECTED.equals(status);
+        return STATUS_DRAFT.equals(status)
+                || STATUS_REJECTED.equals(status)
+                || STATUS_OFFLINE.equals(status);
     }
 
+    /** 改完要重新走审核，所以可编辑就意味着可提交 */
     public boolean isSubmittable() {
-        return STATUS_DRAFT.equals(status) || STATUS_REJECTED.equals(status);
+        return isEditable();
     }
 }
