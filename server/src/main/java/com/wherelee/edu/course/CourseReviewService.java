@@ -35,8 +35,9 @@ public class CourseReviewService {
     @Transactional
     public void submit(Long userId, Long courseId, ReviewDtos.SubmitRequest request) {
         requirePublishedCourse(courseId);
-        if (progressMapper.countByUserAndCourse(userId, courseId) == 0) {
-            throw new BizException(ErrorCode.INVALID_PARAM, "学过这门课才能评价");
+        if (progressMapper.countCompletedByUserAndCourse(userId, courseId) == 0) {
+            // 只看「有无进度」等于没门槛：上报一条 position=0 就能评
+            throw new BizException(ErrorCode.INVALID_PARAM, "完成至少一个课时后才能评价");
         }
         String content = StringUtils.hasText(request.content()) ? request.content().trim() : null;
         reviewMapper.upsert(courseId, userId, request.rating(), content);

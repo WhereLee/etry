@@ -33,6 +33,7 @@ public record TeacherProfileInput(
 
         @NotNull(message = "请选择学科")
         @NotEmpty(message = "至少要选择一个学科")
+        @Size(max = 10, message = "最多选择 10 个学科")
         List<Long> subjectIds
 ) {
 }

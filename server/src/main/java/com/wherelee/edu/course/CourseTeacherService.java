@@ -30,6 +30,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class CourseTeacherService {
 
+    private static final long MAX_VIDEO_BYTES = 500L * 1024 * 1024;
+
     private static final int MAX_PAGE_SIZE = 50;
     private static final int MAX_PAGE = 10_000;
 
@@ -346,8 +348,19 @@ public class CourseTeacherService {
         return seconds;
     }
 
+    /**
+     * 文件大小以对象存储为准，并且回比上限：
+     * ticket 阶段只比了客户端声明的 sizeBytes，声明 1 字节再传 20GB 是拦不住的。
+     */
     private long resolveSize(String videoKey) {
-        return StringUtils.hasText(videoKey) ? fileStorage.size(videoKey) : 0L;
+        if (!StringUtils.hasText(videoKey)) {
+            return 0L;
+        }
+        long size = fileStorage.size(videoKey);
+        if (size > MAX_VIDEO_BYTES) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "单个视频不能超过 500MB");
+        }
+        return size;
     }
 
     /** 学科必须真实存在：否则课程会落在按学科筛选永远看不到的地方 */

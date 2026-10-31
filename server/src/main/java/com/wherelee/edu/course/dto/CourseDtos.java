@@ -31,6 +31,7 @@ public final class CourseDtos {
             String level,
 
             /** 标签 id 列表，整体覆盖；null 表示不动，空列表表示清空 */
+            @Size(max = 20, message = "最多选择 20 个标签")
             List<Long> tagIds,
 
             /** 是否强制按章节顺序学，null 当 false */

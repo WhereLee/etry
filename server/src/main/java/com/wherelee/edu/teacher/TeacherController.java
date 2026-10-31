@@ -3,6 +3,7 @@ package com.wherelee.edu.teacher;
 import com.wherelee.edu.audit.AuditLog;
 import com.wherelee.edu.common.ApiResponse;
 import com.wherelee.edu.security.CurrentUser;
+import com.wherelee.edu.teacher.dto.PublicTeacherVO;
 import com.wherelee.edu.teacher.dto.TeacherApplyRequest;
 import com.wherelee.edu.teacher.dto.TeacherProfileVO;
 import jakarta.validation.Valid;
@@ -50,9 +51,9 @@ public class TeacherController {
         return ApiResponse.ok(teacherService.uploadMyAvatar(userId, file));
     }
 
-    /** 对外可见的讲师详情，只有审核通过的才会返回 */
+    /** 对外可见的讲师详情，只有审核通过的才会返回；不含登录名 */
     @GetMapping("/api/teachers/{id}")
-    public ApiResponse<TeacherProfileVO> detail(@PathVariable Long id) {
+    public ApiResponse<PublicTeacherVO> detail(@PathVariable Long id) {
         return ApiResponse.ok(teacherService.publicDetail(id));
     }
 }

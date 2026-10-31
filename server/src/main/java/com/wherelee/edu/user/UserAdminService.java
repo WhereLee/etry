@@ -2,6 +2,7 @@ package com.wherelee.edu.user;
 
 import com.wherelee.edu.common.BizException;
 import com.wherelee.edu.common.ErrorCode;
+import com.wherelee.edu.security.UserContext;
 import com.wherelee.edu.common.Keywords;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.teacher.TeacherService;
@@ -181,6 +182,14 @@ public class UserAdminService {
         User user = userMapper.findById(userId);
         if (user == null) {
             throw BizException.of(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 提权防护：不是管理员的操作人，不能把自己改成管理员
+        Role adminRoleCheck = roleMapper.findByCode(Role.CODE_ADMIN);
+        if (adminRoleCheck != null && userId.equals(UserContext.requireUserId())
+                && roleIds != null && roleIds.contains(adminRoleCheck.getId())
+                && !isActiveAdmin(user)) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "不能给自己授予管理员角色");
         }
 
         List<Role> allRoles = roleMapper.findAll();

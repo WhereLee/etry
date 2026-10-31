@@ -51,6 +51,11 @@ public interface LearningProgressMapper {
     @Select("SELECT COUNT(*) FROM t_learning_progress WHERE user_id = #{userId} AND course_id = #{courseId}")
     long countByUserAndCourse(@Param("userId") Long userId, @Param("courseId") Long courseId);
 
+    /** 完成了几节：评价门槛用，只看「有进度」等于没门槛 */
+    @Select("SELECT COUNT(*) FROM t_learning_progress "
+            + "WHERE user_id = #{userId} AND course_id = #{courseId} AND completed = 1")
+    long countCompletedByUserAndCourse(@Param("userId") Long userId, @Param("courseId") Long courseId);
+
     /** 课程删除时清进度，否则「我的学习」里会留下指向不存在课程的记录 */
     @org.apache.ibatis.annotations.Delete("DELETE FROM t_learning_progress WHERE course_id = #{courseId}")
     int deleteByCourse(@Param("courseId") Long courseId);

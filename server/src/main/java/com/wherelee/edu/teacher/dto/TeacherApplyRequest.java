@@ -27,6 +27,8 @@ public record TeacherApplyRequest(
 
         @NotNull(message = "请选择学科")
         @NotEmpty(message = "至少要选择一个学科")
+        // 上限必须卡：校验是逐条查库，不卡就是一次请求 N 次 SELECT
+        @Size(max = 10, message = "最多选择 10 个学科")
         List<Long> subjectIds
 ) {
 }

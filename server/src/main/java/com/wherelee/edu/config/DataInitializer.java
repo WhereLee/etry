@@ -45,9 +45,9 @@ public class DataInitializer implements ApplicationRunner {
         }
 
         jdbcTemplate.update(
-                "INSERT INTO t_user (username, password_hash, nickname, status, token_version) "
-                        + "VALUES (?, ?, ?, 'ACTIVE', 0)",
-                ADMIN_USERNAME, passwordEncoder.encode(password), "管理员");
+                "INSERT INTO t_user (username, password_hash, nickname, status, token_version, must_change_password) "
+                        + "VALUES (?, ?, ?, 'ACTIVE', 0, ?)",
+                ADMIN_USERNAME, passwordEncoder.encode(password), "管理员", usingFallback ? 1 : 0);
 
         Long userId = jdbcTemplate.queryForObject(
                 "SELECT id FROM t_user WHERE username = ?", Long.class, ADMIN_USERNAME);
@@ -56,7 +56,9 @@ public class DataInitializer implements ApplicationRunner {
         jdbcTemplate.update("INSERT INTO t_user_role (user_id, role_id) VALUES (?, ?)", userId, roleId);
 
         if (usingFallback) {
-            log.warn("已创建初始管理员 username={}，使用的是未设置 {} 时的默认密码，请立即登录修改",
+            // 用默认密码建的号一律强制改密，否则弱口令会一直挂着
+            log.error("已创建初始管理员 username={}，使用的是内置默认密码。"
+                    + "生产部署必须设置 {}，否则任何知道默认口令的人都能接管整站",
                     ADMIN_USERNAME, ADMIN_PASSWORD_ENV);
         } else {
             log.info("已创建初始管理员 username={}，初始密码取自 {}", ADMIN_USERNAME, ADMIN_PASSWORD_ENV);

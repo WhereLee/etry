@@ -91,6 +91,10 @@ public class CosFileStorage implements FileStorage {
         if (key == null || key.isBlank() || directory == null || directory.isBlank()) {
             return false;
         }
+        // 拒绝路径穿越和可疑字符：前缀匹配挡不住 material/1/../2/xxx
+        if (key.contains("..") || key.contains("\\") || key.chars().anyMatch(c -> c < 0x20)) {
+            return false;
+        }
         return key.startsWith(keyPrefix + directory + "/");
     }
 

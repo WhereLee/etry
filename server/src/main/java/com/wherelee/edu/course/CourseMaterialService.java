@@ -69,7 +69,9 @@ public class CourseMaterialService {
     @Transactional
     public Long add(Long userId, Long courseId, MaterialDtos.SaveRequest request) {
         TeacherProfile profile = teacherService.requireApprovedTeacher(userId);
-        requireOwnCourse(profile, courseId);
+        Course course = requireOwnCourse(profile, courseId);
+        // 和章节/课时一致：上架后不能改，否则课件可以绕过审核直接换掉
+        requireEditable(course);
 
         String fileKey = request.fileKey().trim();
         if (!fileStorage.ownsKey(fileKey, "material/" + profile.getId())) {
@@ -78,6 +80,10 @@ public class CourseMaterialService {
         long size = fileStorage.size(fileKey);
         if (size <= 0) {
             throw new BizException(ErrorCode.INVALID_PARAM, "文件不存在或为空，请先完成上传");
+        }
+        if (size > MAX_BYTES) {
+            // ticket 里只比了客户端声明的值，这里是真实大小
+            throw new BizException(ErrorCode.INVALID_PARAM, "单个资料不能超过 50MB");
         }
 
         CourseMaterial material = new CourseMaterial();
@@ -100,7 +106,7 @@ public class CourseMaterialService {
         if (material == null) {
             throw BizException.of(ErrorCode.MATERIAL_NOT_FOUND);
         }
-        requireOwnCourse(profile, material.getCourseId());
+        requireEditable(requireOwnCourse(profile, material.getCourseId()));
 
         // 先删对象再删记录：删对象失败不影响记录，反过来会留下孤儿文件
         fileStorage.delete(material.getFileKey());
@@ -158,10 +164,18 @@ public class CourseMaterialService {
                 .toList();
     }
 
-    private void requireOwnCourse(TeacherProfile profile, Long courseId) {
+    private Course requireOwnCourse(TeacherProfile profile, Long courseId) {
         Course course = courseMapper.findById(courseId);
         if (course == null || !course.getTeacherId().equals(profile.getId())) {
             throw BizException.of(ErrorCode.COURSE_NOT_FOUND);
+        }
+        return course;
+    }
+
+    /** 只有可编辑状态（草稿/被驳回/已下架）才能动课件 */
+    private void requireEditable(Course course) {
+        if (!course.isEditable()) {
+            throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "请先下架课程再修改课件");
         }
     }
 }

@@ -74,6 +74,10 @@ public class LocalFileStorage implements FileStorage {
         if (key == null || key.isBlank() || directory == null || directory.isBlank()) {
             return false;
         }
+        // 本地存储会做 normalize，前缀匹配挡不住 material/1/../2/xxx
+        if (key.contains("..") || key.contains("\\") || key.chars().anyMatch(c -> c < 0x20)) {
+            return false;
+        }
         return key.startsWith(directory + "/");
     }
 

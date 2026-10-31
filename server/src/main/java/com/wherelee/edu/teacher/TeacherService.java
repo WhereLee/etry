@@ -5,6 +5,7 @@ import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.course.CourseMapper;
 import com.wherelee.edu.storage.FileStorage;
+import com.wherelee.edu.teacher.dto.PublicTeacherVO;
 import com.wherelee.edu.teacher.dto.SubjectVO;
 import com.wherelee.edu.teacher.dto.TeacherApplyRequest;
 import com.wherelee.edu.teacher.dto.TeacherProfileInput;
@@ -199,12 +200,21 @@ public class TeacherService {
     }
 
     /** 前台可见的讲师详情：只有审核通过的才对外 */
-    public TeacherProfileVO publicDetail(Long profileId) {
+    public PublicTeacherVO publicDetail(Long profileId) {
         TeacherProfile profile = profileMapper.findById(profileId);
         if (profile == null || !TeacherProfile.STATUS_APPROVED.equals(profile.getStatus())) {
             throw BizException.of(ErrorCode.TEACHER_NOT_FOUND);
         }
-        return toVO(profile);
+        // 公开视图不返回 userId / username
+        return new PublicTeacherVO(
+                profile.getId(),
+                profile.getRealName(),
+                profile.getTitle(),
+                profile.getBio(),
+                fileStorage.url(profile.getAvatarKey()),
+                profile.getYears(),
+                subjectMapper.findByTeacherId(profileId).stream().map(SubjectVO::from).toList(),
+                profile.getCreatedAt());
     }
 
     /**

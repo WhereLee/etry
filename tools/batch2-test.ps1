@@ -95,6 +95,9 @@ Write-Host ""
 Write-Host "== 2. material =="
 [IO.File]::WriteAllBytes($tmpPdf, (New-Object byte[] 2048))
 
+# materials can only be changed while the course is editable
+$null = Send-Api "Put" "/api/teacher/courses/$courseId/offline" $null $teacher.token
+
 $mt = Send-Api "Post" "/api/teacher/materials/ticket" @{
     fileName = "notes.pdf"; contentType = "application/pdf"; sizeBytes = 2048
 } $teacher.token
@@ -106,16 +109,6 @@ $add = Send-Api "Post" "/api/teacher/courses/$courseId/materials" @{
 } $teacher.token
 Check "register material" $add.code 0
 $materialId = $add.data
-
-$learnerList = Send-Api "Get" "/api/courses/$courseId/materials" $null $student.token
-Check "learner sees material" (@($learnerList.data).Count) 1
-Check "size read from storage" ($learnerList.data[0].sizeBytes -gt 0) $true
-
-$dlCode = curl.exe -s -o NUL -w "%{http_code}" --max-time 20 "$($learnerList.data[0].downloadUrl)"
-Check "download url reachable" $dlCode "200"
-
-$anonList = Send-Api "Get" "/api/courses/$courseId/materials" $null $null
-Check "anonymous cannot list material" $anonList.code 40101
 
 # foreign key is rejected
 $foreignKey = $mt.data.key -replace '/material/\d+/', '/material/999999/'
@@ -130,17 +123,34 @@ $badType = Send-Api "Post" "/api/teacher/materials/ticket" @{
 } $teacher.token
 Check "exe rejected" $badType.code 40001
 
-# teacher list works even though course is published
+# teacher list works even though course is offline
 $teacherList = Send-Api "Get" "/api/teacher/courses/$courseId/materials" $null $teacher.token
 Check "teacher list" (@($teacherList.data).Count) 1
 
-# delete removes the record and the object
+# republish then check the learner view
+$null = Send-Api "Put" "/api/teacher/courses/$courseId/submit" $null $teacher.token
+$null = Send-Api "Put" "/api/admin/courses/$courseId/review" @{ approved = $true } $at
+
+$learnerList = Send-Api "Get" "/api/courses/$courseId/materials" $null $student.token
+Check "learner sees material" (@($learnerList.data).Count) 1
+Check "size read from storage" ($learnerList.data[0].sizeBytes -gt 0) $true
+
+$dlCode = curl.exe -s -o NUL -w "%{http_code}" --max-time 20 "$($learnerList.data[0].downloadUrl)"
+Check "download url reachable" $dlCode "200"
+
+$anonList = Send-Api "Get" "/api/courses/$courseId/materials" $null $null
+Check "anonymous cannot list material" $anonList.code 40101
+
+# delete removes the record and the object (must take it offline first)
+$null = Send-Api "Put" "/api/teacher/courses/$courseId/offline" $null $teacher.token
 $del = Send-Api "Delete" "/api/teacher/materials/$materialId" $null $teacher.token
 Check "delete material" $del.code 0
-$afterDel = Send-Api "Get" "/api/courses/$courseId/materials" $null $student.token
+$afterDel = Send-Api "Get" "/api/teacher/courses/$courseId/materials" $null $teacher.token
 Check "material list empty" (@($afterDel.data).Count) 0
 $goneCode = curl.exe -s -o NUL -w "%{http_code}" --max-time 20 "$($learnerList.data[0].downloadUrl)"
 Check "object removed from storage" ($goneCode -ne "200") $true
+$null = Send-Api "Put" "/api/teacher/courses/$courseId/submit" $null $teacher.token
+$null = Send-Api "Put" "/api/admin/courses/$courseId/review" @{ approved = $true } $at
 
 # ---------- 3. subject rename ----------
 Write-Host ""
