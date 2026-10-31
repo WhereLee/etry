@@ -10,7 +10,7 @@ Get-ChildItem $root -Recurse -Filter *.java | ForEach-Object {
 
     $declIndexes = @()
     for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match '^(public\s+)?(@interface|class|interface|record|enum)\s+\w+') {
+        if ($lines[$i] -match '^((public|final|abstract)\s+)*(@interface|class|interface|record|enum)\s+\w+') {
             $declIndexes += $i
         }
     }
