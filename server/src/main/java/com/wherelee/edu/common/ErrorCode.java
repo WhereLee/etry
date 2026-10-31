@@ -51,7 +51,11 @@ public enum ErrorCode {
     LESSON_NOT_FOUND(40410, "课时不存在"),
     QUESTION_NOT_FOUND(40411, "问题不存在"),
     MATERIAL_NOT_FOUND(40412, "课件资料不存在"),
+    TAG_NOT_FOUND(40413, "标签不存在"),
     VIDEO_TYPE_INVALID(40014, "只支持 mp4 格式的视频"),
+    SEQUENTIAL_REQUIRED(40015, "请先学完上一节"),
+    TAG_IN_USE(40016, "标签还有课程在用，不能删除"),
+    TAG_NAME_EXISTS(40017, "标签名已存在"),
 
     INTERNAL_ERROR(50000, "系统繁忙，请稍后重试");
 

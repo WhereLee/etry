@@ -19,6 +19,10 @@ public class Course {
     /** 讲师档案 ID，不是 user_id：课程属于讲师身份，不属于账号 */
     private Long teacherId;
     private Long subjectId;
+    /** 难度：BEGINNER / INTERMEDIATE / ADVANCED，可为空（不填就不参与筛选） */
+    private String level;
+    /** 是否强制按章节顺序学：开课时要先把上一节学完 */
+    private boolean sequential;
     private String title;
     private String summary;
     private String description;

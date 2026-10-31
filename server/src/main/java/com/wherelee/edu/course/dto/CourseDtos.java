@@ -25,7 +25,16 @@ public final class CourseDtos {
 
             Long subjectId,
 
-            String coverKey
+            String coverKey,
+
+            /** 难度：BEGINNER / INTERMEDIATE / ADVANCED，可空 */
+            String level,
+
+            /** 标签 id 列表，整体覆盖；null 表示不动，空列表表示清空 */
+            List<Long> tagIds,
+
+            /** 是否强制按章节顺序学，null 当 false */
+            Boolean sequential
     ) {
     }
 
@@ -96,6 +105,7 @@ public final class CourseDtos {
             String rejectReason,
             String teacherName,
             Long subjectId,
+            String level,
             long lessonCount,
             LocalDateTime publishedAt,
             LocalDateTime updatedAt
@@ -123,6 +133,8 @@ public final class CourseDtos {
             Long teacherId,
             String teacherName,
             Long subjectId,
+            String level,
+            List<TagDtos.TagVO> tags,
             String title,
             String summary,
             String description,

@@ -135,6 +135,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         return WHITE_LIST.contains(path)
                 || path.startsWith("/api/notices")
                 || path.startsWith("/api/teachers")
+                // 标签列表给前台筛选用，和 /api/admin/tags 不冲突
+                || path.startsWith("/api/tags")
                 || isPublicCoursePath(path);
     }
 

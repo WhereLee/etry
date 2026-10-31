@@ -4,7 +4,7 @@
 <mapper namespace="com.wherelee.edu.course.CourseMapper">
 
     <sql id="columns">
-        id, teacher_id, subject_id, title, summary, description, cover_key, status,
+        id, teacher_id, subject_id, level, sequential, title, summary, description, cover_key, status,
         reject_reason, published_at, created_at, updated_at
     </sql>
 
@@ -64,6 +64,14 @@
             AND status = 'PUBLISHED'
             <if test="subjectId != null">
                 AND subject_id = #{subjectId}
+            </if>
+            <if test="level != null and level != ''">
+                AND level = #{level}
+            </if>
+            <!-- 标签筛选用 EXISTS：不改 FROM，避免影响上面的列和 count -->
+            <if test="tagId != null">
+                AND EXISTS (SELECT 1 FROM t_course_tag ct
+                            WHERE ct.course_id = t_course.id AND ct.tag_id = #{tagId})
             </if>
             <if test="keyword != null and keyword != ''">
                 AND title LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\'

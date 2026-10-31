@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 老师侧：建课、排章节、排课时、提交审核。
@@ -34,6 +35,8 @@ public class CourseTeacherService {
     private final CourseChapterMapper chapterMapper;
     private final CourseLessonMapper lessonMapper;
     private final CourseMaterialMapper materialMapper;
+    private final CourseTagMapper courseTagMapper;
+    private final TagMapper tagMapper;
     private final TeacherProfileMapper profileMapper;
     private final CourseAssembler assembler;
     private final FileStorage fileStorage;
@@ -49,12 +52,15 @@ public class CourseTeacherService {
         Course course = new Course();
         course.setTeacherId(profile.getId());
         course.setSubjectId(request.subjectId());
+        course.setLevel(StringUtils.hasText(request.level()) ? request.level().trim() : null);
+        course.setSequential(Boolean.TRUE.equals(request.sequential()));
         course.setTitle(request.title().trim());
         course.setSummary(request.summary());
         course.setDescription(request.description());
         course.setCoverKey(request.coverKey());
         course.setStatus(Course.STATUS_DRAFT);
         courseMapper.insert(course);
+        saveTags(course.getId(), request.tagIds());
 
         log.info("课程创建 courseId={} teacherId={}", course.getId(), profile.getId());
         return course.getId();
@@ -69,6 +75,8 @@ public class CourseTeacherService {
         }
         requireOwnCoverKey(profile, request.coverKey());
         course.setSubjectId(request.subjectId());
+        course.setLevel(StringUtils.hasText(request.level()) ? request.level().trim() : null);
+        course.setSequential(Boolean.TRUE.equals(request.sequential()));
         course.setTitle(request.title().trim());
         course.setSummary(request.summary());
         course.setDescription(request.description());
@@ -93,6 +101,7 @@ public class CourseTeacherService {
         }
         lessonMapper.deleteByCourseId(courseId);
         materialMapper.deleteByCourse(courseId);
+        courseTagMapper.deleteByCourse(courseId);
         chapterMapper.deleteByCourseId(courseId);
         courseMapper.deleteById(courseId);
         log.info("课程删除 courseId={}", courseId);
@@ -313,6 +322,26 @@ public class CourseTeacherService {
 
     private long resolveSize(String videoKey) {
         return StringUtils.hasText(videoKey) ? fileStorage.size(videoKey) : 0L;
+    }
+
+    /**
+     * 标签整体覆盖：null 表示「本次不改」，空列表表示「清空」。
+     * 先删后插，让前端不用算差集。
+     */
+    private void saveTags(Long courseId, List<Long> tagIds) {
+        if (tagIds == null) {
+            return;
+        }
+        List<Long> valid = tagIds.stream().filter(Objects::nonNull).distinct().toList();
+        for (Long tagId : valid) {
+            if (tagMapper.findById(tagId) == null) {
+                throw new BizException(ErrorCode.INVALID_PARAM, "标签不存在: " + tagId);
+            }
+        }
+        courseTagMapper.deleteByCourse(courseId);
+        if (!valid.isEmpty()) {
+            courseTagMapper.batchInsert(courseId, valid);
+        }
     }
 
     private CourseLesson requireLesson(Long lessonId) {

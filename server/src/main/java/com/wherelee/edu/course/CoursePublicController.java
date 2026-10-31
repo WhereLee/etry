@@ -3,6 +3,7 @@ package com.wherelee.edu.course;
 import com.wherelee.edu.common.ApiResponse;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.course.dto.CourseDtos;
+import com.wherelee.edu.security.CurrentUser;
 import com.wherelee.edu.security.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,10 +28,12 @@ public class CoursePublicController {
     @GetMapping
     public ApiResponse<PageResult<CourseDtos.CourseSummaryVO>> page(
             @RequestParam(required = false) Long subjectId,
+            @RequestParam(required = false) Long tagId,
+            @RequestParam(required = false) String level,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(coursePublicService.page(subjectId, keyword, page, size));
+        return ApiResponse.ok(coursePublicService.page(subjectId, tagId, level, keyword, page, size));
     }
 
     /**
@@ -44,9 +47,9 @@ public class CoursePublicController {
         return ApiResponse.ok(coursePublicService.detail(id, userId));
     }
 
-    /** 播放地址：预签名 GET，默认 2 小时有效 */
+    /** 播放地址：预签名 GET，默认 2 小时有效。顺序课会先校验上一节是否学完 */
     @GetMapping("/lessons/{id}/play")
-    public ApiResponse<CourseDtos.PlayVO> play(@PathVariable Long id) {
-        return ApiResponse.ok(coursePublicService.play(id));
+    public ApiResponse<CourseDtos.PlayVO> play(@CurrentUser Long userId, @PathVariable Long id) {
+        return ApiResponse.ok(coursePublicService.play(userId, id));
     }
 }

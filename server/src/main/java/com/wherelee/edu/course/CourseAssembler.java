@@ -1,6 +1,7 @@
 package com.wherelee.edu.course;
 
 import com.wherelee.edu.course.dto.CourseDtos;
+import com.wherelee.edu.course.dto.TagDtos;
 import com.wherelee.edu.storage.FileStorage;
 import com.wherelee.edu.teacher.TeacherProfile;
 import com.wherelee.edu.teacher.TeacherProfileMapper;
@@ -25,6 +26,7 @@ public class CourseAssembler {
     private final CourseLessonMapper lessonMapper;
     private final CourseReviewMapper reviewMapper;
     private final CourseFavoriteMapper favoriteMapper;
+    private final CourseTagMapper courseTagMapper;
     private final FileStorage fileStorage;
 
     /**
@@ -53,6 +55,7 @@ public class CourseAssembler {
                     course.getRejectReason(),
                     teacher == null ? null : teacher.getRealName(),
                     course.getSubjectId(),
+                    course.getLevel(),
                     lessonCounts.getOrDefault(course.getId(), 0L),
                     course.getPublishedAt(),
                     course.getUpdatedAt());
@@ -80,12 +83,17 @@ public class CourseAssembler {
 
         RatingStat rating = reviewMapper.statByCourse(course.getId());
         boolean favorited = userId != null && favoriteMapper.count(userId, course.getId()) > 0;
+        List<TagDtos.TagVO> tags = courseTagMapper.findTagsByCourse(course.getId()).stream()
+                .map(tag -> new TagDtos.TagVO(tag.getId(), tag.getName(), tag.getSort()))
+                .toList();
 
         return new CourseDtos.CourseDetailVO(
                 course.getId(),
                 course.getTeacherId(),
                 teacherName(course.getTeacherId()),
                 course.getSubjectId(),
+                course.getLevel(),
+                tags,
                 course.getTitle(),
                 course.getSummary(),
                 course.getDescription(),

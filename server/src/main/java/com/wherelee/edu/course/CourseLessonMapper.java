@@ -20,6 +20,15 @@ public interface CourseLessonMapper {
             + "ORDER BY chapter_id, sort, id")
     List<CourseLesson> findByCourseId(@Param("courseId") Long courseId);
 
+    /**
+     * 按「章节 sort、课时 sort」的全课顺序取课时，顺序学习的前置校验用。
+     * 上面的 findByCourseId 是按 chapter_id 排的，和章节本身的 sort 不一定一致。
+     */
+    @Select("SELECT l.* FROM t_course_lesson l JOIN t_course_chapter c ON c.id = l.chapter_id "
+            + "WHERE l.course_id = #{courseId} "
+            + "ORDER BY c.sort, c.id, l.sort, l.id")
+    List<CourseLesson> findOrderedByCourseId(@Param("courseId") Long courseId);
+
     @Select("SELECT " + COLUMNS + " FROM t_course_lesson WHERE chapter_id = #{chapterId} ORDER BY sort, id")
     List<CourseLesson> findByChapterId(@Param("chapterId") Long chapterId);
 
