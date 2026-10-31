@@ -25,19 +25,36 @@ public class CourseAssembler {
     private final CourseLessonMapper lessonMapper;
     private final FileStorage fileStorage;
 
-    public CourseDtos.CourseSummaryVO summary(Course course) {
-        return new CourseDtos.CourseSummaryVO(
-                course.getId(),
-                course.getTitle(),
-                course.getSummary(),
-                fileStorage.url(course.getCoverKey()),
-                course.getStatus(),
-                course.getRejectReason(),
-                teacherName(course.getTeacherId()),
-                course.getSubjectId(),
-                lessonMapper.countByCourse(course.getId()),
-                course.getPublishedAt(),
-                course.getUpdatedAt());
+    /**
+     * 列表页批量组装：课时数和讲师姓名各查一次，
+     * 不再像之前那样每行一次 count + 一次按 id 查档案（一页 50 条就是 100 次 SQL）。
+     */
+    public List<CourseDtos.CourseSummaryVO> summaries(List<Course> courses) {
+        if (courses == null || courses.isEmpty()) {
+            return List.of();
+        }
+        List<Long> courseIds = courses.stream().map(Course::getId).toList();
+        List<Long> teacherIds = courses.stream().map(Course::getTeacherId).distinct().toList();
+
+        Map<Long, Long> lessonCounts = lessonMapper.countByCourseIds(courseIds).stream()
+                .collect(Collectors.toMap(CourseLessonCount::courseId, CourseLessonCount::cnt));
+        Map<Long, TeacherProfile> teachers = profileMapper.findByIds(teacherIds);
+
+        return courses.stream().map(course -> {
+            TeacherProfile teacher = teachers.get(course.getTeacherId());
+            return new CourseDtos.CourseSummaryVO(
+                    course.getId(),
+                    course.getTitle(),
+                    course.getSummary(),
+                    fileStorage.url(course.getCoverKey()),
+                    course.getStatus(),
+                    course.getRejectReason(),
+                    teacher == null ? null : teacher.getRealName(),
+                    course.getSubjectId(),
+                    lessonCounts.getOrDefault(course.getId(), 0L),
+                    course.getPublishedAt(),
+                    course.getUpdatedAt());
+        }).toList();
     }
 
     /** 详情带章节课时。课时里只给「有没有视频」，不给 videoKey */

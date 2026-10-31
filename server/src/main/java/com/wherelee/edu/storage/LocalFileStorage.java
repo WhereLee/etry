@@ -5,11 +5,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.UUID;
 
 /**
@@ -68,6 +70,37 @@ public class LocalFileStorage implements FileStorage {
     }
 
     @Override
+    public boolean ownsKey(String key, String directory) {
+        if (key == null || key.isBlank() || directory == null || directory.isBlank()) {
+            return false;
+        }
+        return key.startsWith(directory + "/");
+    }
+
+    @Override
+    public byte[] readRange(String key, long start, long length) {
+        Path target = resolveSafe(key);
+        int capacity = (int) Math.min(length, Integer.MAX_VALUE);
+        try (RandomAccessFile raf = new RandomAccessFile(target.toFile(), "r")) {
+            raf.seek(start);
+            byte[] buffer = new byte[capacity];
+            int read = raf.read(buffer);
+            return read <= 0 ? new byte[0] : Arrays.copyOf(buffer, read);
+        } catch (IOException e) {
+            throw new UncheckedIOException("读取文件区间失败: " + key, e);
+        }
+    }
+
+    @Override
+    public long size(String key) {
+        try {
+            return Files.size(resolveSafe(key));
+        } catch (IOException e) {
+            throw new UncheckedIOException("读取文件大小失败: " + key, e);
+        }
+    }
+
+    @Override
     public void delete(String key) {
         if (key == null || key.isBlank()) {
             return;
@@ -82,5 +115,14 @@ public class LocalFileStorage implements FileStorage {
     @Override
     public String url(String key) {
         return key == null || key.isBlank() ? null : URL_PREFIX + key;
+    }
+
+    /** 防目录穿越：key 虽然由本服务生成，但读到外部 key 时也要兼顾 */
+    private Path resolveSafe(String key) {
+        Path target = root.resolve(key).normalize();
+        if (!target.startsWith(root)) {
+            throw new IllegalArgumentException("非法的存储路径: " + key);
+        }
+        return target;
     }
 }

@@ -30,6 +30,22 @@ public interface FileStorage {
      */
     String presignedPutUrl(String key, String contentType, Duration ttl);
 
+    /**
+     * 判断对象键是不是本服务在指定目录下生成的。
+     *
+     * 用途：老师建课时会提交 videoKey，如果不校验归属，
+     * A 只要拿到或猜到 B 目录下的对象键，就能把它写进自己的课时。
+     *
+     * @param directory 逻辑目录，如 video/12
+     */
+    boolean ownsKey(String key, String directory);
+
+    /** 读对象的一段字节，用于解析媒体头部（避免把整个视频拉下来） */
+    byte[] readRange(String key, long start, long length);
+
+    /** 对象大小（字节） */
+    long size(String key);
+
     /** 删除对象，键不存在时静默忽略 */
     void delete(String key);
 

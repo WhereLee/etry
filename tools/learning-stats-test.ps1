@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 $base = "http://127.0.0.1:8082"
 $tmp = "c:\Users\lrs\Desktop\work\etry\tools\video-test.mp4"
+. "c:\Users\lrs\Desktop\work\etry\tools\lib-mp4.ps1"
 
 function Send-Api($method, $path, $obj, $token) {
     $headers = @{}
@@ -48,7 +49,8 @@ $tt = (Send-Api "Post" "/api/auth/login" @{ username = $tName; password = "tpass
 $courseId = (Send-Api "Post" "/api/teacher/courses" @{ title = "Physics"; summary = "p"; subjectId = $subjectId } $tt).data
 $chapterId = (Send-Api "Post" "/api/teacher/courses/$courseId/chapters" @{ title = "C1"; sort = 1 } $tt).data
 
-[IO.File]::WriteAllBytes($tmp, (New-Object byte[] 1048576))
+# 100s mp4: the progress test asserts against the duration read by the server
+New-MinimalMp4 $tmp 100
 function New-Lesson($title, $sort, $withVideo) {
     $videoKey = $null
     if ($withVideo) {

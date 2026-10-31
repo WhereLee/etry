@@ -3,6 +3,8 @@ package com.wherelee.edu.audit;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wherelee.edu.security.UserContext;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -80,7 +82,8 @@ public class AuditIdentityResolver {
 
     /** 把 ApiResponse 的 data 层剥出来；文件类参数不参与，避免把字节数组序列化 */
     private JsonNode toObjectNode(Object value) {
-        if (value == null || value instanceof byte[] || value instanceof MultipartFile) {
+        if (value == null || value instanceof byte[] || value instanceof MultipartFile
+                || value instanceof ServletRequest || value instanceof ServletResponse) {
             return null;
         }
         try {

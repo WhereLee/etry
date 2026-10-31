@@ -1,6 +1,8 @@
 package com.wherelee.edu.audit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -53,6 +55,10 @@ public class AuditDetailFormatter {
         }
         if (arg instanceof MultipartFile file) {
             return "file:" + file.getOriginalFilename() + "(" + file.getSize() + "B)";
+        }
+        // servlet 对象序列化会爆或产生巨大 JSON，只留类名
+        if (arg instanceof ServletRequest || arg instanceof ServletResponse) {
+            return arg.getClass().getSimpleName();
         }
         try {
             return mask(objectMapper.writeValueAsString(arg));

@@ -6,6 +6,7 @@ import com.qcloud.cos.auth.BasicCOSCredentials;
 import com.qcloud.cos.auth.COSCredentials;
 import com.qcloud.cos.http.HttpMethodName;
 import com.qcloud.cos.model.GeneratePresignedUrlRequest;
+import com.qcloud.cos.model.GetObjectRequest;
 import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.model.PutObjectRequest;
 import com.qcloud.cos.region.Region;
@@ -15,8 +16,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.UUID;
 
@@ -80,6 +84,38 @@ public class CosFileStorage implements FileStorage {
         request.setExpiration(new Date(System.currentTimeMillis() + ttl.toMillis()));
         request.putCustomRequestHeader("Content-Type", contentType);
         return client.generatePresignedUrl(request).toString();
+    }
+
+    @Override
+    public boolean ownsKey(String key, String directory) {
+        if (key == null || key.isBlank() || directory == null || directory.isBlank()) {
+            return false;
+        }
+        return key.startsWith(keyPrefix + directory + "/");
+    }
+
+    @Override
+    public byte[] readRange(String key, long start, long length) {
+        GetObjectRequest request = new GetObjectRequest(bucket, key);
+        request.setRange(start, start + length - 1);
+        int capacity = (int) Math.min(length, Integer.MAX_VALUE);
+        // 只发一次请求：COSObject 里同时能拿元信息和内容流
+        try (var in = client.getObject(request).getObjectContent()) {
+            byte[] buffer = new byte[capacity];
+            int total = 0;
+            int read;
+            while (total < capacity && (read = in.read(buffer, total, capacity - total)) > 0) {
+                total += read;
+            }
+            return total < capacity ? Arrays.copyOf(buffer, total) : buffer;
+        } catch (IOException e) {
+            throw new UncheckedIOException("读取对象区间失败: " + key, e);
+        }
+    }
+
+    @Override
+    public long size(String key) {
+        return client.getObjectMetadata(bucket, key).getContentLength();
     }
 
     @Override

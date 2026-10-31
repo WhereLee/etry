@@ -7,8 +7,10 @@ import com.wherelee.edu.auth.dto.LoginResponse;
 import com.wherelee.edu.auth.dto.RegisterRequest;
 import com.wherelee.edu.auth.dto.UserMeVO;
 import com.wherelee.edu.common.ApiResponse;
+import com.wherelee.edu.common.web.ClientIpResolver;
 import com.wherelee.edu.security.CurrentUser;
 import com.wherelee.edu.security.UserContext;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/register")
     public ApiResponse<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -36,8 +39,10 @@ public class AuthController {
      */
     @PostMapping("/login")
     @AuditLog(action = "USER_LOGIN", targetType = "USER")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ApiResponse.ok(authService.login(request.username(), request.password()));
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request,
+                                            HttpServletRequest httpRequest) {
+        return ApiResponse.ok(authService.login(request.username(), request.password(),
+                clientIpResolver.resolve(httpRequest)));
     }
 
     @PostMapping("/logout")

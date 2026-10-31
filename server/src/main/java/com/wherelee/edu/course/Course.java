@@ -45,4 +45,13 @@ public class Course {
     public boolean isSubmittable() {
         return isEditable();
     }
+
+    /**
+     * 能否物理删除。只有从未上架过的课能删：
+     * 上架过的可能已经有人学过，删了就是把别人看过的内容删了。
+     * （等有订单之后，这条就是「已售课程不能删」的底层约束）
+     */
+    public boolean isDeletable() {
+        return STATUS_DRAFT.equals(status) || STATUS_REJECTED.equals(status);
+    }
 }

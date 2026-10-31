@@ -1,5 +1,6 @@
 package com.wherelee.edu.audit;
 
+import com.wherelee.edu.common.web.ClientIpResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -27,7 +28,7 @@ public class AuditAspect {
     private final AuditService auditService;
     private final AuditIdentityResolver identityResolver;
     private final AuditDetailFormatter detailFormatter;
-    private final AuditClientIpResolver ipResolver;
+    private final ClientIpResolver ipResolver;
 
     @Around("@annotation(auditLog)")
     public Object record(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Throwable {

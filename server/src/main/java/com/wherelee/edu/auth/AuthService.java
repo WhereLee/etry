@@ -76,23 +76,23 @@ public class AuthService {
         return toLoginResponse(user, List.of(Role.CODE_STUDENT), false);
     }
 
-    public LoginResponse login(String username, String password) {
-        if (loginAttemptService.isLocked(username)) {
-            log.warn("登录被锁定 username={}", username);
+    public LoginResponse login(String username, String password, String ip) {
+        if (loginAttemptService.isLocked(username, ip)) {
+            log.warn("登录被锁定 username={} ip={}", username, ip);
             throw BizException.of(ErrorCode.LOGIN_LOCKED);
         }
 
         User user = userMapper.findByUsername(username);
         if (user == null || !passwordEncoder.matches(password, user.getPasswordHash())) {
             // 账号不存在与密码错误走同一条路：既记录失败次数，也统一报同一个错误，避免被用来探测账号是否存在
-            loginAttemptService.recordFailure(username);
+            loginAttemptService.recordFailure(username, ip);
             throw BizException.of(ErrorCode.LOGIN_FAILED);
         }
         if (!user.isActive()) {
             throw BizException.of(ErrorCode.ACCOUNT_DISABLED);
         }
 
-        loginAttemptService.clear(username);
+        loginAttemptService.clear(username, ip);
         List<String> roles = roleMapper.findCodesByUserId(user.getId());
         return toLoginResponse(user, roles, user.needsPasswordChange());
     }

@@ -40,9 +40,8 @@ public class CoursePublicService {
         if (total == 0) {
             return PageResult.empty(safePage, safeSize);
         }
-        List<CourseDtos.CourseSummaryVO> records = courseMapper
-                .findPublicPage(subjectId, safeKeyword, (safePage - 1) * safeSize, safeSize)
-                .stream().map(assembler::summary).toList();
+        List<CourseDtos.CourseSummaryVO> records = assembler.summaries(
+                courseMapper.findPublicPage(subjectId, safeKeyword, (safePage - 1) * safeSize, safeSize));
         return PageResult.of(records, total, safePage, safeSize);
     }
 

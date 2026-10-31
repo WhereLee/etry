@@ -67,6 +67,10 @@ app:
     login-fail-threshold: 5
     # 锁定时长，同时也是失败计数在 Redis 里的存活时间（一个数说清一件事）
     login-lock-minutes: 15
+    # 同一 IP 累计失败到这个数就整个 IP 锁一段时间：
+    # 只按账号计数的话，攻击者可以换用户名无限猜
+    ip-fail-threshold: 30
+    ip-lock-minutes: 60
     # X-Forwarded-For 是客户端可伪造的请求头。只有部署在反向代理后面才能信，
     # 否则审计里的来源 IP 等于随便填。
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}

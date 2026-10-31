@@ -29,6 +29,13 @@ public interface CourseLessonMapper {
     @Select("SELECT COUNT(*) FROM t_course_lesson WHERE course_id = #{courseId}")
     long countByCourse(@Param("courseId") Long courseId);
 
+    /** 列表页用：一次查出多门课的课时数，避免每行一次 count */
+    @Select("<script>SELECT course_id, COUNT(*) AS cnt FROM t_course_lesson "
+            + "WHERE course_id IN "
+            + "<foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach> "
+            + "GROUP BY course_id</script>")
+    List<CourseLessonCount> countByCourseIds(@Param("ids") List<Long> ids);
+
     @Insert("INSERT INTO t_course_lesson (course_id, chapter_id, title, video_key, duration_seconds, "
             + "size_bytes, sort) VALUES (#{courseId}, #{chapterId}, #{title}, #{videoKey}, "
             + "#{durationSeconds}, #{sizeBytes}, #{sort})")

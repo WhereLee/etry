@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 $base = "http://127.0.0.1:8082"
 $tmp = "c:\Users\lrs\Desktop\work\etry\tools\video-test.mp4"
+. "c:\Users\lrs\Desktop\work\etry\tools\lib-mp4.ps1"
 
 function Send-Api($method, $path, $obj, $token) {
     $headers = @{}
@@ -71,7 +72,8 @@ Check "add chapter" $chapter.code 0
 $chapterId = $chapter.data
 
 # video ticket + direct upload
-[IO.File]::WriteAllBytes($tmp, (New-Object byte[] 1048576))
+# real mp4 header is required now: the server reads duration from the file
+New-MinimalMp4 $tmp 600
 $ticket = Send-Api "Post" "/api/teacher/videos/ticket" @{
     fileName = "lesson1.mp4"; contentType = "video/mp4"; sizeBytes = 1048576
 } $tt

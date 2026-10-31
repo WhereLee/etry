@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 $base = "http://127.0.0.1:8082"
 $tmp = "c:\Users\lrs\Desktop\work\etry\tools\video-test.mp4"
+. "c:\Users\lrs\Desktop\work\etry\tools\lib-mp4.ps1"
 
 function Send-Api($method, $path, $obj, $token) {
     $headers = @{}
@@ -49,7 +50,8 @@ $tt = (Send-Api "Post" "/api/auth/login" @{ username = $tName; password = "tpass
 
 $courseId = (Send-Api "Post" "/api/teacher/courses" @{ title = "Geometry"; summary = "s"; subjectId = $subjectId } $tt).data
 $chapterId = (Send-Api "Post" "/api/teacher/courses/$courseId/chapters" @{ title = "C1"; sort = 1 } $tt).data
-[IO.File]::WriteAllBytes($tmp, (New-Object byte[] 1048576))
+# real mp4 header is required now: the server reads duration from the file
+New-MinimalMp4 $tmp 300
 $ticket = Send-Api "Post" "/api/teacher/videos/ticket" @{ fileName = "v.mp4"; contentType = "video/mp4"; sizeBytes = 1048576 } $tt
 $null = curl.exe -s -o NUL -X PUT -H "Content-Type: video/mp4" --upload-file $tmp "$($ticket.data.uploadUrl)"
 $lessonId = (Send-Api "Post" "/api/teacher/chapters/$chapterId/lessons" @{

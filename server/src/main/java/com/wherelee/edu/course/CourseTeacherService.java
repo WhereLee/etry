@@ -5,6 +5,7 @@ import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.course.dto.CourseDtos;
 import com.wherelee.edu.storage.FileStorage;
+import com.wherelee.edu.storage.Mp4DurationReader;
 import com.wherelee.edu.teacher.TeacherProfile;
 import com.wherelee.edu.teacher.TeacherProfileMapper;
 import lombok.RequiredArgsConstructor;
@@ -35,12 +36,14 @@ public class CourseTeacherService {
     private final TeacherProfileMapper profileMapper;
     private final CourseAssembler assembler;
     private final FileStorage fileStorage;
+    private final Mp4DurationReader mp4DurationReader;
 
     // ------------------------------------------------------------------ 课程
 
     @Transactional
     public Long create(Long userId, CourseDtos.SaveRequest request) {
         TeacherProfile profile = requireApprovedTeacher(userId);
+        requireOwnCoverKey(profile, request.coverKey());
 
         Course course = new Course();
         course.setTeacherId(profile.getId());
@@ -58,10 +61,12 @@ public class CourseTeacherService {
 
     @Transactional
     public void update(Long userId, Long courseId, CourseDtos.SaveRequest request) {
-        Course course = requireOwnCourse(userId, courseId);
+        TeacherProfile profile = requireApprovedTeacher(userId);
+        Course course = requireOwnCourse(profile, courseId);
         if (!course.isEditable()) {
-            throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "只有草稿或被驳回的课程可以修改");
+            throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "只有草稿、被驳回或已下架的课程可以修改");
         }
+        requireOwnCoverKey(profile, request.coverKey());
         course.setSubjectId(request.subjectId());
         course.setTitle(request.title().trim());
         course.setSummary(request.summary());
@@ -74,8 +79,9 @@ public class CourseTeacherService {
     @Transactional
     public void delete(Long userId, Long courseId) {
         Course course = requireOwnCourse(userId, courseId);
-        if (!course.isEditable()) {
-            throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "只有草稿或被驳回的课程可以删除");
+        // 上架过的课可能已经有人学过，删了就是把别人看过的内容删了
+        if (!course.isDeletable()) {
+            throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "上架过的课程不能删除，只能下架");
         }
         // 先清子表，再删课程；视频对象一并清掉，避免对象存储里堆垃圾
         for (CourseLesson lesson : lessonMapper.findByCourseId(courseId)) {
@@ -129,9 +135,8 @@ public class CourseTeacherService {
         if (total == 0) {
             return PageResult.empty(safePage, safeSize);
         }
-        List<CourseDtos.CourseSummaryVO> records = courseMapper
-                .findPageByTeacher(profile.getId(), status, (safePage - 1) * safeSize, safeSize)
-                .stream().map(assembler::summary).toList();
+        List<CourseDtos.CourseSummaryVO> records = assembler.summaries(
+                courseMapper.findPageByTeacher(profile.getId(), status, (safePage - 1) * safeSize, safeSize));
         return PageResult.of(records, total, safePage, safeSize);
     }
 
@@ -182,17 +187,19 @@ public class CourseTeacherService {
 
     @Transactional
     public Long addLesson(Long userId, Long chapterId, CourseDtos.LessonSaveRequest request) {
+        TeacherProfile profile = requireApprovedTeacher(userId);
         CourseChapter chapter = requireChapter(chapterId);
-        Course course = requireOwnCourse(userId, chapter.getCourseId());
+        Course course = requireOwnCourse(profile, chapter.getCourseId());
         requireEditable(course);
+        requireOwnVideoKey(profile, request.videoKey());
 
         CourseLesson lesson = new CourseLesson();
         lesson.setCourseId(course.getId());
         lesson.setChapterId(chapterId);
         lesson.setTitle(request.title().trim());
         lesson.setVideoKey(StringUtils.hasText(request.videoKey()) ? request.videoKey().trim() : null);
-        lesson.setDurationSeconds(request.durationSeconds() == null ? 0 : request.durationSeconds());
-        lesson.setSizeBytes(request.sizeBytes() == null ? 0L : request.sizeBytes());
+        lesson.setDurationSeconds(resolveDuration(request.videoKey()));
+        lesson.setSizeBytes(resolveSize(request.videoKey()));
         lesson.setSort(request.sort() == null ? 0 : request.sort());
         lessonMapper.insert(lesson);
         log.info("课时创建 lessonId={} courseId={}", lesson.getId(), course.getId());
@@ -201,9 +208,11 @@ public class CourseTeacherService {
 
     @Transactional
     public void updateLesson(Long userId, Long lessonId, CourseDtos.LessonSaveRequest request) {
+        TeacherProfile profile = requireApprovedTeacher(userId);
         CourseLesson lesson = requireLesson(lessonId);
-        Course course = requireOwnCourse(userId, lesson.getCourseId());
+        Course course = requireOwnCourse(profile, lesson.getCourseId());
         requireEditable(course);
+        requireOwnVideoKey(profile, request.videoKey());
 
         lesson.setTitle(request.title().trim());
         lesson.setSort(request.sort() == null ? lesson.getSort() : request.sort());
@@ -214,9 +223,7 @@ public class CourseTeacherService {
         String newKey = StringUtils.hasText(request.videoKey()) ? request.videoKey().trim() : null;
         if (newKey != null && !newKey.equals(lesson.getVideoKey())) {
             String oldKey = lesson.getVideoKey();
-            lessonMapper.updateVideo(lessonId, newKey,
-                    request.durationSeconds() == null ? 0 : request.durationSeconds(),
-                    request.sizeBytes() == null ? 0L : request.sizeBytes());
+            lessonMapper.updateVideo(lessonId, newKey, resolveDuration(newKey), resolveSize(newKey));
             fileStorage.delete(oldKey);
         }
     }
@@ -244,6 +251,11 @@ public class CourseTeacherService {
 
     private Course requireOwnCourse(Long userId, Long courseId) {
         TeacherProfile profile = requireApprovedTeacher(userId);
+        return requireOwnCourse(profile, courseId);
+    }
+
+    /** 已经拿到档案时用这个，避免同一个请求里重复查一次讲师档案 */
+    private Course requireOwnCourse(TeacherProfile profile, Long courseId) {
         Course course = courseMapper.findById(courseId);
         if (course == null) {
             throw BizException.of(ErrorCode.COURSE_NOT_FOUND);
@@ -253,6 +265,49 @@ public class CourseTeacherService {
             throw BizException.of(ErrorCode.COURSE_NOT_FOUND);
         }
         return course;
+    }
+
+    /**
+     * 校验视频对象归属。
+     * key 是前端传回的，不校验的话 A 只要拿到 B 目录下的对象键就能把它写进自己的课时。
+     */
+    private void requireOwnVideoKey(TeacherProfile profile, String videoKey) {
+        if (!StringUtils.hasText(videoKey)) {
+            return;
+        }
+        if (!fileStorage.ownsKey(videoKey, "video/" + profile.getId())) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "视频不属于当前讲师");
+        }
+    }
+
+    private void requireOwnCoverKey(TeacherProfile profile, String coverKey) {
+        if (!StringUtils.hasText(coverKey)) {
+            return;
+        }
+        if (!fileStorage.ownsKey(coverKey, "cover/" + profile.getId())) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "封面不属于当前讲师");
+        }
+    }
+
+    /**
+     * 时长以文件为准，不用前端传的。
+     * 解析不出来就拒绝，而不是当 0：时长为 0 会让完成判定永远不成立，
+     * 学员看完了进度也不动，比报错更难排查。
+     */
+    private int resolveDuration(String videoKey) {
+        if (!StringUtils.hasText(videoKey)) {
+            return 0;
+        }
+        Integer seconds = mp4DurationReader.read(fileStorage, videoKey);
+        if (seconds == null || seconds <= 0) {
+            throw new BizException(ErrorCode.INVALID_PARAM,
+                    "无法解析视频时长，请上传标准 mp4 文件");
+        }
+        return seconds;
+    }
+
+    private long resolveSize(String videoKey) {
+        return StringUtils.hasText(videoKey) ? fileStorage.size(videoKey) : 0L;
     }
 
     private CourseLesson requireLesson(Long lessonId) {

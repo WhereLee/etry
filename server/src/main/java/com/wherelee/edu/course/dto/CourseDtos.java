@@ -39,7 +39,10 @@ public final class CourseDtos {
     ) {
     }
 
-    /** 建课时视频可以为空：允许先排目录、后补视频 */
+    /**
+     * 建课时。不接收时长和文件大小：
+     * 这两个值服务端自己从对象里读——前端传时长的话，填 1 秒就能让学员"一秒学完"。
+     */
     public record LessonSaveRequest(
 
             @NotBlank(message = "课时标题不能为空")
@@ -48,11 +51,7 @@ public final class CourseDtos {
 
             Integer sort,
 
-            String videoKey,
-
-            Integer durationSeconds,
-
-            Long sizeBytes
+            String videoKey
     ) {
     }
 
