@@ -23,6 +23,7 @@ public class CourseAssembler {
     private final TeacherProfileMapper profileMapper;
     private final CourseChapterMapper chapterMapper;
     private final CourseLessonMapper lessonMapper;
+    private final CourseReviewMapper reviewMapper;
     private final FileStorage fileStorage;
 
     /**
@@ -73,6 +74,8 @@ public class CourseAssembler {
                                 .map(this::lessonVO).toList()))
                 .toList();
 
+        RatingStat rating = reviewMapper.statByCourse(course.getId());
+
         return new CourseDtos.CourseDetailVO(
                 course.getId(),
                 course.getTeacherId(),
@@ -86,6 +89,9 @@ public class CourseAssembler {
                 course.getRejectReason(),
                 course.getPublishedAt(),
                 course.getCreatedAt(),
+                // 保留一位小数，避免前端拿到 4.3333333 这种值
+                Math.round(rating.avgRating() * 10) / 10.0,
+                rating.total(),
                 chapterVOs);
     }
 

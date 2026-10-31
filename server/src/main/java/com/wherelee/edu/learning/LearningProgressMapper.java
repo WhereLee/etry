@@ -47,6 +47,10 @@ public interface LearningProgressMapper {
     LearningProgress findByUserAndLesson(@Param("userId") Long userId,
                                          @Param("lessonId") Long lessonId);
 
+    /** 学过没有：评价一门课的前提是有学习记录 */
+    @Select("SELECT COUNT(*) FROM t_learning_progress WHERE user_id = #{userId} AND course_id = #{courseId}")
+    long countByUserAndCourse(@Param("userId") Long userId, @Param("courseId") Long courseId);
+
     /**
      * 我的学习：按最近学习时间倒序列出课程，带进度。
      * 走 idx_progress_user_course(user_id, course_id, updated_at)。

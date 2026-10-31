@@ -131,6 +131,9 @@ public final class CourseDtos {
             String rejectReason,
             LocalDateTime publishedAt,
             LocalDateTime createdAt,
+            /** 评分均分，没评价时为 0 */
+            double ratingAvg,
+            long ratingCount,
             List<ChapterVO> chapters
     ) {
     }
