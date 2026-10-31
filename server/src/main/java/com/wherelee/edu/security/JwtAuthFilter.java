@@ -115,14 +115,34 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 公开路径：完全匹配的白名单 + 公告前缀 + 讲师主页前缀。
+     * 公开路径：完全匹配的白名单 + 公告前缀 + 讲师主页前缀 + 课程列表与详情。
      * /api/teachers 带 s，不会误伤 /api/teacher/apply（那是讲师本人操作，必须登录）。
      * 同理 /api/admin/notices 不会被 /api/notices 前缀命中。
      */
     private boolean isPublicPath(String path) {
         return WHITE_LIST.contains(path)
                 || path.startsWith("/api/notices")
-                || path.startsWith("/api/teachers");
+                || path.startsWith("/api/teachers")
+                || isPublicCoursePath(path);
+    }
+
+    /**
+     * 课程列表和详情允许匿名访问：分享出去的课程链接要能打开，
+     * 潜在学员也得先看看有什么课再决定注册。
+     *
+     * 不能用前缀匹配：/api/courses 一前缀会把播放、评价、问答全放出去。
+     * 这里只认「/api/courses」和「/api/courses/{数字}」两种形态。
+     */
+    private boolean isPublicCoursePath(String path) {
+        if ("/api/courses".equals(path)) {
+            return true;
+        }
+        String prefix = "/api/courses/";
+        if (!path.startsWith(prefix)) {
+            return false;
+        }
+        String rest = path.substring(prefix.length());
+        return !rest.isEmpty() && rest.chars().allMatch(Character::isDigit);
     }
 
     /**
