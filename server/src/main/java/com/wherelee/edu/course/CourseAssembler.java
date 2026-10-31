@@ -93,6 +93,7 @@ public class CourseAssembler {
                 teacherName(course.getTeacherId()),
                 course.getSubjectId(),
                 course.getLevel(),
+                course.isSequential(),
                 tags,
                 course.getTitle(),
                 course.getSummary(),

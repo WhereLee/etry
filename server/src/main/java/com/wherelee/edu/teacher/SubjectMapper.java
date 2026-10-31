@@ -42,4 +42,8 @@ public interface SubjectMapper {
     /** 删除前检查是否还有讲师挂在这个学科下 */
     @Select("SELECT COUNT(*) FROM t_teacher_subject WHERE subject_id = #{subjectId}")
     long countTeachers(@Param("subjectId") Long subjectId);
+
+    /** 删除前检查是否还有课程用这个学科：删了它们会在按学科筛选里永远消失 */
+    @Select("SELECT COUNT(*) FROM t_course WHERE subject_id = #{subjectId}")
+    long countCourses(@Param("subjectId") Long subjectId);
 }

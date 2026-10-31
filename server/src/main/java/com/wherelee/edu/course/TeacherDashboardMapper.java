@@ -30,7 +30,8 @@ public interface TeacherDashboardMapper {
             + "  WHERE c.teacher_id = #{teacherId} "
             + "  GROUP BY p.user_id, p.course_id "
             + "  HAVING SUM(p.completed) >= "
-            + "    (SELECT COUNT(*) FROM t_course_lesson l WHERE l.course_id = p.course_id)"
+            + "    (SELECT COUNT(*) FROM t_course_lesson l WHERE l.course_id = p.course_id "
+            + "      AND l.video_key IS NOT NULL AND l.video_key <> '')"
             + ") t")
     long countCompleters(@Param("teacherId") Long teacherId);
 
@@ -54,7 +55,8 @@ public interface TeacherDashboardMapper {
             + "      SELECT p2.user_id FROM t_learning_progress p2 WHERE p2.course_id = c.id "
             + "      GROUP BY p2.user_id "
             + "      HAVING SUM(p2.completed) >= "
-            + "        (SELECT COUNT(*) FROM t_course_lesson l WHERE l.course_id = c.id)"
+            + "        (SELECT COUNT(*) FROM t_course_lesson l WHERE l.course_id = c.id "
+            + "          AND l.video_key IS NOT NULL AND l.video_key <> '')"
             + "  ) x) AS completers, "
             + "  (SELECT IFNULL(AVG(r.rating), 0) FROM t_course_review r "
             + "     WHERE r.course_id = c.id) AS avg_rating, "

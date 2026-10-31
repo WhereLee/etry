@@ -106,8 +106,10 @@ Check "position moved back" $p3.data.lessons[0].positionSeconds 10
 
 $null = Send-Api "Post" "/api/learning/progress" @{ lessonId = $lesson2; positionSeconds = 100 } $st
 $p4 = Send-Api "Get" "/api/learning/courses/$courseId" $null $st
-Check "2 of 3 lessons done" $p4.data.completedLessons 2
-Check "percent 66" $p4.data.percent 66
+# only the 2 lessons with video count: an empty lesson can never be completed,
+# so counting it would make the course percent never reach 100
+Check "2 of 2 graded lessons done" $p4.data.completedLessons 2
+Check "percent 100" $p4.data.percent 100
 
 # ---------- 2. my courses ----------
 Write-Host ""
@@ -116,7 +118,7 @@ $mine = Send-Api "Get" "/api/learning/my-courses?limit=10" $null $st
 Check "my courses code" $mine.code 0
 $row = @($mine.data | Where-Object { $_.courseId -eq $courseId })[0]
 Check "course in my list" ($row -ne $null) $true
-Check "total lessons" $row.totalLessons 3
+Check "total lessons" $row.totalLessons 2
 Check "completed lessons" $row.completedLessons 2
 
 # ---------- 3. guards ----------

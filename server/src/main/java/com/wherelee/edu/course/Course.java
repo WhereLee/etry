@@ -52,10 +52,10 @@ public class Course {
 
     /**
      * 能否物理删除。只有从未上架过的课能删：
-     * 上架过的可能已经有人学过，删了就是把别人看过的内容删了。
+     * published_at 有值说明它曾对学员暴露过，可能已经有人学过、评过、问过。
      * （等有订单之后，这条就是「已售课程不能删」的底层约束）
      */
     public boolean isDeletable() {
-        return STATUS_DRAFT.equals(status) || STATUS_REJECTED.equals(status);
+        return (STATUS_DRAFT.equals(status) || STATUS_REJECTED.equals(status)) && publishedAt == null;
     }
 }

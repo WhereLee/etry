@@ -51,18 +51,23 @@ public interface LearningProgressMapper {
     @Select("SELECT COUNT(*) FROM t_learning_progress WHERE user_id = #{userId} AND course_id = #{courseId}")
     long countByUserAndCourse(@Param("userId") Long userId, @Param("courseId") Long courseId);
 
+    /** 课程删除时清进度，否则「我的学习」里会留下指向不存在课程的记录 */
+    @org.apache.ibatis.annotations.Delete("DELETE FROM t_learning_progress WHERE course_id = #{courseId}")
+    int deleteByCourse(@Param("courseId") Long courseId);
+
     /**
      * 我的学习：按最近学习时间倒序列出课程，带进度。
      * 走 idx_progress_user_course(user_id, course_id, updated_at)。
      */
-    @Select("SELECT c.id AS course_id, c.title, c.cover_key, "
-            + "(SELECT COUNT(*) FROM t_course_lesson l WHERE l.course_id = c.id) AS total_lessons, "
+    @Select("SELECT c.id AS course_id, c.title, c.cover_key, c.status, "
+            + "(SELECT COUNT(*) FROM t_course_lesson l WHERE l.course_id = c.id "
+            + "AND l.video_key IS NOT NULL AND l.video_key <> '') AS total_lessons, "
             + "COUNT(CASE WHEN p.completed = 1 THEN 1 END) AS completed_lessons, "
             + "MAX(p.updated_at) AS last_learned_at "
             + "FROM t_learning_progress p "
             + "JOIN t_course c ON c.id = p.course_id "
             + "WHERE p.user_id = #{userId} "
-            + "GROUP BY c.id, c.title, c.cover_key "
+            + "GROUP BY c.id, c.title, c.cover_key, c.status "
             + "ORDER BY MAX(p.updated_at) DESC "
             + "LIMIT #{limit}")
     List<MyLearningRow> findRecentCourses(@Param("userId") Long userId, @Param("limit") int limit);

@@ -22,10 +22,12 @@ public interface CourseLessonMapper {
 
     /**
      * 按「章节 sort、课时 sort」的全课顺序取课时，顺序学习的前置校验用。
-     * 上面的 findByCourseId 是按 chapter_id 排的，和章节本身的 sort 不一定一致。
+     *
+     * 只算有视频的课时：没视频的课时上报不了进度、永远完不成，
+     * 一旦计入顺序，它后面的课时会被永久锁死。
      */
     @Select("SELECT l.* FROM t_course_lesson l JOIN t_course_chapter c ON c.id = l.chapter_id "
-            + "WHERE l.course_id = #{courseId} "
+            + "WHERE l.course_id = #{courseId} AND l.video_key IS NOT NULL AND l.video_key <> '' "
             + "ORDER BY c.sort, c.id, l.sort, l.id")
     List<CourseLesson> findOrderedByCourseId(@Param("courseId") Long courseId);
 

@@ -32,8 +32,9 @@ public interface CourseFavoriteMapper {
      * 我的收藏：直接 join 出课程实体，交给 CourseAssembler 统一组装，
      * 不另造一套 VO，避免列表字段和别处不一致。
      */
-    @Select("SELECT c.id, c.teacher_id, c.subject_id, c.title, c.summary, c.description, "
-            + "c.cover_key, c.status, c.reject_reason, c.published_at, c.created_at, c.updated_at "
+    @Select("SELECT c.id, c.teacher_id, c.subject_id, c.level, c.sequential, c.title, c.summary, "
+            + "c.description, c.cover_key, c.status, c.reject_reason, c.published_at, "
+            + "c.created_at, c.updated_at "
             + "FROM t_course_favorite f JOIN t_course c ON c.id = f.course_id "
             + "WHERE f.user_id = #{userId} "
             + "ORDER BY f.created_at DESC, f.id DESC "

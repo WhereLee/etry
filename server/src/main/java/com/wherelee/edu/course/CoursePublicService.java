@@ -5,8 +5,6 @@ import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.Keywords;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.course.dto.CourseDtos;
-import com.wherelee.edu.learning.LearningProgress;
-import com.wherelee.edu.learning.LearningProgressMapper;
 import com.wherelee.edu.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +29,7 @@ public class CoursePublicService {
     private final CourseMapper courseMapper;
     private final CourseLessonMapper lessonMapper;
     private final CourseAssembler assembler;
-    private final LearningProgressMapper progressMapper;
+    private final SequentialChecker sequentialChecker;
     private final FileStorage fileStorage;
 
     public PageResult<CourseDtos.CourseSummaryVO> page(Long subjectId, Long tagId, String level,
@@ -75,34 +73,9 @@ public class CoursePublicService {
         if (course == null || !Course.STATUS_PUBLISHED.equals(course.getStatus())) {
             throw BizException.of(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (course.isSequential()) {
-            requirePreviousCompleted(userId, course.getId(), lessonId);
-        }
+        sequentialChecker.requirePreviousCompleted(userId, course, lessonId);
         String playUrl = fileStorage.url(lesson.getVideoKey());
         log.info("获取播放地址 lessonId={} courseId={}", lessonId, course.getId());
         return new CourseDtos.PlayVO(lesson.getId(), lesson.getTitle(), playUrl);
-    }
-
-    /**
-     * 顺序课的前置校验：按「章节 sort、课时 sort」的全课顺序，
-     * 上一节没学完就不给看。第一个课时直接放行。
-     */
-    private void requirePreviousCompleted(Long userId, Long courseId, Long lessonId) {
-        List<CourseLesson> ordered = lessonMapper.findOrderedByCourseId(courseId);
-        int index = -1;
-        for (int i = 0; i < ordered.size(); i++) {
-            if (ordered.get(i).getId().equals(lessonId)) {
-                index = i;
-                break;
-            }
-        }
-        if (index <= 0) {
-            return;
-        }
-        Long previousId = ordered.get(index - 1).getId();
-        LearningProgress previous = progressMapper.findByUserAndLesson(userId, previousId);
-        if (previous == null || !Boolean.TRUE.equals(previous.getCompleted())) {
-            throw BizException.of(ErrorCode.SEQUENTIAL_REQUIRED);
-        }
     }
 }

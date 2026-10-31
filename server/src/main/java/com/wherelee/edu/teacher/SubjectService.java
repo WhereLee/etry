@@ -68,6 +68,10 @@ public class SubjectService {
         if (subjectMapper.countTeachers(id) > 0) {
             throw BizException.of(ErrorCode.SUBJECT_IN_USE);
         }
+        long courses = subjectMapper.countCourses(id);
+        if (courses > 0) {
+            throw new BizException(ErrorCode.SUBJECT_IN_USE, "还有 " + courses + " 门课程在用这个学科");
+        }
         subjectMapper.deleteById(id);
         log.info("删除学科 id={} code={}", id, subject.getCode());
     }

@@ -6,8 +6,10 @@ import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.course.dto.CourseDtos;
 import com.wherelee.edu.storage.FileStorage;
 import com.wherelee.edu.storage.Mp4DurationReader;
+import com.wherelee.edu.learning.LearningProgressMapper;
 import com.wherelee.edu.teacher.TeacherProfile;
 import com.wherelee.edu.teacher.TeacherProfileMapper;
+import com.wherelee.edu.teacher.SubjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,7 +39,12 @@ public class CourseTeacherService {
     private final CourseMaterialMapper materialMapper;
     private final CourseTagMapper courseTagMapper;
     private final TagMapper tagMapper;
+    private final CourseReviewMapper reviewMapper;
+    private final CourseFavoriteMapper favoriteMapper;
+    private final CourseQuestionMapper questionMapper;
+    private final LearningProgressMapper progressMapper;
     private final TeacherProfileMapper profileMapper;
+    private final SubjectMapper subjectMapper;
     private final CourseAssembler assembler;
     private final FileStorage fileStorage;
     private final Mp4DurationReader mp4DurationReader;
@@ -47,6 +54,7 @@ public class CourseTeacherService {
     @Transactional
     public Long create(Long userId, CourseDtos.SaveRequest request) {
         TeacherProfile profile = requireApprovedTeacher(userId);
+        requireSubject(request.subjectId());
         requireOwnCoverKey(profile, request.coverKey());
 
         Course course = new Course();
@@ -73,6 +81,7 @@ public class CourseTeacherService {
         if (!course.isEditable()) {
             throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "只有草稿、被驳回或已下架的课程可以修改");
         }
+        requireSubject(request.subjectId());
         requireOwnCoverKey(profile, request.coverKey());
         course.setSubjectId(request.subjectId());
         course.setLevel(StringUtils.hasText(request.level()) ? request.level().trim() : null);
@@ -82,6 +91,7 @@ public class CourseTeacherService {
         course.setDescription(request.description());
         course.setCoverKey(request.coverKey());
         courseMapper.update(course);
+        saveTags(course.getId(), request.tagIds());
         log.info("课程修改 courseId={}", courseId);
     }
 
@@ -102,6 +112,12 @@ public class CourseTeacherService {
         lessonMapper.deleteByCourseId(courseId);
         materialMapper.deleteByCourse(courseId);
         courseTagMapper.deleteByCourse(courseId);
+        // 反馈与学习数据跟着课程走：留下就是指向不存在课程的孤儿记录
+        questionMapper.deleteAnswersByCourse(courseId);
+        questionMapper.deleteByCourse(courseId);
+        reviewMapper.deleteByCourse(courseId);
+        favoriteMapper.deleteByCourse(courseId);
+        progressMapper.deleteByCourse(courseId);
         chapterMapper.deleteByCourseId(courseId);
         courseMapper.deleteById(courseId);
         log.info("课程删除 courseId={}", courseId);
@@ -122,7 +138,15 @@ public class CourseTeacherService {
         if (!hasVideo) {
             throw new BizException(ErrorCode.INVALID_PARAM, "至少上传一个课时视频后才能提交审核");
         }
-        courseMapper.updateStatus(courseId, Course.STATUS_PENDING, null, null);
+        if (course.isSequential()) {
+            boolean missing = lessonMapper.findByCourseId(courseId).stream()
+                    .anyMatch(lesson -> lesson.getVideoKey() == null || lesson.getVideoKey().isBlank());
+            if (missing) {
+                throw new BizException(ErrorCode.INVALID_PARAM, "顺序课要求每个课时都有视频，否则后面的课时会被锁死");
+            }
+        }
+        // 保留首次上架时间：清空后再上架会被当成新课顶到列表最前
+        courseMapper.updateStatus(courseId, Course.STATUS_PENDING, null, course.getPublishedAt());
         log.info("课程提交审核 courseId={}", courseId);
     }
 
@@ -322,6 +346,13 @@ public class CourseTeacherService {
 
     private long resolveSize(String videoKey) {
         return StringUtils.hasText(videoKey) ? fileStorage.size(videoKey) : 0L;
+    }
+
+    /** 学科必须真实存在：否则课程会落在按学科筛选永远看不到的地方 */
+    private void requireSubject(Long subjectId) {
+        if (subjectId == null || subjectMapper.findById(subjectId) == null) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "学科不存在");
+        }
     }
 
     /**

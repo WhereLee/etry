@@ -10,6 +10,8 @@ public record MyLearningRow(
         Long courseId,
         String title,
         String coverKey,
+        /** 课程状态：下架后仍留在列表里，由前端置灰，不能让学员点进去才发现 404 */
+        String status,
         long totalLessons,
         long completedLessons,
         LocalDateTime lastLearnedAt

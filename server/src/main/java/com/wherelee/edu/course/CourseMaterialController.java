@@ -2,6 +2,7 @@ package com.wherelee.edu.course;
 
 import com.wherelee.edu.common.ApiResponse;
 import com.wherelee.edu.course.dto.MaterialDtos;
+import com.wherelee.edu.rbac.RequirePermission;
 import com.wherelee.edu.security.CurrentUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -58,5 +59,12 @@ public class CourseMaterialController {
     @GetMapping("/api/courses/{id}/materials")
     public ApiResponse<List<MaterialDtos.MaterialVO>> listForLearner(@PathVariable Long id) {
         return ApiResponse.ok(materialService.listForLearner(id));
+    }
+
+    /** 管理员审核时看课件：不限课程状态 */
+    @GetMapping("/api/admin/courses/{id}/materials")
+    @RequirePermission("course:review")
+    public ApiResponse<List<MaterialDtos.MaterialVO>> listForAdmin(@PathVariable Long id) {
+        return ApiResponse.ok(materialService.listForAdmin(id));
     }
 }

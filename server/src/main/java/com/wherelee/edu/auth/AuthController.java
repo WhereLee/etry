@@ -4,6 +4,7 @@ import com.wherelee.edu.audit.AuditLog;
 import com.wherelee.edu.auth.dto.ChangePasswordRequest;
 import com.wherelee.edu.auth.dto.LoginRequest;
 import com.wherelee.edu.auth.dto.LoginResponse;
+import com.wherelee.edu.auth.dto.PasswordChangeResult;
 import com.wherelee.edu.auth.dto.RegisterRequest;
 import com.wherelee.edu.auth.dto.UserMeVO;
 import com.wherelee.edu.common.ApiResponse;
@@ -52,11 +53,11 @@ public class AuthController {
         return ApiResponse.ok();
     }
 
+    /** 改密后会返回 needRelogin=true：token_version 变了，刚才这个 token 也失效了 */
     @PutMapping("/password")
     @AuditLog(action = "PASSWORD_CHANGE", targetType = "USER")
-    public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        authService.changePassword(request.oldPassword(), request.newPassword());
-        return ApiResponse.ok();
+    public ApiResponse<PasswordChangeResult> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        return ApiResponse.ok(authService.changePassword(request.oldPassword(), request.newPassword()));
     }
 
     @GetMapping("/me")

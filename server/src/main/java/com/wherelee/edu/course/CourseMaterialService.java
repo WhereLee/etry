@@ -124,6 +124,14 @@ public class CourseMaterialService {
         return toVOs(materialMapper.findByCourseId(courseId));
     }
 
+    /**
+     * 管理员审核时看资料：不限课程状态、不看归属。
+     * 不看就审，等于闭眼点通过——课件也是学员会拿到的东西。
+     */
+    public List<MaterialDtos.MaterialVO> listForAdmin(Long courseId) {
+        return toVOs(materialMapper.findByCourseId(courseId));
+    }
+
     /** 课程删除时连带清理 */
     @Transactional
     public void deleteByCourse(Long courseId) {

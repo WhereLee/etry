@@ -3,8 +3,6 @@ package com.wherelee.edu.storage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
-
 /**
  * 从 mp4 文件里读真实时长。
  *
@@ -34,53 +32,37 @@ public class Mp4DurationReader {
             return null;
         }
 
-        Integer duration = findInMoov(storage.readRange(key, 0, Math.min(HEAD_PROBE, size)));
+        Integer duration = findMvhdInBytes(storage.readRange(key, 0, Math.min(HEAD_PROBE, size)));
         if (duration != null) {
             return duration;
         }
 
         long tailStart = Math.max(0, size - TAIL_PROBE);
-        duration = findInMoov(storage.readRange(key, tailStart, size - tailStart));
+        duration = findMvhdInBytes(storage.readRange(key, tailStart, size - tailStart));
         if (duration == null) {
             log.warn("无法解析视频时长 key={} size={}", key, size);
         }
         return duration;
     }
 
-    /** 在给定字节里顺序找 moov，找到就在它内部找 mvhd */
-    private Integer findInMoov(byte[] data) {
-        int offset = 0;
-        while (offset + 8 <= data.length) {
-            int boxSize = (int) readUInt32(data, offset);
-            String type = type(data, offset);
-            if (boxSize < 8) {
-                return null;
+    /**
+     * 直接在字节流里找 'mvhd' 签名，不依赖 box 边界。
+     *
+     * 为什么不走 box 链：读尾部时 buffer 的起点是文件中间的任意位置，
+     * 从那里按 size/type 往下走必然对不上边界。而 moov 在尾部正是最常见的结构
+     * （ffmpeg 默认、相机导出都是），所以按签名搜最稳。
+     *
+     * 误命中视频像素数据也无妨：readMvhd 会因 timescale/duration 非法而返回 null，继续往后找。
+     */
+    private Integer findMvhdInBytes(byte[] data) {
+        for (int i = 0; i + 8 < data.length; i++) {
+            if (data[i] == 'm' && data[i + 1] == 'v' && data[i + 2] == 'h' && data[i + 3] == 'd') {
+                // mvhd 的 type 在 box 起始 +4，所以 payload 从 type 之后开始
+                Integer seconds = readMvhd(data, i + 4);
+                if (seconds != null) {
+                    return seconds;
+                }
             }
-            if ("moov".equals(type)) {
-                int innerLen = Math.min(boxSize - 8, data.length - offset - 8);
-                return findMvhd(data, offset + 8, innerLen);
-            }
-            if (offset + boxSize > data.length) {
-                // 这个 box 跨出了探测范围，后面的数据没读到
-                return null;
-            }
-            offset += boxSize;
-        }
-        return null;
-    }
-
-    private Integer findMvhd(byte[] data, int start, int length) {
-        int offset = start;
-        int end = start + length;
-        while (offset + 8 <= end) {
-            int boxSize = (int) readUInt32(data, offset);
-            if (boxSize < 8) {
-                return null;
-            }
-            if ("mvhd".equals(type(data, offset))) {
-                return readMvhd(data, offset + 8);
-            }
-            offset += boxSize;
         }
         return null;
     }
@@ -110,10 +92,6 @@ public class Mp4DurationReader {
         }
         long seconds = duration / timescale;
         return seconds > Integer.MAX_VALUE ? null : (int) seconds;
-    }
-
-    private String type(byte[] data, int offset) {
-        return new String(data, offset + 4, 4, StandardCharsets.ISO_8859_1);
     }
 
     private long readUInt32(byte[] data, int offset) {

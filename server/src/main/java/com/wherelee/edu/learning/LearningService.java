@@ -6,6 +6,7 @@ import com.wherelee.edu.course.Course;
 import com.wherelee.edu.course.CourseLesson;
 import com.wherelee.edu.course.CourseLessonMapper;
 import com.wherelee.edu.course.CourseMapper;
+import com.wherelee.edu.course.SequentialChecker;
 import com.wherelee.edu.learning.dto.LearningDtos;
 import com.wherelee.edu.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class LearningService {
     private final CourseMapper courseMapper;
     private final CourseLessonMapper lessonMapper;
     private final FileStorage fileStorage;
+    private final SequentialChecker sequentialChecker;
 
     /**
      * 上报进度。播放器大概每 10 秒调一次，所以这里不能做重逻辑：
@@ -52,6 +54,8 @@ public class LearningService {
         if (course == null || !Course.STATUS_PUBLISHED.equals(course.getStatus())) {
             throw BizException.of(ErrorCode.COURSE_NOT_FOUND);
         }
+        // 和播放接口用同一套顺序校验：只拦播放的话，直接上报第 N 节完成就能解锁下一节
+        sequentialChecker.requirePreviousCompleted(userId, course, lesson.getId());
 
         int duration = lesson.getDurationSeconds() == null ? 0 : lesson.getDurationSeconds();
         int position = request.positionSeconds();
@@ -70,7 +74,9 @@ public class LearningService {
             throw BizException.of(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        List<CourseLesson> lessons = lessonMapper.findByCourseId(courseId);
+        // 按「章节 sort、课时 sort」取，且只含有视频的课时：
+        // 没视频的课时上报不了进度，计入分母会让完成率永远到不了 100%
+        List<CourseLesson> lessons = lessonMapper.findOrderedByCourseId(courseId);
         Map<Long, LearningProgress> byLesson = progressMapper.findByUserAndCourse(userId, courseId)
                 .stream()
                 .collect(Collectors.toMap(LearningProgress::getLessonId, p -> p));
@@ -87,7 +93,7 @@ public class LearningService {
 
         long completedLessons = lessonVOs.stream().filter(LearningDtos.LessonProgressVO::completed).count();
         return new LearningDtos.CourseProgressVO(
-                course.getId(), course.getTitle(), lessons.size(), completedLessons,
+                course.getId(), course.getTitle(), course.isSequential(), lessons.size(), completedLessons,
                 percent(completedLessons, lessons.size()), lessonVOs);
     }
 
@@ -99,6 +105,7 @@ public class LearningService {
                         row.courseId(),
                         row.title(),
                         fileStorage.url(row.coverKey()),
+                        row.status(),
                         row.totalLessons(),
                         row.completedLessons(),
                         percent(row.completedLessons(), row.totalLessons()),

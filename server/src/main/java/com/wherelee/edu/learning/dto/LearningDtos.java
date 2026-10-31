@@ -32,6 +32,8 @@ public final class LearningDtos {
     public record CourseProgressVO(
             Long courseId,
             String title,
+            /** 是否强制按顺序学：前端据此渲染锁定态 */
+            boolean sequential,
             long totalLessons,
             long completedLessons,
             int percent,
@@ -43,6 +45,8 @@ public final class LearningDtos {
             Long courseId,
             String title,
             String coverUrl,
+            /** 课程状态：非 PUBLISHED 时前端应置灰，不要点进去才发现课程已下架 */
+            String status,
             long totalLessons,
             long completedLessons,
             int percent,

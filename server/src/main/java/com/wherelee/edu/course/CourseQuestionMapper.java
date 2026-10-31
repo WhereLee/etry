@@ -50,6 +50,11 @@ public interface CourseQuestionMapper {
     @Delete("DELETE FROM t_course_question WHERE course_id = #{courseId}")
     int deleteByCourse(@Param("courseId") Long courseId);
 
+    /** 课程删除时先清回答：回答表只存 question_id，不跟着问题走会成孤儿 */
+    @Delete("DELETE FROM t_course_answer WHERE question_id IN "
+            + "(SELECT id FROM t_course_question WHERE course_id = #{courseId})")
+    int deleteAnswersByCourse(@Param("courseId") Long courseId);
+
     /**
      * 讲师工作台用：某个讲师名下所有课程里，「有人问但还没有任何回答」的问题数。
      * 这是讲师最该先处理的事。

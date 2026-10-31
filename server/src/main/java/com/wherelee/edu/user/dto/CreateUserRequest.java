@@ -1,6 +1,7 @@
 package com.wherelee.edu.user.dto;
 
 import com.wherelee.edu.teacher.dto.TeacherProfileInput;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -36,6 +37,7 @@ public record CreateUserRequest(
         /**
          * 仅在角色包含 TEACHER 时必填：管理员直接把讲师身份和档案一起发出去。
          */
+        @Valid
         TeacherProfileInput teacherProfile
 ) {
 }

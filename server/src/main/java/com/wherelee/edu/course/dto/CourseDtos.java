@@ -134,6 +134,8 @@ public final class CourseDtos {
             String teacherName,
             Long subjectId,
             String level,
+            /** 是否强制按顺序学：前端要据此渲染锁定态 */
+            boolean sequential,
             List<TagDtos.TagVO> tags,
             String title,
             String summary,

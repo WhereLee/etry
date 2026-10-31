@@ -1,6 +1,7 @@
 package com.wherelee.edu.auth;
 
 import com.wherelee.edu.auth.dto.LoginResponse;
+import com.wherelee.edu.auth.dto.PasswordChangeResult;
 import com.wherelee.edu.auth.dto.RegisterRequest;
 import com.wherelee.edu.auth.dto.UserMeVO;
 import com.wherelee.edu.common.BizException;
@@ -113,7 +114,7 @@ public class AuthService {
      * 修改密码：令牌版本 +1，该用户所有设备的 token 立即失效。
      */
     @Transactional
-    public void changePassword(String oldPassword, String newPassword) {
+    public PasswordChangeResult changePassword(String oldPassword, String newPassword) {
         Long userId = UserContext.requireUserId();
         User user = userMapper.findById(userId);
         if (user == null) {
@@ -124,6 +125,8 @@ public class AuthService {
         }
         userMapper.updatePasswordAndBumpVersion(userId, passwordEncoder.encode(newPassword));
         log.info("用户修改密码 userId={}", userId);
+        // 版本号已变，刚才这个 token 也失效了，前端必须重新登录
+        return new PasswordChangeResult(true);
     }
 
     public UserMeVO me() {
