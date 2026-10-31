@@ -36,6 +36,7 @@ public class LearningService {
     private final CourseLessonMapper lessonMapper;
     private final FileStorage fileStorage;
     private final SequentialChecker sequentialChecker;
+    private final LearningProperties learningProperties;
 
     /**
      * 上报进度。播放器大概每 10 秒调一次，所以这里不能做重逻辑：
@@ -62,9 +63,31 @@ public class LearningService {
         if (duration > 0 && position > duration) {
             position = duration;
         }
-        boolean completed = LearningProgress.isCompleted(position, duration);
+        boolean reachedEnd = LearningProgress.isCompleted(position, duration);
+        boolean completed = reachedEnd
+                && (!learningProperties.strictMode() || enoughTimeElapsed(userId, lesson.getId(), duration));
 
         progressMapper.upsert(userId, course.getId(), lesson.getId(), position, duration, completed);
+    }
+
+    /**
+     * 严格模式用：从第一次上报到现在，真实经过的秒数要够 90% 的课时时长。
+     *
+     * 挡的是「一次请求直接把位置报到底」：那时 first_reported_at 就是此刻，
+     * 经过时间为 0，永远不成立。正常看到结尾的人，从开头第一条上报算起，时间自然够。
+     */
+    private boolean enoughTimeElapsed(Long userId, Long lessonId, int duration) {
+        if (duration <= 0) {
+            return false;
+        }
+        LearningProgress existing = progressMapper.findByUserAndLesson(userId, lessonId);
+        if (existing == null || existing.getFirstReportedAt() == null) {
+            return false;
+        }
+        long elapsed = java.time.Duration
+                .between(existing.getFirstReportedAt(), java.time.LocalDateTime.now())
+                .toSeconds();
+        return elapsed >= duration * LearningProgress.COMPLETE_RATIO;
     }
 
     /** 某门课的进度：每个课时的位置 + 课程总进度 */

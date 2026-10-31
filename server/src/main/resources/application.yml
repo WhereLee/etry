@@ -75,6 +75,18 @@ app:
     # 否则审计里的来源 IP 等于随便填。
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
 
+  # 学习进度判定策略
+  learning:
+    # 开：完成 = 位置到 90% 且从第一次上报到现在真实过了 90% 的课时时长。
+    #     「一次请求直接报到底」这种刷法刷不出完成，但拖到结尾的人也要等够时间才能标完成。
+    # 关（默认）：只看位置。免费课没有证书和积分，刷进度的收益本来就低。
+    strict-mode: ${LEARNING_STRICT_MODE:false}
+
+  auth:
+    # 注册时用户名被占用，是否明说「已存在」。
+    # 关（默认）统一回「该用户名暂不可用」，避免注册接口变成账号枚举工具。
+    reveal-username-conflict: ${REVEAL_USERNAME_CONFLICT:false}
+
 logging:
   level:
     # 默认 info：debug 会把 Mapper 参数原样写进日志，

@@ -42,6 +42,7 @@ public class AuthService {
     private final LoginAttemptService loginAttemptService;
     private final PermissionService permissionService;
     private final ConfigService configService;
+    private final AuthProperties authProperties;
 
     /**
      * 注册即登录。新用户默认分配 STUDENT 角色，
@@ -49,12 +50,15 @@ public class AuthService {
      */
     @Transactional
     public LoginResponse register(RegisterRequest request) {
-        // 缺配置项时默认放行，避免有人误删一条记录导致注册全干涸
-        if (!configService.isEnabled(CONFIG_REGISTER_ENABLED, true)) {
+        // 默认关闭：内部平台以管理员开号为主，要放开在 t_config 的 register.enabled 改
+        if (!configService.isEnabled(CONFIG_REGISTER_ENABLED, false)) {
             throw BizException.of(ErrorCode.REGISTER_DISABLED);
         }
         if (userMapper.findByUsername(request.username()) != null) {
-            throw BizException.of(ErrorCode.USERNAME_EXISTS);
+            // 明说「已存在」等于把注册接口变成账号枚举工具，
+            // 登录那边特意合并了「账号不存在」和「密码错误」，这里不能又开一个口子
+            throw BizException.of(authProperties.revealUsernameConflict()
+                    ? ErrorCode.USERNAME_EXISTS : ErrorCode.REGISTER_CONFLICT);
         }
 
         User user = new User();

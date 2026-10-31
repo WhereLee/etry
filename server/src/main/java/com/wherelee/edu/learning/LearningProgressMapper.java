@@ -11,7 +11,7 @@ import java.util.List;
 public interface LearningProgressMapper {
 
     String COLUMNS = "id, user_id, course_id, lesson_id, position_seconds, duration_seconds, "
-            + "completed, created_at, updated_at";
+            + "completed, first_reported_at, created_at, updated_at";
 
     /**
      * 上报进度：有则更新，无则插入，一条 SQL 完成。
@@ -21,14 +21,17 @@ public interface LearningProgressMapper {
      *
      * completed 用 GREATEST 而不是直接赋值：看到过结尾就算学过，
      * 回看开头时不能把它清回 false。
+     *
+     * first_reported_at 用 COALESCE 保持第一次的值：严格模式靠它算「看了多久」。
      */
     @Insert("INSERT INTO t_learning_progress "
-            + "(user_id, course_id, lesson_id, position_seconds, duration_seconds, completed) "
-            + "VALUES (#{userId}, #{courseId}, #{lessonId}, #{positionSeconds}, #{durationSeconds}, #{completed}) "
+            + "(user_id, course_id, lesson_id, position_seconds, duration_seconds, completed, first_reported_at) "
+            + "VALUES (#{userId}, #{courseId}, #{lessonId}, #{positionSeconds}, #{durationSeconds}, #{completed}, NOW(3)) "
             + "ON DUPLICATE KEY UPDATE "
             + "course_id = VALUES(course_id), "
             + "position_seconds = VALUES(position_seconds), "
             + "duration_seconds = VALUES(duration_seconds), "
+            + "first_reported_at = COALESCE(first_reported_at, VALUES(first_reported_at)), "
             + "completed = GREATEST(completed, VALUES(completed))")
     int upsert(@Param("userId") Long userId,
                @Param("courseId") Long courseId,

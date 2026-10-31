@@ -21,6 +21,8 @@ public enum ErrorCode {
     NOT_FOUND(40400, "资源不存在"),
 
     USERNAME_EXISTS(40002, "用户名已被占用"),
+    /** 和 USERNAME_EXISTS 同一件事，但不明说「已存在」，避免注册接口被用来枚举账号 */
+    REGISTER_CONFLICT(40018, "该用户名暂不可用"),
     OLD_PASSWORD_WRONG(40003, "原密码不正确"),
     USER_NOT_FOUND(40401, "用户不存在"),
 

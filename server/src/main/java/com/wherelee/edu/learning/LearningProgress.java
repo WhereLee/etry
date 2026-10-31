@@ -19,6 +19,8 @@ public class LearningProgress {
     private Integer positionSeconds;
     private Integer durationSeconds;
     private Boolean completed;
+    /** 第一次上报的时间，严格模式靠它判断「真实过了多久」 */
+    private LocalDateTime firstReportedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
