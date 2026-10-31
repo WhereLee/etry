@@ -32,3 +32,6 @@ tools/chunked-body.json
 # Python 字节码（CI 脚本本地跑一次就会生成）
 __pycache__/
 *.pyc
+
+# browser verification screenshots
+verify-*.png
