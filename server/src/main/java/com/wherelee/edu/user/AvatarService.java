@@ -44,6 +44,14 @@ public class AvatarService {
      * 不会出现头像指向一个已被删掉的文件。
      */
     public String store(MultipartFile file) {
+        return store(file, AVATAR_DIR);
+    }
+
+    /**
+     * 同规格图片（课程封面）也走这里，只是目录不同。
+     * 校验规则完全一致：2MB、JPG/PNG/WebP、看真实文件头而不是声明的类型。
+     */
+    public String store(MultipartFile file, String directory) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.INVALID_PARAM, "请选择要上传的图片");
         }
@@ -69,7 +77,7 @@ public class AvatarService {
             throw new BizException(ErrorCode.INVALID_PARAM, "文件内容与声明的图片格式不符");
         }
 
-        String key = fileStorage.store(content, extension, AVATAR_DIR);
+        String key = fileStorage.store(content, extension, directory);
         log.info("图片已存入对象存储 key={} size={}", key, content.length);
         return key;
     }

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 老师侧：课程、章节、课时、视频签名。
@@ -83,6 +84,25 @@ public class CourseTeacherController {
     public ApiResponse<Void> offline(@CurrentUser Long userId, @PathVariable Long id) {
         courseTeacherService.offline(userId, id);
         return ApiResponse.ok();
+    }
+
+    /** 扌回审核：提交后才发现写错，不用干等管理员驳回 */
+    @PutMapping("/courses/{id}/withdraw")
+    @AuditLog(action = "COURSE_WITHDRAW", targetType = "COURSE", targetIdIndex = 1)
+    public ApiResponse<Void> withdraw(@CurrentUser Long userId, @PathVariable Long id) {
+        courseTeacherService.withdraw(userId, id);
+        return ApiResponse.ok();
+    }
+
+    /**
+     * 上传课程封面，返回对象键；建课/改课时把它放到 coverKey 里。
+     * 2MB、JPG/PNG/WebP，校验看真实文件头。
+     */
+    @PostMapping("/covers")
+    @AuditLog(action = "COURSE_COVER_UPLOAD", targetType = "COURSE")
+    public ApiResponse<String> uploadCover(@CurrentUser Long userId,
+                                           @RequestParam("file") MultipartFile file) {
+        return ApiResponse.ok(courseTeacherService.uploadCover(userId, file));
     }
 
     // ---------------------------------------------------------------- 章节

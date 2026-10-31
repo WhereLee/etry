@@ -10,6 +10,7 @@ import com.wherelee.edu.learning.LearningProgressMapper;
 import com.wherelee.edu.teacher.TeacherProfile;
 import com.wherelee.edu.teacher.TeacherProfileMapper;
 import com.wherelee.edu.teacher.SubjectMapper;
+import com.wherelee.edu.user.AvatarService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,6 +50,7 @@ public class CourseTeacherService {
     private final SubjectMapper subjectMapper;
     private final CourseAssembler assembler;
     private final FileStorage fileStorage;
+    private final AvatarService avatarService;
     private final Mp4DurationReader mp4DurationReader;
 
     // ------------------------------------------------------------------ 课程
@@ -150,6 +152,31 @@ public class CourseTeacherService {
         // 保留首次上架时间：清空后再上架会被当成新课顶到列表最前
         courseMapper.updateStatus(courseId, Course.STATUS_PENDING, null, course.getPublishedAt());
         log.info("课程提交审核 courseId={}", courseId);
+    }
+
+    /**
+     * 上传课程封面。先传图拿 key，再在建课/改课时带上。
+     * 目录按讲师分（cover/{profileId}），和视频、课件一样靠 ownsKey 防引用别人的文件。
+     */
+    public String uploadCover(Long userId, org.springframework.web.multipart.MultipartFile file) {
+        TeacherProfile profile = requireApprovedTeacher(userId);
+        String key = avatarService.store(file, "cover/" + profile.getId());
+        log.info("课程封面上传 teacherId={} key={}", profile.getId(), key);
+        return key;
+    }
+
+    /**
+     * 撤回审核：PENDING → DRAFT。
+     * 提交后才发现写错时，不用干等管理员驳回。
+     */
+    @Transactional
+    public void withdraw(Long userId, Long courseId) {
+        Course course = requireOwnCourse(userId, courseId);
+        if (!Course.STATUS_PENDING.equals(course.getStatus())) {
+            throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "只有待审核的课程可以撤回");
+        }
+        courseMapper.updateStatus(courseId, Course.STATUS_DRAFT, null, course.getPublishedAt());
+        log.info("课程撤回审核 courseId={}", courseId);
     }
 
     /**
