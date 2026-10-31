@@ -63,6 +63,7 @@ public class AuthService {
         user.setStatus(User.STATUS_ACTIVE);
         // 必须显式赋 0：insert 后对象不会回填数据库默认值，签发 token 时会拆箱 NPE
         user.setTokenVersion(0);
+        user.setMustChangePassword(false);
         userMapper.insert(user);
 
         Role student = roleMapper.findByCode(Role.CODE_STUDENT);
@@ -72,7 +73,7 @@ public class AuthService {
         roleMapper.bindRole(user.getId(), student.getId());
 
         log.info("新用户注册 username={} userId={}", user.getUsername(), user.getId());
-        return toLoginResponse(user, List.of(Role.CODE_STUDENT));
+        return toLoginResponse(user, List.of(Role.CODE_STUDENT), false);
     }
 
     public LoginResponse login(String username, String password) {
@@ -93,7 +94,7 @@ public class AuthService {
 
         loginAttemptService.clear(username);
         List<String> roles = roleMapper.findCodesByUserId(user.getId());
-        return toLoginResponse(user, roles);
+        return toLoginResponse(user, roles, user.needsPasswordChange());
     }
 
     /**
@@ -137,8 +138,9 @@ public class AuthService {
                 permissions);
     }
 
-    private LoginResponse toLoginResponse(User user, List<String> roles) {
+    private LoginResponse toLoginResponse(User user, List<String> roles, boolean mustChangePassword) {
         String token = jwtService.issue(user.getId(), user.getTokenVersion());
-        return new LoginResponse(token, user.getId(), user.getUsername(), user.getNickname(), roles);
+        return new LoginResponse(token, user.getId(), user.getUsername(), user.getNickname(), roles,
+                mustChangePassword);
     }
 }

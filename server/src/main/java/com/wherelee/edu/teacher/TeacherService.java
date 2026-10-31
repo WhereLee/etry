@@ -5,6 +5,7 @@ import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.teacher.dto.SubjectVO;
 import com.wherelee.edu.teacher.dto.TeacherApplyRequest;
+import com.wherelee.edu.teacher.dto.TeacherProfileInput;
 import com.wherelee.edu.teacher.dto.TeacherProfileVO;
 import com.wherelee.edu.user.Role;
 import com.wherelee.edu.user.RoleMapper;
@@ -136,6 +137,30 @@ public class TeacherService {
             throw BizException.of(ErrorCode.TEACHER_NOT_FOUND);
         }
         return toVO(profile);
+    }
+
+    /**
+     * 管理员开号时直接建讲师档案，状态直接 APPROVED。
+     * 资料是管理员自己填的，等于自审，所以不进待审队列。
+     */
+    @Transactional
+    public void createApprovedProfile(Long userId, TeacherProfileInput input) {
+        if (profileMapper.findByUserId(userId) != null) {
+            throw BizException.of(ErrorCode.TEACHER_PROFILE_EXISTS);
+        }
+        validateSubjects(input.subjectIds());
+
+        TeacherProfile profile = new TeacherProfile();
+        profile.setUserId(userId);
+        profile.setRealName(input.realName().trim());
+        profile.setTitle(input.title());
+        profile.setBio(input.bio());
+        profile.setYears(input.years() == null ? 0 : input.years());
+        profile.setStatus(TeacherProfile.STATUS_APPROVED);
+        profileMapper.insert(profile);
+
+        teacherSubjectMapper.batchInsert(profile.getId(), input.subjectIds());
+        log.info("管理员开通讲师档案 userId={} profileId={}", userId, profile.getId());
     }
 
     private void applyFields(TeacherProfile profile, TeacherApplyRequest request) {

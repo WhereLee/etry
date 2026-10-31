@@ -2,8 +2,10 @@ package com.wherelee.edu.rbac;
 
 import com.wherelee.edu.common.BizException;
 import com.wherelee.edu.common.ErrorCode;
+import com.wherelee.edu.rbac.dto.CreateRoleRequest;
 import com.wherelee.edu.rbac.dto.PermissionVO;
 import com.wherelee.edu.rbac.dto.RoleVO;
+import com.wherelee.edu.rbac.dto.UpdateRoleRequest;
 import com.wherelee.edu.user.Role;
 import com.wherelee.edu.user.RoleMapper;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,49 @@ public class RoleAdminService {
         return roleMapper.findAll().stream()
                 .map(r -> new RoleVO(r.getId(), r.getCode(), r.getName(), r.getDescription()))
                 .toList();
+    }
+
+    @Transactional
+    public RoleVO createRole(CreateRoleRequest request) {
+        String code = request.code().trim().toUpperCase();
+        if (roleMapper.findByCode(code) != null) {
+            throw BizException.of(ErrorCode.ROLE_CODE_EXISTS);
+        }
+        Role role = new Role();
+        role.setCode(code);
+        role.setName(request.name().trim());
+        role.setDescription(request.description());
+        roleMapper.insert(role);
+        log.info("角色创建 id={} code={}", role.getId(), code);
+        return new RoleVO(role.getId(), role.getCode(), role.getName(), role.getDescription());
+    }
+
+    /** 只改名称与描述。code 改了会让按 code 判断的逻辑（如审核授 TEACHER）悄悄失效 */
+    @Transactional
+    public void updateRole(Long roleId, UpdateRoleRequest request) {
+        Role role = requireRole(roleId);
+        role.setName(request.name().trim());
+        role.setDescription(request.description());
+        roleMapper.update(role);
+        log.info("角色修改 id={} code={}", roleId, role.getCode());
+    }
+
+    /**
+     * 删角色。两种不给删：内置角色（代码依赖其 code）、还有人挂着的角色。
+     * 删之前先清掉权限关联，避免留下孤儿记录。
+     */
+    @Transactional
+    public void deleteRole(Long roleId) {
+        Role role = requireRole(roleId);
+        if (role.isBuiltIn()) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "内置角色不能删除");
+        }
+        if (roleMapper.countUsersByRole(roleId) > 0) {
+            throw BizException.of(ErrorCode.ROLE_IN_USE);
+        }
+        rolePermissionMapper.deleteByRoleId(roleId);
+        roleMapper.deleteById(roleId);
+        log.info("角色删除 id={} code={}", roleId, role.getCode());
     }
 
     public List<PermissionVO> listPermissions() {

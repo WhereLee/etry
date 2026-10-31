@@ -3,6 +3,8 @@ package com.wherelee.edu.user;
 import com.wherelee.edu.common.BizException;
 import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.PageResult;
+import com.wherelee.edu.teacher.TeacherService;
+import com.wherelee.edu.user.dto.CreateUserRequest;
 import com.wherelee.edu.user.dto.UserListItemVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,7 @@ public class UserAdminService {
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
     private final PasswordEncoder passwordEncoder;
+    private final TeacherService teacherService;
 
     public PageResult<UserListItemVO> page(String keyword, String status, int page, int size) {
         int safePage = Math.min(Math.max(page, 1), MAX_PAGE);
@@ -61,6 +64,56 @@ public class UserAdminService {
                 .toList();
 
         return PageResult.of(records, total, safePage, safeSize);
+    }
+
+    /**
+     * 管理员开号。机构里的老师账号由教务统一开通，不走自助注册。
+     *
+     * 初始密码由管理员掌握，所以标记「必须改密」；
+     * 如果选了讲师角色，必须同时提交档案，档案直接是 APPROVED。
+     */
+    @Transactional
+    public Long createUser(CreateUserRequest request) {
+        if (userMapper.findByUsername(request.username()) != null) {
+            throw BizException.of(ErrorCode.USERNAME_EXISTS);
+        }
+
+        List<Role> allRoles = roleMapper.findAll();
+        Map<Long, Role> roleMap = allRoles.stream().collect(Collectors.toMap(Role::getId, r -> r));
+        for (Long roleId : request.roleIds()) {
+            if (!roleMap.containsKey(roleId)) {
+                throw new BizException(ErrorCode.ROLE_NOT_FOUND, "角色不存在: " + roleId);
+            }
+        }
+
+        Role teacherRole = roleMapper.findByCode(Role.CODE_TEACHER);
+        boolean isTeacher = teacherRole != null && request.roleIds().contains(teacherRole.getId());
+        if (isTeacher && request.teacherProfile() == null) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "选择了讲师角色，必须填写讲师档案");
+        }
+        if (!isTeacher && request.teacherProfile() != null) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "只有讲师角色才能填写讲师档案");
+        }
+
+        User user = new User();
+        user.setUsername(request.username());
+        user.setPasswordHash(passwordEncoder.encode(request.initialPassword()));
+        user.setNickname(request.nickname());
+        user.setStatus(User.STATUS_ACTIVE);
+        user.setTokenVersion(0);
+        user.setMustChangePassword(true);
+        userMapper.insert(user);
+
+        for (Long roleId : request.roleIds()) {
+            roleMapper.bindRole(user.getId(), roleId);
+        }
+        if (isTeacher) {
+            teacherService.createApprovedProfile(user.getId(), request.teacherProfile());
+        }
+
+        log.info("管理员开号 userId={} username={} roles={} teacher={}",
+                user.getId(), user.getUsername(), request.roleIds(), isTeacher);
+        return user.getId();
     }
 
     /**
@@ -100,7 +153,7 @@ public class UserAdminService {
         if (user == null) {
             throw BizException.of(ErrorCode.USER_NOT_FOUND);
         }
-        userMapper.updatePasswordAndBumpVersion(userId, passwordEncoder.encode(newPassword));
+        userMapper.resetPasswordAndMarkChange(userId, passwordEncoder.encode(newPassword));
         log.info("管理员重置密码 userId={}", userId);
     }
 

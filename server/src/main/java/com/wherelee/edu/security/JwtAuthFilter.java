@@ -92,7 +92,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // 4. 角色每次查库，保证权限变更立即生效
+            // 4. 管理员开的号 / 密码被重置过：改密之前不放开其他接口，
+            //    否则「首次必须改密」只是一个摆设
+            if (user.needsPasswordChange() && !isAllowedBeforePasswordChange(path)) {
+                writeError(response, ErrorCode.MUST_CHANGE_PASSWORD, "请先修改初始密码");
+                return;
+            }
+
+            // 5. 角色每次查库，保证权限变更立即生效
             List<String> roles = roleMapper.findCodesByUserId(userId);
 
             UserContext.set(user.getId(), user.getUsername(), roles, jti, claims.getExpiration().toInstant());
@@ -116,6 +123,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         return WHITE_LIST.contains(path)
                 || path.startsWith("/api/notices")
                 || path.startsWith("/api/teachers");
+    }
+
+    /**
+     * 强制改密期间仍然允许的接口：
+     * 改密本身、看自己信息（前端要知道当前是谁才能决定跳哪）、登出（发现登错号能退出）。
+     */
+    private boolean isAllowedBeforePasswordChange(String path) {
+        return "/api/auth/password".equals(path)
+                || "/api/auth/me".equals(path)
+                || "/api/auth/logout".equals(path);
     }
 
     private void writeError(HttpServletResponse response, ErrorCode errorCode, String message) throws IOException {

@@ -15,6 +15,7 @@ public enum ErrorCode {
     ACCOUNT_DISABLED(40103, "账号已被禁用"),
     LOGIN_LOCKED(40104, "登录失败次数过多，请稍后再试"),
     REGISTER_DISABLED(40105, "当前未开放注册"),
+    MUST_CHANGE_PASSWORD(40106, "请先修改初始密码"),
     FORBIDDEN(40301, "无权访问"),
     NOT_FOUND(40400, "资源不存在"),
 

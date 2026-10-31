@@ -3,8 +3,10 @@ package com.wherelee.edu.user;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -27,6 +29,17 @@ public interface RoleMapper {
 
     @Insert("INSERT INTO t_user_role (user_id, role_id) VALUES (#{userId}, #{roleId})")
     int bindRole(@Param("userId") Long userId, @Param("roleId") Long roleId);
+
+    @Insert("INSERT INTO t_role (code, name, description) VALUES (#{code}, #{name}, #{description})")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    int insert(Role role);
+
+    /** 只允许改名称和描述：code 在代码里被引用，改了会让按 code 判断的逻辑失效 */
+    @Update("UPDATE t_role SET name = #{name}, description = #{description} WHERE id = #{id}")
+    int update(Role role);
+
+    @Delete("DELETE FROM t_role WHERE id = #{id}")
+    int deleteById(@Param("id") Long id);
 
     @Delete("DELETE FROM t_user_role WHERE user_id = #{userId}")
     int unbindAll(@Param("userId") Long userId);

@@ -23,10 +23,16 @@ public class User {
     private String status;
     /** 令牌版本：改密码或强制下线时 +1，使此前签发的所有 token 立即失效 */
     private Integer tokenVersion;
+    /** 1=下次登录必须先改密。管理员开号或重置密码后置 1，本人改密后置 0 */
+    private Boolean mustChangePassword;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);
+    }
+
+    public boolean needsPasswordChange() {
+        return Boolean.TRUE.equals(mustChangePassword);
     }
 }
