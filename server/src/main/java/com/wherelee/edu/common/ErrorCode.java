@@ -58,6 +58,7 @@ public enum ErrorCode {
     SEQUENTIAL_REQUIRED(40015, "请先学完上一节"),
     TAG_IN_USE(40016, "标签还有课程在用，不能删除"),
     TAG_NAME_EXISTS(40017, "标签名已存在"),
+    REVIEW_NOT_FOUND(40414, "评价不存在"),
 
     INTERNAL_ERROR(50000, "系统繁忙，请稍后重试");
 

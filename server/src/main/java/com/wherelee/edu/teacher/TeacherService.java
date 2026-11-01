@@ -4,6 +4,7 @@ import com.wherelee.edu.common.BizException;
 import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.course.CourseMapper;
+import com.wherelee.edu.message.MessageService;
 import com.wherelee.edu.storage.FileStorage;
 import com.wherelee.edu.teacher.dto.PublicTeacherVO;
 import com.wherelee.edu.teacher.dto.SubjectVO;
@@ -40,6 +41,7 @@ public class TeacherService {
     private final CourseMapper courseMapper;
     private final FileStorage fileStorage;
     private final AvatarService avatarService;
+    private final MessageService messageService;
 
     /**
      * 提交讲师申请。一人一档：已经提交过的直接拒绝，让他去改档案。
@@ -122,9 +124,16 @@ public class TeacherService {
             if (!currentRoles.contains(Role.CODE_TEACHER)) {
                 roleMapper.bindRole(profile.getUserId(), teacher.getId());
             }
+            // 审核结果站内信（业务规则 §五第 1 条）：事务提交后发，不占用本事务的连接
+            messageService.notifyAfterCommit(profile.getUserId(), "讲师认证已通过",
+                    "你的讲师认证已通过，现在可以创建课程了。", "/teacher/dashboard");
             log.info("讲师审核通过 profileId={} userId={} operator={}", profileId, profile.getUserId(), operatorId);
         } else {
             profileMapper.updateStatus(profileId, TeacherProfile.STATUS_REJECTED, rejectReason);
+            String reason = rejectReason == null || rejectReason.isBlank()
+                    ? "" : "，原因：" + rejectReason;
+            messageService.notifyAfterCommit(profile.getUserId(), "讲师认证未通过",
+                    "你的讲师申请未通过" + reason + "。修改资料后可重新提交申请。", "/teacher/dashboard");
             log.info("讲师审核驳回 profileId={} reason={} operator={}", profileId, rejectReason, operatorId);
         }
     }
@@ -184,12 +193,17 @@ public class TeacherService {
 
     /**
      * 讲师本人换头像。写 t_teacher_profile.avatar_key，和用户表那个头像互不影响。
+     * 只有认证通过的讲师才能传（业务规则 §五第 5 条）：
+     * 待审列表里审核员看到的资料必须稳定，PENDING 期间头像不能被随时换掉。
      * 返回的 VO 里是可直接访问的 URL，不是对象键。
      */
     public TeacherProfileVO uploadMyAvatar(Long userId, MultipartFile file) {
         TeacherProfile profile = profileMapper.findByUserId(userId);
         if (profile == null) {
             throw BizException.of(ErrorCode.TEACHER_NOT_FOUND);
+        }
+        if (!TeacherProfile.STATUS_APPROVED.equals(profile.getStatus())) {
+            throw new BizException(ErrorCode.TEACHER_STATUS_INVALID, "认证通过后才能上传讲师头像");
         }
         String newKey = avatarService.store(file);
         String oldKey = profile.getAvatarKey();

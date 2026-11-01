@@ -99,6 +99,9 @@ public class LocalFileStorage implements FileStorage {
     public long size(String key) {
         try {
             return Files.size(resolveSafe(key));
+        } catch (java.nio.file.NoSuchFileException e) {
+            // 文件不存在返回 -1，由调用方按「不存在或为空」处理
+            return -1;
         } catch (IOException e) {
             throw new UncheckedIOException("读取文件大小失败: " + key, e);
         }

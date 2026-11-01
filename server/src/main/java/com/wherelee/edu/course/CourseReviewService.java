@@ -77,6 +77,22 @@ public class CourseReviewService {
         log.info("课程评价删除 courseId={} userId={}", courseId, userId);
     }
 
+    /**
+     * 管理员隐藏评价（软删，业务规则 §五第 3 条）。
+     * 记录保留，前台列表/评分/总数全部排除；重复隐藏是幂等。
+     */
+    public void hide(Long reviewId) {
+        CourseReview review = reviewMapper.findById(reviewId);
+        if (review == null) {
+            throw BizException.of(ErrorCode.REVIEW_NOT_FOUND);
+        }
+        if (Boolean.TRUE.equals(review.getHidden())) {
+            return;
+        }
+        reviewMapper.markHidden(reviewId);
+        log.info("评价隐藏 reviewId={} courseId={} by operator", reviewId, review.getCourseId());
+    }
+
     private void requirePublishedCourse(Long courseId) {
         Course course = courseMapper.findById(courseId);
         if (course == null || !Course.STATUS_PUBLISHED.equals(course.getStatus())) {

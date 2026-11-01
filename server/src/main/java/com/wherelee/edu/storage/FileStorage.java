@@ -43,7 +43,7 @@ public interface FileStorage {
     /** 读对象的一段字节，用于解析媒体头部（避免把整个视频拉下来） */
     byte[] readRange(String key, long start, long length);
 
-    /** 对象大小（字节） */
+    /** 对象大小（字节）；对象不存在返回 -1，由调用方按「不存在或为空」处理 */
     long size(String key);
 
     /** 删除对象，键不存在时静默忽略 */

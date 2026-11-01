@@ -4,6 +4,7 @@ import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
 import com.qcloud.cos.auth.COSCredentials;
+import com.qcloud.cos.exception.CosServiceException;
 import com.qcloud.cos.http.HttpMethodName;
 import com.qcloud.cos.model.GeneratePresignedUrlRequest;
 import com.qcloud.cos.model.GetObjectRequest;
@@ -119,7 +120,15 @@ public class CosFileStorage implements FileStorage {
 
     @Override
     public long size(String key) {
-        return client.getObjectMetadata(bucket, key).getContentLength();
+        try {
+            return client.getObjectMetadata(bucket, key).getContentLength();
+        } catch (CosServiceException e) {
+            // 对象不存在返回 -1，由调用方按「不存在或为空」处理；其余存储错误照常抛
+            if (e.getStatusCode() == 404) {
+                return -1;
+            }
+            throw e;
+        }
     }
 
     @Override

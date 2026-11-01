@@ -106,14 +106,20 @@ public class CourseTeacherService {
         if (!course.isDeletable()) {
             throw new BizException(ErrorCode.COURSE_STATUS_INVALID, "上架过的课程不能删除，只能下架");
         }
-        // 先清子表，再删课程；视频与资料对象一并清掉，避免对象存储里堆垃圾
-        for (CourseLesson lesson : lessonMapper.findByCourseId(courseId)) {
-            fileStorage.delete(lesson.getVideoKey());
-        }
+        // 先清子表，再删课程；视频与资料对象一并清掉，避免对象存储里堆垃圾。
+        // 视频先删记录再判引用：同一段视频可能被多个课时（含其他课程）共用，
+        // 删课时记录后还能数出引用说明别处还在用，文件就留着。
+        List<CourseLesson> courseLessons = lessonMapper.findByCourseId(courseId);
         for (CourseMaterial material : materialMapper.findByCourseId(courseId)) {
             fileStorage.delete(material.getFileKey());
         }
         lessonMapper.deleteByCourseId(courseId);
+        for (CourseLesson lesson : courseLessons) {
+            if (StringUtils.hasText(lesson.getVideoKey())
+                    && lessonMapper.countByVideoKeyExcluding(lesson.getVideoKey(), lesson.getId()) == 0) {
+                fileStorage.delete(lesson.getVideoKey());
+            }
+        }
         materialMapper.deleteByCourse(courseId);
         courseTagMapper.deleteByCourse(courseId);
         // 反馈与学习数据跟着课程走：留下就是指向不存在课程的孤儿记录
@@ -243,7 +249,11 @@ public class CourseTeacherService {
         requireEditable(requireOwnCourse(userId, chapter.getCourseId()));
 
         for (CourseLesson lesson : lessonMapper.findByChapterId(chapterId)) {
-            fileStorage.delete(lesson.getVideoKey());
+            if (StringUtils.hasText(lesson.getVideoKey())) {
+                if (lessonMapper.countByVideoKeyExcluding(lesson.getVideoKey(), lesson.getId()) == 0) {
+                    fileStorage.delete(lesson.getVideoKey());
+                }
+            }
         }
         progressMapper.deleteByChapter(chapterId);
         lessonMapper.deleteByChapterId(chapterId);
@@ -292,7 +302,11 @@ public class CourseTeacherService {
         if (newKey != null && !newKey.equals(lesson.getVideoKey())) {
             String oldKey = lesson.getVideoKey();
             lessonMapper.updateVideo(lessonId, newKey, resolveDuration(newKey), resolveSize(newKey));
-            fileStorage.delete(oldKey);
+            // 旧视频可能还被本讲师的其它课时用着，没别人用了才删文件
+            if (StringUtils.hasText(oldKey)
+                    && lessonMapper.countByVideoKeyExcluding(oldKey, lessonId) == 0) {
+                fileStorage.delete(oldKey);
+            }
         }
     }
 
@@ -301,7 +315,11 @@ public class CourseTeacherService {
         CourseLesson lesson = requireLesson(lessonId);
         requireEditable(requireOwnCourse(userId, lesson.getCourseId()));
 
-        fileStorage.delete(lesson.getVideoKey());
+        // 同一视频被多个课时共用时只删记录不删文件，否则别的课程（含已上架的）会黑屏
+        if (StringUtils.hasText(lesson.getVideoKey())
+                && lessonMapper.countByVideoKeyExcluding(lesson.getVideoKey(), lessonId) == 0) {
+            fileStorage.delete(lesson.getVideoKey());
+        }
         progressMapper.deleteByLesson(lessonId);
         lessonMapper.deleteById(lessonId);
         log.info("课时删除 lessonId={}", lessonId);
@@ -384,6 +402,9 @@ public class CourseTeacherService {
             return 0L;
         }
         long size = fileStorage.size(videoKey);
+        if (size <= 0) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "视频文件不存在或为空，请先完成上传");
+        }
         if (size > MAX_VIDEO_BYTES) {
             throw new BizException(ErrorCode.INVALID_PARAM, "单个视频不能超过 500MB");
         }

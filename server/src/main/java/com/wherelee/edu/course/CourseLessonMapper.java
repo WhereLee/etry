@@ -41,6 +41,15 @@ public interface CourseLessonMapper {
     long countByCourse(@Param("courseId") Long courseId);
 
     /**
+     * 除指定课时外，还有多少个课时引用同一个 video_key。
+     * 同一讲师可以把同一段视频登记到多个课时：删文件前必须确认没有别的课时还在用，
+     * 否则删一个课时会把其他课程（包括已上架的）视频一并删掉。
+     */
+    @Select("SELECT COUNT(*) FROM t_course_lesson WHERE video_key = #{videoKey} AND id <> #{excludeLessonId}")
+    long countByVideoKeyExcluding(@Param("videoKey") String videoKey,
+                                  @Param("excludeLessonId") Long excludeLessonId);
+
+    /**
      * 列表页用：一次查出多门课的课时数，避免每行一次 count。
      * 同时给出「能学的课时数」：列表显示全量，学习页的分母只算有视频的，
      * 两个数都给前端，避免「列表说 5 节、进去说共 3 节」。

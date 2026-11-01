@@ -5,7 +5,10 @@ import com.wherelee.edu.common.ErrorCode;
 import com.wherelee.edu.common.Keywords;
 import com.wherelee.edu.common.PageResult;
 import com.wherelee.edu.course.dto.CourseDtos;
+import com.wherelee.edu.message.MessageService;
 import com.wherelee.edu.storage.FileStorage;
+import com.wherelee.edu.teacher.TeacherProfile;
+import com.wherelee.edu.teacher.TeacherProfileMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,6 +38,8 @@ public class CourseAdminService {
     private final CourseLessonMapper lessonMapper;
     private final CourseAssembler assembler;
     private final FileStorage fileStorage;
+    private final TeacherProfileMapper profileMapper;
+    private final MessageService messageService;
 
     public PageResult<CourseDtos.CourseSummaryVO> page(String status, String keyword, int page, int size) {
         int safePage = Math.min(Math.max(page, 1), MAX_PAGE);
@@ -61,12 +66,25 @@ public class CourseAdminService {
             LocalDateTime publishedAt = course.getPublishedAt() == null
                     ? LocalDateTime.now() : course.getPublishedAt();
             courseMapper.updateStatus(courseId, Course.STATUS_PUBLISHED, null, publishedAt);
+            notifyTeacher(course, "课程审核通过",
+                    "《" + course.getTitle() + "》已通过审核并上架。", "/courses/" + courseId);
             log.info("课程审核通过 courseId={}", courseId);
         } else {
             String reason = rejectReason == null || rejectReason.isBlank()
                     ? "资料不完整" : rejectReason.trim();
             courseMapper.updateStatus(courseId, Course.STATUS_REJECTED, reason, course.getPublishedAt());
+            notifyTeacher(course, "课程审核未通过",
+                    "《" + course.getTitle() + "》未通过审核，原因：" + reason
+                            + "。修改内容后可重新提交审核。", "/teacher/courses");
             log.info("课程驳回 courseId={} reason={}", courseId, reason);
+        }
+    }
+
+    /** 审核结果站内信给课程讲师（业务规则 §五第 1 条），事务提交后发 */
+    private void notifyTeacher(Course course, String title, String content, String link) {
+        TeacherProfile profile = profileMapper.findById(course.getTeacherId());
+        if (profile != null) {
+            messageService.notifyAfterCommit(profile.getUserId(), title, content, link);
         }
     }
 
