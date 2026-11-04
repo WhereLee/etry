@@ -1,16 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { hasRole, isLoggedIn, session, setUnauthorizedHandler } from './store/session'
+import { hasRole, homePath, isLoggedIn, session } from './store/session'
 
 const routes = [
-  { path: '/', name: 'courses', component: () => import('./views/CourseList.vue') },
-  { path: '/courses/:id', name: 'course', component: () => import('./views/CourseDetail.vue') },
+  { path: '/', redirect: '/learning' },
   {
-    path: '/courses/:id/learn',
-    name: 'learn',
-    component: () => import('./views/Learn.vue'),
-    meta: { auth: true }
+    path: '/login',
+    name: 'login',
+    component: () => import('./views/Login.vue')
   },
-  { path: '/login', name: 'login', component: () => import('./views/Login.vue') },
+  {
+    path: '/invite/:token',
+    name: 'teacherInvite',
+    component: () => import('./views/TeacherInvite.vue')
+  },
   {
     path: '/password',
     name: 'password',
@@ -18,58 +20,94 @@ const routes = [
     meta: { auth: true, allowWhenMustChange: true }
   },
   {
-    path: '/me/learning',
-    name: 'myLearning',
-    component: () => import('./views/MyLearning.vue'),
-    meta: { auth: true }
+    path: '/learning',
+    name: 'learning',
+    component: () => import('./views/LearningSpace.vue'),
+    meta: { auth: true, role: 'STUDENT' }
   },
   {
-    path: '/me/favorites',
-    name: 'favorites',
-    component: () => import('./views/Favorites.vue'),
-    meta: { auth: true }
+    path: '/store',
+    name: 'courseStore',
+    component: () => import('./views/CourseStore.vue'),
+    meta: { auth: true, role: 'STUDENT' }
   },
   {
-    path: '/me/questions',
-    name: 'myQuestions',
-    component: () => import('./views/MyQuestions.vue'),
-    meta: { auth: true }
+    path: '/orders',
+    name: 'myOrders',
+    component: () => import('./views/MyOrders.vue'),
+    meta: { auth: true, role: 'STUDENT' }
   },
   {
-    path: '/me/messages',
-    name: 'messages',
-    component: () => import('./views/Messages.vue'),
-    meta: { auth: true }
+    path: '/orders/:orderNo',
+    name: 'orderDetail',
+    component: () => import('./views/OrderDetail.vue'),
+    meta: { auth: true, role: 'STUDENT' }
   },
   {
-    path: '/teacher/courses',
-    name: 'teacherCourses',
-    component: () => import('./views/TeacherCourses.vue'),
-    meta: { auth: true, role: 'TEACHER' }
+    path: '/mock-pay/:orderNo',
+    name: 'mockCashier',
+    component: () => import('./views/MockCashier.vue'),
+    meta: { auth: true, role: 'STUDENT' }
   },
   {
-    path: '/teacher/courses/:id',
-    name: 'teacherCourseEdit',
-    component: () => import('./views/TeacherCourseEdit.vue'),
-    meta: { auth: true, role: 'TEACHER' }
+    path: '/series/:id',
+    name: 'series',
+    component: () => import('./views/SeriesView.vue'),
+    meta: { auth: true, role: 'STUDENT' }
   },
   {
-    path: '/teacher/dashboard',
-    name: 'teacherDashboard',
-    component: () => import('./views/TeacherDashboard.vue'),
-    meta: { auth: true, role: 'TEACHER' }
-  },
-  {
-    path: '/admin/review',
-    name: 'adminReview',
-    component: () => import('./views/AdminReview.vue'),
+    path: '/admin/users',
+    name: 'adminUsers',
+    component: () => import('./views/AdminUsers.vue'),
     meta: { auth: true, role: 'ADMIN' }
   },
-  { path: '/:pathMatch(.*)*', redirect: '/' }
+  {
+    path: '/admin/teacher-invitations',
+    name: 'adminTeacherInvitations',
+    component: () => import('./views/AdminTeacherInvitations.vue'),
+    meta: { auth: true, role: 'ADMIN' }
+  },
+  {
+    path: '/admin/series',
+    name: 'adminSeries',
+    component: () => import('./views/AdminSeries.vue'),
+    meta: { auth: true, role: 'ADMIN' }
+  },
+  {
+    path: '/admin/orders',
+    name: 'adminOrders',
+    component: () => import('./views/AdminOrders.vue'),
+    meta: { auth: true, role: 'ADMIN' }
+  },
+  {
+    path: '/teacher/series',
+    name: 'teacherSeries',
+    component: () => import('./views/TeacherSeries.vue'),
+    meta: { auth: true, role: 'TEACHER' }
+  },
+  {
+    path: '/teacher/series/new',
+    name: 'teacherSeriesNew',
+    component: () => import('./views/TeacherSeriesEditor.vue'),
+    meta: { auth: true, role: 'TEACHER' }
+  },
+  {
+    path: '/teacher/series/:id',
+    name: 'teacherSeriesDetail',
+    component: () => import('./views/TeacherSeriesView.vue'),
+    meta: { auth: true, role: 'TEACHER' }
+  },
+  {
+    path: '/teacher/series/:id/edit',
+    name: 'teacherSeriesEdit',
+    component: () => import('./views/TeacherSeriesEditor.vue'),
+    meta: { auth: true, role: 'TEACHER' }
+  },
+  { path: '/:pathMatch(.*)*', redirect: '/learning' }
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
 
@@ -77,22 +115,16 @@ router.beforeEach((to) => {
   if (to.meta.auth && !isLoggedIn()) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  // 首次登录被要求改密时，除了改密页哪儿都去不了
   if (isLoggedIn() && session.mustChangePassword && !to.meta.allowWhenMustChange) {
     return { name: 'password', query: { forced: '1' } }
   }
   if (to.meta.role && !hasRole(to.meta.role)) {
-    return { name: 'courses' }
+    return homePath()
+  }
+  if (to.name === 'login' && isLoggedIn()) {
+    return homePath()
   }
   return true
-})
-
-// token 失效时统一回登录页，并记住原来要去哪
-setUnauthorizedHandler(() => {
-  const current = router.currentRoute.value
-  if (current.name !== 'login') {
-    router.push({ name: 'login', query: { redirect: current.fullPath } })
-  }
 })
 
 export default router

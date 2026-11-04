@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.invitation.TeacherInvitationMapper">
+
+    <resultMap id="invitationMap" type="com.wherelee.edu.invitation.TeacherInvitation">
+        <id property="id" column="id"/>
+        <result property="tokenHash" column="token_hash"/>
+        <result property="username" column="username"/>
+        <result property="nickname" column="nickname"/>
+        <result property="status" column="status"/>
+        <result property="expiresAt" column="expires_at"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="usedBy" column="used_by"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="usedAt" column="used_at"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_teacher_invitation
+            (token_hash, username, nickname, status, expires_at, created_by)
+        VALUES
+            (#{tokenHash}, #{username}, #{nickname}, #{status}, #{expiresAt}, #{createdBy})
+    </insert>
+
+    <select id="findById" resultMap="invitationMap">
+        SELECT id, token_hash, username, nickname, status, expires_at,
+               created_by, used_by, created_at, used_at
+        FROM t_teacher_invitation
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByTokenHash" resultMap="invitationMap">
+        SELECT id, token_hash, username, nickname, status, expires_at,
+               created_by, used_by, created_at, used_at
+        FROM t_teacher_invitation
+        WHERE token_hash = #{tokenHash}
+    </select>
+
+    <select id="findByTokenHashForUpdate" resultMap="invitationMap">
+        SELECT id, token_hash, username, nickname, status, expires_at,
+               created_by, used_by, created_at, used_at
+        FROM t_teacher_invitation
+        WHERE token_hash = #{tokenHash}
+        FOR UPDATE
+    </select>
+
+    <select id="findPendingByUsername" resultMap="invitationMap">
+        SELECT id, token_hash, username, nickname, status, expires_at,
+               created_by, used_by, created_at, used_at
+        FROM t_teacher_invitation
+        WHERE username = #{username}
+          AND status = 'PENDING'
+          AND expires_at > #{now}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findPage" resultType="com.wherelee.edu.invitation.TeacherInvitationVO">
+        SELECT i.id,
+               i.username,
+               i.nickname,
+               i.status,
+               i.expires_at AS expiresAt,
+               u.nickname AS createdByName,
+               i.created_at AS createdAt,
+               i.used_at AS usedAt,
+               CASE WHEN i.status = 'PENDING' AND i.expires_at &lt;= #{pageNow}
+                    THEN 1 ELSE 0 END AS expired
+        FROM t_teacher_invitation i
+        JOIN t_user u ON u.id = i.created_by
+        <where>
+            <if test="status != null and status != ''">
+                AND i.status = #{status}
+            </if>
+        </where>
+        ORDER BY i.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM t_teacher_invitation
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <update id="markUsed">
+        UPDATE t_teacher_invitation
+        SET status = 'USED', used_by = #{userId}, used_at = #{now}
+        WHERE id = #{id}
+          AND status = 'PENDING'
+          AND expires_at > #{now}
+    </update>
+
+    <update id="revoke">
+        UPDATE t_teacher_invitation
+        SET status = 'REVOKED'
+        WHERE id = #{id}
+          AND status = 'PENDING'
+          AND expires_at > #{now}
+    </update>
+</mapper>

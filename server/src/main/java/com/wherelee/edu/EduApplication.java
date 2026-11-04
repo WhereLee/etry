@@ -1,11 +1,15 @@
 package com.wherelee.edu;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@MapperScan({"com.wherelee.edu.playback", "com.wherelee.edu.admin", "com.wherelee.edu.invitation"})
 @ConfigurationPropertiesScan
+@EnableScheduling
 public class EduApplication {
 
     public static void main(String[] args) {

@@ -1,0 +1,21 @@
+{$BTRY_SITE_ADDRESS:http://127.0.0.1:8080} {
+    encode gzip
+
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8084
+    }
+
+    handle {
+        root * C:/path/to/etry/btry/web/dist
+        try_files {path} /index.html
+        file_server
+    }
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' https://*.myqcloud.com blob:; connect-src 'self' https://*.myqcloud.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    }
+}

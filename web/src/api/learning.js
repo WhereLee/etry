@@ -1,14 +1,32 @@
-import { get, post } from './http'
+import { get, put } from './http'
+import { getToken } from '../store/session'
 
-/** 上报进度。播放器建议 10 秒一次；服务端只认 position，时长从课时表读 */
-export function reportProgress(lessonId, positionSeconds) {
-  return post('/learning/progress', { lessonId, positionSeconds })
+export function listSeries() {
+  return get('/learning/series')
 }
 
-export function courseProgress(courseId) {
-  return get(`/learning/courses/${courseId}`)
+export function getSeries(id) {
+  return get(`/learning/series/${id}`)
 }
 
-export function myCourses(limit = 20) {
-  return get('/learning/my-courses', { limit })
+export function playVideo(id) {
+  return get(`/learning/videos/${id}/play`)
+}
+
+export function saveProgress(videoId, payload) {
+  return put(`/learning/videos/${videoId}/progress`, payload)
+}
+
+export function saveProgressKeepalive(videoId, payload) {
+  const token = getToken()
+  if (!token) return
+  fetch(`/api/learning/videos/${videoId}/progress`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payload),
+    keepalive: true
+  }).catch(() => {})
 }

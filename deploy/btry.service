@@ -1,0 +1,23 @@
+[Unit]
+Description=btry learning space (Spring Boot)
+After=network.target mysql.service redis-server.service
+Wants=mysql.service redis-server.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/btry
+EnvironmentFile=/opt/btry/.env
+Environment=SPRING_PROFILES_ACTIVE=prod
+ExecStart=/usr/bin/java -Xms256m -Xmx768m -jar /opt/btry/btry.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+LimitNOFILE=65536
+StandardOutput=append:/opt/btry/logs/stdout.log
+StandardError=append:/opt/btry/logs/stderr.log
+
+[Install]
+WantedBy=multi-user.target

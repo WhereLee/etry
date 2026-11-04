@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.playback.PlaybackLogMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO t_playback_log
+            (user_id, video_id, series_id, source, event_type, position_seconds,
+             duration_seconds, cache_hit, message, user_agent, session_id, trace_id)
+        VALUES
+        <foreach collection="events" item="e" separator=",">
+            (#{e.userId}, #{e.videoId}, #{e.seriesId}, #{e.source}, #{e.eventType},
+             #{e.positionSeconds}, #{e.durationSeconds}, #{e.cacheHit},
+             #{e.message}, #{e.userAgent}, #{e.sessionId}, #{e.traceId})
+        </foreach>
+    </insert>
+
+    <select id="findRecentByUser" resultType="com.wherelee.edu.playback.PlaybackLogVO">
+        SELECT id,
+               source,
+               event_type       AS eventType,
+               video_id         AS videoId,
+               series_id        AS seriesId,
+               position_seconds AS positionSeconds,
+               duration_seconds AS durationSeconds,
+               cache_hit        AS cacheHit,
+               message,
+               session_id       AS sessionId,
+               trace_id         AS traceId,
+               created_at       AS createdAt
+        FROM t_playback_log
+        WHERE user_id = #{userId}
+        <if test="eventType != null and eventType != ''">
+            AND event_type = #{eventType}
+        </if>
+        ORDER BY id DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

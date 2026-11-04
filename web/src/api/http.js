@@ -1,10 +1,6 @@
 import axios from 'axios'
-import { clearSession, fireUnauthorized, getToken } from '../store/session'
+import { clearSession, getToken } from '../store/session'
 
-/**
- * 后端统一返回 {code, message, data, timestamp}，HTTP 状态码永远是 200。
- * 所以「成功与否」只能看 code，不能看 status。
- */
 const http = axios.create({
   baseURL: '/api',
   timeout: 20000
@@ -19,66 +15,44 @@ http.interceptors.request.use((config) => {
 })
 
 http.interceptors.response.use(
-  (response) => {
-    const body = response.data
-    if (body && typeof body.code === 'number' && body.code !== 0) {
-      const error = new Error(body.message || '请求失败')
-      error.code = body.code
-      if (body.code === 40101) {
-        // 只有「本来已登录」才说明是失效，应该踢回登录页；
-        // 本来就匿名访问（比如未登录看课程详情时去拉评价），
-        // 只是这个数据拿不到，不能把人跳走。
-        const wasLoggedIn = !!getToken()
-        clearSession()
-        if (wasLoggedIn) {
-          fireUnauthorized()
-        }
-      }
-      return Promise.reject(error)
-    }
-    return body
-  },
+  (response) => response.data,
   (error) => {
-    // 没有 response 说明请求没到服务端（断网、DNS、被拦），axios 自带的
-    // "Network Error" 是英文，直接抛给用户看不懂
-    const message = error?.response
-      ? (error.response.data?.message || '请求失败')
-      : '网络连不上，检查网络后重试'
-    const wrapped = new Error(message)
-    wrapped.code = error?.response?.status || -1
-    return Promise.reject(wrapped)
+    const hadToken = !!getToken()
+    const status = error?.response?.status
+    const message = error?.response?.data?.message || '网络请求失败，请稍后重试'
+    if (status === 401 && hadToken) {
+      clearSession()
+      window.location.href = `${import.meta.env.BASE_URL}login`
+    }
+    if (status === 428 && hadToken) {
+      window.location.href = `${import.meta.env.BASE_URL}password?forced=1`
+    }
+    return Promise.reject(new Error(message))
   }
 )
 
-/** 统一取 data，调用方不用每次都点 .data */
-export async function get(url, params) {
-  const res = await http.get(url, { params })
-  return res.data
+export function get(url, params) {
+  return http.get(url, { params })
 }
 
-export async function post(url, body) {
-  const res = await http.post(url, body)
-  return res.data
+export function post(url, body) {
+  return http.post(url, body)
 }
 
-export async function put(url, body) {
-  const res = await http.put(url, body)
-  return res.data
+export function put(url, body) {
+  return http.put(url, body)
 }
 
-export async function del(url) {
-  const res = await http.delete(url)
-  return res.data
+export function del(url) {
+  return http.delete(url)
 }
 
-/** 文件上传（头像、封面）；不要手动设 Content-Type，浏览器会带 boundary */
-export async function upload(url, file) {
+export function upload(url, file) {
   const form = new FormData()
   form.append('file', file)
-  const res = await http.post(url, form, {
+  return http.post(url, form, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
-  return res.data
 }
 
 export default http

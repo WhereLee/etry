@@ -1,6 +1,3 @@
-# 本地文档，不入库
-docs/
-
 # Java / Maven
 target/
 *.class
@@ -35,3 +32,9 @@ __pycache__/
 
 # browser verification screenshots
 verify-*.png
+
+# 本地运行日志与截图
+logs/
+
+# 数据库备份产物
+backups/

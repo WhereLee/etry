@@ -1,44 +1,38 @@
-name: CI
+name: ci
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
-  test:
+  backend:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: "17"
-          distribution: temurin
-          cache: maven
-          cache-dependency-path: server/pom.xml
-
-      # 现有测试都是纯单元测试（不启动 Spring 上下文），
-      # 所以这里不需要起 MySQL / Redis 服务容器。
-      # 以后加 @SpringBootTest 时，再补 services 段。
-      - name: Build and test
+    defaults:
+      run:
         working-directory: server
-        run: mvn -B -ntp verify
-
-      # 把每个测试类的结果直接写到 Actions 页面的 Summary 里，
-      # 不用翻日志就能看出哪些过了、哪些没过。
-      # if: always() 保证测试失败时也执行——失败时才最需要看报告。
-      - name: Test summary
-        if: always()
-        run: python3 .github/scripts/surefire-summary.py server/target/surefire-reports
-
-      - name: Upload surefire reports
-        if: always()
-        uses: actions/upload-artifact@v4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          name: surefire-reports
-          path: server/target/surefire-reports/
-          retention-days: 7
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Backend tests
+        run: mvn -B test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build frontend
+        run: npm run build

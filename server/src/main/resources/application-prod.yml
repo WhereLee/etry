@@ -1,0 +1,78 @@
+server:
+  port: ${SERVER_PORT:8084}
+  forward-headers-strategy: framework
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+
+app:
+  security:
+    cors-allowed-origins: ${CORS_ALLOWED_ORIGINS}
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+    login-protection-enabled: true
+    login-max-attempts: ${LOGIN_MAX_ATTEMPTS:8}
+    login-ip-max-attempts: ${LOGIN_IP_MAX_ATTEMPTS:40}
+    login-window-minutes: ${LOGIN_WINDOW_MINUTES:10}
+  jwt:
+    secret: ${JWT_SECRET}
+    ttl-minutes: ${JWT_TTL_MINUTES:480}
+  cos:
+    bucket: ${COS_BUCKET}
+    region: ${COS_REGION}
+  demo:
+    video-key: ${SAMPLE_VIDEO_KEY}
+  alert:
+    webhook-url: ${ALERT_WEBHOOK_URL:}
+  teacher-invitation:
+    base-url: ${APP_BASE_URL}
+    expiry-hours: ${TEACHER_INVITE_EXPIRY_HOURS:72}
+    max-attempts: ${TEACHER_INVITE_MAX_ATTEMPTS:20}
+    window-minutes: ${TEACHER_INVITE_WINDOW_MINUTES:10}
+  upload:
+    max-size-bytes: ${UPLOAD_MAX_SIZE_BYTES:4294967296}
+    url-ttl-minutes: ${UPLOAD_URL_TTL_MINUTES:60}
+    allowed-content-types: ${UPLOAD_ALLOWED_CONTENT_TYPES:video/mp4,video/webm}
+  payment:
+    provider: ${PAYMENT_PROVIDER:mock}
+    mock-enabled: ${PAYMENT_MOCK_ENABLED:false}
+    mock-secret: ${PAYMENT_MOCK_SECRET:}
+    order-expire-minutes: ${PAYMENT_ORDER_EXPIRE_MINUTES:15}
+    query-after-seconds: ${PAYMENT_QUERY_AFTER_SECONDS:60}
+    reconcile-batch-size: ${PAYMENT_RECONCILE_BATCH_SIZE:50}
+    reconcile-interval-ms: ${PAYMENT_RECONCILE_INTERVAL_MS:60000}
+    reconcile-initial-delay-ms: ${PAYMENT_RECONCILE_INITIAL_DELAY_MS:30000}
+    alipay:
+      app-id: ${ALIPAY_APP_ID}
+      private-key: ${ALIPAY_PRIVATE_KEY}
+      alipay-public-key: ${ALIPAY_PUBLIC_KEY}
+      seller-id: ${ALIPAY_SELLER_ID:}
+      gateway-url: ${ALIPAY_GATEWAY_URL}
+      notify-url: ${ALIPAY_NOTIFY_URL}
+      return-url: ${ALIPAY_RETURN_URL}
+      charset: ${ALIPAY_CHARSET:UTF-8}
+      sign-type: ${ALIPAY_SIGN_TYPE:RSA2}
+      format: ${ALIPAY_FORMAT:json}
+      connect-timeout-ms: ${ALIPAY_CONNECT_TIMEOUT_MS:5000}
+      read-timeout-ms: ${ALIPAY_READ_TIMEOUT_MS:15000}
+
+management:
+  server:
+    address: 127.0.0.1
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  file:
+    name: ${LOG_FILE:logs/btry-prod.log}
+  level:
+    root: info
+    com.wherelee.edu: info

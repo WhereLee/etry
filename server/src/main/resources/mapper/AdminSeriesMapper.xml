@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.admin.AdminSeriesMapper">
+
+    <sql id="filters">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (s.title LIKE CONCAT('%', #{keyword}, '%')
+                     OR u.nickname LIKE CONCAT('%', #{keyword}, '%')
+                     OR u.username LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">
+                AND s.status = #{status}
+            </if>
+            <if test="teacherId != null">
+                AND s.teacher_id = #{teacherId}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findPage" resultType="com.wherelee.edu.admin.AdminSeriesVO">
+        SELECT s.id,
+               s.title,
+               s.summary,
+               s.status,
+               s.sale_status AS saleStatus,
+               s.price_cents AS priceCents,
+               s.currency,
+               s.teacher_id AS teacherId,
+               u.nickname AS teacherName,
+               COUNT(DISTINCT c.id) AS chapterCount,
+               COUNT(DISTINCT v.id) AS videoCount,
+               (SELECT COUNT(DISTINCT ss.user_id) FROM t_student_series ss
+                WHERE ss.series_id = s.id AND ss.status = 'ACTIVE') AS assignedStudentCount,
+               s.published_at AS publishedAt,
+               s.updated_at AS updatedAt
+        FROM t_series s
+        JOIN t_user u ON u.id = s.teacher_id
+        LEFT JOIN t_series_chapter c ON c.series_id = s.id
+        LEFT JOIN t_series_video v ON v.chapter_id = c.id
+        <include refid="filters"/>
+        GROUP BY s.id, s.title, s.summary, s.status, s.sale_status, s.price_cents,
+                 s.currency, s.teacher_id, u.nickname,
+                 s.published_at, s.updated_at
+        ORDER BY s.updated_at DESC, s.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM t_series s
+        JOIN t_user u ON u.id = s.teacher_id
+        <include refid="filters"/>
+    </select>
+
+    <select id="findHeader" resultType="com.wherelee.edu.admin.AdminSeriesHeaderVO">
+        SELECT s.id, s.title, s.summary, s.status,
+               s.sale_status AS saleStatus, s.price_cents AS priceCents, s.currency,
+               s.teacher_id AS teacherId,
+               u.nickname AS teacherName, s.updated_at AS updatedAt
+        FROM t_series s
+        JOIN t_user u ON u.id = s.teacher_id
+        WHERE s.id = #{id}
+    </select>
+
+    <select id="findChapters" resultType="com.wherelee.edu.admin.AdminSeriesChapterVO">
+        SELECT id, title, sort
+        FROM t_series_chapter
+        WHERE series_id = #{seriesId}
+        ORDER BY sort, id
+    </select>
+
+    <select id="findVideos" resultType="com.wherelee.edu.admin.AdminSeriesVideoVO">
+        SELECT v.id, v.chapter_id AS chapterId, v.title, v.sort,
+               v.media_status AS mediaStatus, v.duration_seconds AS durationSeconds,
+               v.file_size_bytes AS fileSizeBytes, v.updated_at AS updatedAt
+        FROM t_series_video v
+        JOIN t_series_chapter c ON c.id = v.chapter_id
+        WHERE c.series_id = #{seriesId}
+        ORDER BY c.sort, c.id, v.sort, v.id
+    </select>
+
+    <update id="updateStatus">
+        UPDATE t_series
+        SET status = #{status}, published_at = NULL,
+            sale_status = 'OFF_SALE', sale_updated_at = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateSale">
+        UPDATE t_series
+        SET sale_status = #{saleStatus}, price_cents = #{priceCents},
+            sale_updated_at = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
+</mapper>

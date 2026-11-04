@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.admin.AdminOrderMapper">
+
+    <sql id="columns">
+        o.order_no AS orderNo,
+        o.user_id AS userId,
+        u.username,
+        u.nickname,
+        o.series_id AS seriesId,
+        o.series_title_snapshot AS seriesTitle,
+        o.price_cents AS priceCents,
+        o.currency,
+        o.status,
+        o.pay_channel AS payChannel,
+        o.provider_trade_no AS providerTradeNo,
+        o.expire_at AS expireAt,
+        o.paid_at AS paidAt,
+        o.fulfilled_at AS fulfilledAt,
+        o.closed_at AS closedAt,
+        o.fulfillment_attempts AS fulfillmentAttempts,
+        o.last_error AS lastError,
+        o.created_at AS createdAt,
+        o.updated_at AS updatedAt
+    </sql>
+
+    <sql id="filters">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (o.order_no LIKE CONCAT('%', #{keyword}, '%')
+                     OR u.username LIKE CONCAT('%', #{keyword}, '%')
+                     OR u.nickname LIKE CONCAT('%', #{keyword}, '%')
+                     OR o.series_title_snapshot LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">
+                AND o.status = #{status}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findPage" resultType="com.wherelee.edu.admin.AdminOrderVO">
+        SELECT <include refid="columns"/>
+        FROM t_order o
+        JOIN t_user u ON u.id = o.user_id
+        <include refid="filters"/>
+        ORDER BY o.created_at DESC, o.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM t_order o
+        JOIN t_user u ON u.id = o.user_id
+        <include refid="filters"/>
+    </select>
+
+    <select id="findOne" resultType="com.wherelee.edu.admin.AdminOrderVO">
+        SELECT <include refid="columns"/>
+        FROM t_order o
+        JOIN t_user u ON u.id = o.user_id
+        WHERE o.order_no = #{orderNo}
+    </select>
+
+    <select id="findExceptions" resultType="com.wherelee.edu.admin.AdminOrderVO">
+        SELECT <include refid="columns"/>
+        FROM t_order o
+        JOIN t_user u ON u.id = o.user_id
+        WHERE o.status IN ('PAID', 'REFUND_FAILED')
+           OR (o.status = 'PAYING' AND o.updated_at &lt;= TIMESTAMPADD(MINUTE, -2, CURRENT_TIMESTAMP(3)))
+           OR o.last_error IS NOT NULL
+        ORDER BY o.updated_at DESC, o.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countExceptions" resultType="long">
+        SELECT COUNT(*)
+        FROM t_order o
+        WHERE o.status IN ('PAID', 'REFUND_FAILED')
+           OR (o.status = 'PAYING' AND o.updated_at &lt;= TIMESTAMPADD(MINUTE, -2, CURRENT_TIMESTAMP(3)))
+           OR o.last_error IS NOT NULL
+    </select>
+</mapper>

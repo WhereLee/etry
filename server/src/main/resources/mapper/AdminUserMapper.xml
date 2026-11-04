@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wherelee.edu.admin.AdminUserMapper">
+
+    <sql id="userFilters">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (u.username LIKE CONCAT('%', #{keyword}, '%')
+                     OR u.nickname LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="role != null and role != ''">
+                AND u.role = #{role}
+            </if>
+            <if test="status != null and status != ''">
+                AND u.status = #{status}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findPage" resultType="com.wherelee.edu.admin.dto.AdminUserVO">
+        SELECT u.id,
+               u.username,
+               u.nickname,
+               u.role,
+               u.status,
+               u.must_change_password AS mustChangePassword,
+               (SELECT COUNT(*) FROM t_student_series ss
+                WHERE ss.user_id = u.id AND ss.status = 'ACTIVE') AS seriesCount,
+               u.created_at AS createdAt
+        FROM t_user u
+        <include refid="userFilters"/>
+        ORDER BY u.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countUsers" resultType="long">
+        SELECT COUNT(*)
+        FROM t_user u
+        <include refid="userFilters"/>
+    </select>
+
+    <select id="findSeriesIds" resultType="long">
+        SELECT series_id FROM t_student_series
+        WHERE user_id = #{userId} AND source = 'ADMIN' AND status = 'ACTIVE'
+        ORDER BY sort, id
+    </select>
+
+    <delete id="deleteUserSeries">
+        DELETE FROM t_student_series WHERE user_id = #{userId} AND source = 'ADMIN'
+    </delete>
+
+    <insert id="insertUserSeries">
+        INSERT INTO t_student_series
+            (user_id, series_id, sort, source, status, granted_at)
+        VALUES (#{userId}, #{seriesId}, #{sort}, 'ADMIN', 'ACTIVE', CURRENT_TIMESTAMP(3))
+    </insert>
+
+    <select id="findAllSeries" resultType="com.wherelee.edu.admin.dto.SeriesOptionVO">
+        SELECT id, title FROM t_series WHERE status = 'PUBLISHED' ORDER BY sort, id
+    </select>
+</mapper>

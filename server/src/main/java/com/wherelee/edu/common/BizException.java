@@ -1,23 +1,33 @@
 package com.wherelee.edu.common;
 
-import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
-@Getter
 public class BizException extends RuntimeException {
 
-    private final ErrorCode errorCode;
+    private final HttpStatus status;
 
-    public BizException(ErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
+    public BizException(HttpStatus status, String message) {
+        super(message);
+        this.status = status;
     }
 
-    public BizException(ErrorCode errorCode, String detail) {
-        super(detail);
-        this.errorCode = errorCode;
+    public HttpStatus status() {
+        return status;
     }
 
-    public static BizException of(ErrorCode errorCode) {
-        return new BizException(errorCode);
+    public static BizException badRequest(String message) {
+        return new BizException(HttpStatus.BAD_REQUEST, message);
+    }
+
+    public static BizException unauthorized(String message) {
+        return new BizException(HttpStatus.UNAUTHORIZED, message);
+    }
+
+    public static BizException notFound(String message) {
+        return new BizException(HttpStatus.NOT_FOUND, message);
+    }
+
+    public static BizException tooManyRequests(String message) {
+        return new BizException(HttpStatus.TOO_MANY_REQUESTS, message);
     }
 }

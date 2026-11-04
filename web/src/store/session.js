@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
 
-const KEY = 'etry.session'
+const KEY = 'etry.btry.session'
 
 function load() {
   try {
@@ -12,37 +12,23 @@ function load() {
 
 const saved = load()
 
-/** 登录态。刷新页面从 localStorage 恢复；token 过期由接口拦截器统一处理 */
 export const session = reactive({
   token: saved.token || '',
-  userId: saved.userId ?? null,
-  username: saved.username || '',
-  nickname: saved.nickname || '',
-  roles: saved.roles || [],
+  user: saved.user || null,
   mustChangePassword: !!saved.mustChangePassword
 })
 
 export function setSession(data) {
-  Object.assign(session, {
-    token: data.token,
-    userId: data.userId,
-    username: data.username,
-    nickname: data.nickname,
-    roles: data.roles || [],
-    mustChangePassword: !!data.mustChangePassword
-  })
+  session.token = data.token
+  session.user = data.user
+  session.mustChangePassword = !!data.mustChangePassword
   localStorage.setItem(KEY, JSON.stringify(session))
 }
 
 export function clearSession() {
-  Object.assign(session, {
-    token: '',
-    userId: null,
-    username: '',
-    nickname: '',
-    roles: [],
-    mustChangePassword: false
-  })
+  session.token = ''
+  session.user = null
+  session.mustChangePassword = false
   localStorage.removeItem(KEY)
 }
 
@@ -54,15 +40,14 @@ export function isLoggedIn() {
   return !!session.token
 }
 
-export function hasRole(code) {
-  return session.roles.includes(code)
+export function hasRole(role) {
+  return session.user?.role === role
 }
 
-/** token 失效时由拦截器回调，router 在启动时注册跳转逻辑 */
-let unauthorizedHandler = () => {}
-export function setUnauthorizedHandler(fn) {
-  unauthorizedHandler = fn
-}
-export function fireUnauthorized() {
-  unauthorizedHandler()
+export function homePath() {
+  if (!isLoggedIn()) return '/login'
+  if (session.mustChangePassword) return '/password'
+  if (hasRole('ADMIN')) return '/admin/users'
+  if (hasRole('TEACHER')) return '/teacher/series'
+  return '/learning'
 }

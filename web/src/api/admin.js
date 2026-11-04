@@ -1,37 +1,41 @@
-import { get, put } from './http'
+import { get, post, put } from './http'
 
-export function listCourses(params) {
-  return get('/admin/courses', params)
+export function listUsers(params) {
+  return get('/admin/users', params)
 }
 
-export function courseDetail(id) {
-  return get(`/admin/courses/${id}`)
+export function createUser(body) {
+  return post('/admin/users', body)
 }
 
-export function review(id, approved, rejectReason) {
-  return put(`/admin/courses/${id}/review`, { approved, rejectReason })
+export function changeUserStatus(id, status) {
+  return put(`/admin/users/${id}/status`, { status })
 }
 
-export function offline(id) {
-  return put(`/admin/courses/${id}/offline`)
+export function resetUserPassword(id, newPassword) {
+  return put(`/admin/users/${id}/password`, { newPassword })
 }
 
-export function publish(id) {
-  return put(`/admin/courses/${id}/publish`)
+export function listAllSeries() {
+  return get('/admin/series')
 }
 
-export function materials(id) {
-  return get(`/admin/courses/${id}/materials`)
+export function getUserSeries(id) {
+  return get(`/admin/users/${id}/series`)
 }
 
-export function previewPlay(lessonId) {
-  return get(`/admin/courses/lessons/${lessonId}/play`)
+export function assignUserSeries(id, seriesIds) {
+  return put(`/admin/users/${id}/series`, { seriesIds })
 }
 
-export function overview() {
-  return get('/admin/stats/overview')
+export function listAdminSeriesContent(params) {
+  return get('/admin/content/series', params)
 }
 
-export function topCourses(limit = 10) {
-  return get('/admin/stats/top-courses', { limit })
+export function getAdminSeriesContent(id) {
+  return get(`/admin/content/series/${id}`)
+}
+
+export function updateAdminSeriesStatus(id, status) {
+  return put(`/admin/content/series/${id}/status`, { status })
 }
