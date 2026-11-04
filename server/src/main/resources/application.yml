@@ -73,6 +73,12 @@ app:
     max-size-bytes: ${UPLOAD_MAX_SIZE_BYTES:4294967296}
     url-ttl-minutes: ${UPLOAD_URL_TTL_MINUTES:60}
     allowed-content-types: ${UPLOAD_ALLOWED_CONTENT_TYPES:video/mp4,video/webm}
+  seed:
+    # 首次启动创建演示账号的初始密码。留空则随机生成并在启动日志打印一次，
+    # 三个账号都强制首次改密。不要把固定口令写进仓库。
+    admin-password: ${SEED_ADMIN_PASSWORD:}
+    teacher-password: ${SEED_TEACHER_PASSWORD:}
+    student-password: ${SEED_STUDENT_PASSWORD:}
   payment:
     provider: ${PAYMENT_PROVIDER:mock}
     mock-enabled: ${PAYMENT_MOCK_ENABLED:true}

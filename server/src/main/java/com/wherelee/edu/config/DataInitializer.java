@@ -10,21 +10,29 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DataInitializer implements ApplicationRunner {
 
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz";
+    private static final String DIGITS = "23456789";
+    private static final String ALPHABET = LETTERS + DIGITS;
+
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder;
     private final DemoProperties demo;
+    private final SeedProperties seed;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        seedUser("admin", "admin123", "管理员", "ADMIN", true);
-        Long teacherId = seedUser("teacher", "teacher123", "物理老师", "TEACHER", false);
-        Long studentId = seedUser("student", "student123", "演示学生", "STUDENT", false);
+        seedUser("admin", seed.adminPassword(), "管理员", "ADMIN");
+        Long teacherId = seedUser("teacher", seed.teacherPassword(), "物理老师", "TEACHER");
+        Long studentId = seedUser("student", seed.studentPassword(), "演示学生", "STUDENT");
 
         if (count("t_series") == 0) {
             seedSeries(teacherId);
@@ -37,18 +45,45 @@ public class DataInitializer implements ApplicationRunner {
         log.info("学习空间示例数据就绪 student={} series={},{}", studentId, physics1, physics2);
     }
 
-    private Long seedUser(String username, String password, String nickname, String role, boolean mustChange) {
+    private Long seedUser(String username, String configuredPassword, String nickname, String role) {
         Integer existing = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM t_user WHERE username = ?", Integer.class, username);
         if (existing == null || existing == 0) {
+            boolean generated = configuredPassword == null || configuredPassword.isBlank();
+            String password = generated ? generatePassword() : configuredPassword;
             jdbc.update("""
                     INSERT INTO t_user
                         (username, password_hash, nickname, role, status, must_change_password, token_version)
-                    VALUES (?, ?, ?, ?, 'ACTIVE', ?, 0)
-                    """, username, passwordEncoder.encode(password), nickname, role, mustChange);
-            log.info("创建账号 username={} role={} mustChange={}", username, role, mustChange);
+                    VALUES (?, ?, ?, ?, 'ACTIVE', TRUE, 0)
+                    """, username, passwordEncoder.encode(password), nickname, role);
+            if (generated) {
+                log.warn("初始化账号 username={} role={} 随机初始密码={}（仅本次启动打印，首次登录必须改密）",
+                        username, role, password);
+            } else {
+                log.info("创建账号 username={} role={}，初始密码来自配置，首次登录必须改密", username, role);
+            }
         }
         return jdbc.queryForObject("SELECT id FROM t_user WHERE username = ?", Long.class, username);
+    }
+
+    /**
+     * 生成满足强密码规则的随机初始密码：16 位，至少一个字母与一个数字，
+     * 排除容易混淆的 I/O/l/o/0/1，避免把固定口令写进仓库。
+     */
+    static String generatePassword() {
+        char[] chars = new char[16];
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = ALPHABET.charAt(RANDOM.nextInt(ALPHABET.length()));
+        }
+        chars[0] = LETTERS.charAt(RANDOM.nextInt(LETTERS.length()));
+        chars[1] = DIGITS.charAt(RANDOM.nextInt(DIGITS.length()));
+        for (int i = chars.length - 1; i > 0; i--) {
+            int j = RANDOM.nextInt(i + 1);
+            char tmp = chars[i];
+            chars[i] = chars[j];
+            chars[j] = tmp;
+        }
+        return new String(chars);
     }
 
     private void seedSeries(Long teacherId) {
