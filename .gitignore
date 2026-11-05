@@ -14,6 +14,8 @@ npm-debug.log*
 
 # 本地环境与日志
 .env
+.env.*
+!.env.*.example
 *.local
 *.log
 
@@ -38,3 +40,9 @@ logs/
 
 # 数据库备份产物
 backups/
+
+# 压测/JVM 原始产物（大文件不进仓库）
+reports/
+tools/k6/load-summary.json
+*.jfr
+*.hprof

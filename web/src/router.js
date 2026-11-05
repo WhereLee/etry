@@ -1,106 +1,106 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { hasRole, homePath, isLoggedIn, session } from './store/session'
+import { hasRole, homePath, isLoggedIn, session } from '@/store/session'
 
 const routes = [
   { path: '/', redirect: '/learning' },
   {
     path: '/login',
     name: 'login',
-    component: () => import('./views/Login.vue')
+    component: () => import('@/features/identity/views/Login.vue')
   },
   {
     path: '/invite/:token',
     name: 'teacherInvite',
-    component: () => import('./views/TeacherInvite.vue')
+    component: () => import('@/features/identity/views/TeacherInvite.vue')
   },
   {
     path: '/password',
     name: 'password',
-    component: () => import('./views/ChangePassword.vue'),
+    component: () => import('@/features/identity/views/ChangePassword.vue'),
     meta: { auth: true, allowWhenMustChange: true }
   },
   {
     path: '/learning',
     name: 'learning',
-    component: () => import('./views/LearningSpace.vue'),
+    component: () => import('@/features/learning/views/LearningSpace.vue'),
     meta: { auth: true, role: 'STUDENT' }
   },
   {
     path: '/store',
     name: 'courseStore',
-    component: () => import('./views/CourseStore.vue'),
+    component: () => import('@/features/commerce/views/CourseStore.vue'),
     meta: { auth: true, role: 'STUDENT' }
   },
   {
     path: '/orders',
     name: 'myOrders',
-    component: () => import('./views/MyOrders.vue'),
+    component: () => import('@/features/commerce/views/MyOrders.vue'),
     meta: { auth: true, role: 'STUDENT' }
   },
   {
     path: '/orders/:orderNo',
     name: 'orderDetail',
-    component: () => import('./views/OrderDetail.vue'),
+    component: () => import('@/features/commerce/views/OrderDetail.vue'),
     meta: { auth: true, role: 'STUDENT' }
   },
   {
     path: '/mock-pay/:orderNo',
     name: 'mockCashier',
-    component: () => import('./views/MockCashier.vue'),
+    component: () => import('@/features/commerce/views/MockCashier.vue'),
     meta: { auth: true, role: 'STUDENT' }
   },
   {
     path: '/series/:id',
     name: 'series',
-    component: () => import('./views/SeriesView.vue'),
+    component: () => import('@/features/learning/views/SeriesView.vue'),
     meta: { auth: true, role: 'STUDENT' }
   },
   {
     path: '/admin/users',
     name: 'adminUsers',
-    component: () => import('./views/AdminUsers.vue'),
+    component: () => import('@/features/operations/views/AdminUsers.vue'),
     meta: { auth: true, role: 'ADMIN' }
   },
   {
     path: '/admin/teacher-invitations',
     name: 'adminTeacherInvitations',
-    component: () => import('./views/AdminTeacherInvitations.vue'),
+    component: () => import('@/features/operations/views/AdminTeacherInvitations.vue'),
     meta: { auth: true, role: 'ADMIN' }
   },
   {
     path: '/admin/series',
     name: 'adminSeries',
-    component: () => import('./views/AdminSeries.vue'),
+    component: () => import('@/features/operations/views/AdminSeries.vue'),
     meta: { auth: true, role: 'ADMIN' }
   },
   {
     path: '/admin/orders',
     name: 'adminOrders',
-    component: () => import('./views/AdminOrders.vue'),
+    component: () => import('@/features/operations/views/AdminOrders.vue'),
     meta: { auth: true, role: 'ADMIN' }
   },
   {
     path: '/teacher/series',
     name: 'teacherSeries',
-    component: () => import('./views/TeacherSeries.vue'),
+    component: () => import('@/features/course/views/TeacherSeries.vue'),
     meta: { auth: true, role: 'TEACHER' }
   },
   {
     path: '/teacher/series/new',
     name: 'teacherSeriesNew',
-    component: () => import('./views/TeacherSeriesEditor.vue'),
+    component: () => import('@/features/course/views/TeacherSeriesEditor.vue'),
     meta: { auth: true, role: 'TEACHER' }
   },
   {
     path: '/teacher/series/:id',
     name: 'teacherSeriesDetail',
-    component: () => import('./views/TeacherSeriesView.vue'),
+    component: () => import('@/features/course/views/TeacherSeriesView.vue'),
     meta: { auth: true, role: 'TEACHER' }
   },
   {
     path: '/teacher/series/:id/edit',
     name: 'teacherSeriesEdit',
-    component: () => import('./views/TeacherSeriesEditor.vue'),
+    component: () => import('@/features/course/views/TeacherSeriesEditor.vue'),
     meta: { auth: true, role: 'TEACHER' }
   },
   { path: '/:pathMatch(.*)*', redirect: '/learning' }

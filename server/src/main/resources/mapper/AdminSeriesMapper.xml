@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.wherelee.edu.admin.AdminSeriesMapper">
+<mapper namespace="com.wherelee.edu.modules.course.governance.AdminSeriesMapper">
 
     <sql id="filters">
         <where>
@@ -20,7 +20,7 @@
         </where>
     </sql>
 
-    <select id="findPage" resultType="com.wherelee.edu.admin.AdminSeriesVO">
+    <select id="findPage" resultType="com.wherelee.edu.modules.course.governance.AdminSeriesVO">
         SELECT s.id,
                s.title,
                s.summary,
@@ -55,7 +55,7 @@
         <include refid="filters"/>
     </select>
 
-    <select id="findHeader" resultType="com.wherelee.edu.admin.AdminSeriesHeaderVO">
+    <select id="findHeader" resultType="com.wherelee.edu.modules.course.governance.AdminSeriesHeaderVO">
         SELECT s.id, s.title, s.summary, s.status,
                s.sale_status AS saleStatus, s.price_cents AS priceCents, s.currency,
                s.teacher_id AS teacherId,
@@ -65,14 +65,14 @@
         WHERE s.id = #{id}
     </select>
 
-    <select id="findChapters" resultType="com.wherelee.edu.admin.AdminSeriesChapterVO">
+    <select id="findChapters" resultType="com.wherelee.edu.modules.course.governance.AdminSeriesChapterVO">
         SELECT id, title, sort
         FROM t_series_chapter
         WHERE series_id = #{seriesId}
         ORDER BY sort, id
     </select>
 
-    <select id="findVideos" resultType="com.wherelee.edu.admin.AdminSeriesVideoVO">
+    <select id="findVideos" resultType="com.wherelee.edu.modules.course.governance.AdminSeriesVideoVO">
         SELECT v.id, v.chapter_id AS chapterId, v.title, v.sort,
                v.media_status AS mediaStatus, v.duration_seconds AS durationSeconds,
                v.file_size_bytes AS fileSizeBytes, v.updated_at AS updatedAt

@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.wherelee.edu.admin.AdminOrderMapper">
+<mapper namespace="com.wherelee.edu.modules.operations.admin.AdminOrderMapper">
 
     <sql id="columns">
         o.order_no AS orderNo,
@@ -40,7 +40,7 @@
         </where>
     </sql>
 
-    <select id="findPage" resultType="com.wherelee.edu.admin.AdminOrderVO">
+    <select id="findPage" resultType="com.wherelee.edu.modules.operations.admin.AdminOrderVO">
         SELECT <include refid="columns"/>
         FROM t_order o
         JOIN t_user u ON u.id = o.user_id
@@ -56,14 +56,14 @@
         <include refid="filters"/>
     </select>
 
-    <select id="findOne" resultType="com.wherelee.edu.admin.AdminOrderVO">
+    <select id="findOne" resultType="com.wherelee.edu.modules.operations.admin.AdminOrderVO">
         SELECT <include refid="columns"/>
         FROM t_order o
         JOIN t_user u ON u.id = o.user_id
         WHERE o.order_no = #{orderNo}
     </select>
 
-    <select id="findExceptions" resultType="com.wherelee.edu.admin.AdminOrderVO">
+    <select id="findExceptions" resultType="com.wherelee.edu.modules.operations.admin.AdminOrderVO">
         SELECT <include refid="columns"/>
         FROM t_order o
         JOIN t_user u ON u.id = o.user_id

@@ -150,6 +150,8 @@ npm run dev
 | `PAYMENT_ORDER_EXPIRE_MINUTES` | `15` | 订单支付有效期 |
 | `PAYMENT_QUERY_AFTER_SECONDS` | `15` | 支付中订单进入主动查单的等待时间 |
 | `PAYMENT_RECONCILE_INTERVAL_MS` | `15000` | 补偿任务执行间隔 |
+| `PAYMENT_REFUND_MAX_ATTEMPTS` | `5` | 退款失败自动重试最大次数 |
+| `PAYMENT_REFUND_RETRY_BASE_SECONDS` | `30` | 退款重试基础退避秒数 |
 | `ALIPAY_APP_ID` | 无 | 开放平台应用 ID，provider=alipay 时必填 |
 | `ALIPAY_PRIVATE_KEY` | 无 | 应用私钥，PKCS8 纯 Base64，一行不带头尾 |
 | `ALIPAY_PUBLIC_KEY` | 无 | 支付宝公钥（不是应用公钥），用于回调验签 |
@@ -174,35 +176,42 @@ npm run dev
 | `ALERT_ERROR_THRESHOLD` | `5` | 错误告警阈值 |
 | `ALERT_STALL_THRESHOLD` | `10` | 卡顿告警阈值 |
 | `ALERT_DEDUP_MINUTES` | `30` | 同类告警去重时间 |
+| `ALERT_PAYMENT_PAID_UNFULFILLED_MINUTES` | `1` | 已支付未履约告警阈值 |
+| `ALERT_PAYMENT_PAYING_STUCK_MINUTES` | `15` | 支付中订单堆积阈值 |
+| `ALERT_PAYMENT_REFUND_RETRY_EXHAUSTED_THRESHOLD` | `1` | 退款重试耗尽告警阈值 |
 
 ## 目录
 
 ```text
 server/
   src/main/java/com/wherelee/edu/
-    auth/       登录与当前用户
-    admin/      管理员建号、系列分配、内容治理与审计
-    invitation/ 教师邀请、token 哈希、公开激活与撤销
-    aop/        角色、审计、指标、限流、幂等切面
-    common/     统一异常响应、校验、traceId、安全响应头
-    config/     示例数据初始化与 CORS
-    playback/   播放日志、异步队列、MyBatis 查询
-    security/   JWT、登录限流、可信代理 IP
-    series/     学习空间、系列、视频与播放地址
-    storage/    COS 预签名、Redis URL 缓存
-    teacher/    教师工作台、内容 CRUD、发布状态、COS 直传与归属校验
-    user/       用户查询
+    EduApplication.java
+    modules/
+      identity/    登录、用户、JWT、限流、教师邀请
+      course/      系列、章节、视频、教师内容与发布状态
+      learning/    学习空间、学习进度、播放日志
+      commerce/    课程商店、订单、支付、退款、权益
+      operations/  管理员编排、订单运维、告警
+      platform/    AOP、审计、通用 Web、配置、COS/Redis 适配
   src/main/resources/
     db/migration/  Flyway
     mapper/        MyBatis XML
     application.yml
-web/
-  src/
-    api/        登录与学习接口
-    store/      登录态
-    utils/      密码策略
-    views/      登录、改密、教师邀请、教师工作台、系列编辑器、学习空间、账号管理
+web/src/
+  features/
+    identity/   登录、改密、教师邀请
+    operations/ 管理员账号、邀请、内容和订单
+    course/     教师工作台和系列编辑器
+    learning/   学习空间和系列播放
+    commerce/   课程商店、订单和 Mock 收银台
+  shared/api/   HTTP 客户端
+  components/   公共组件
+  store/        登录态
+  utils/        密码策略
 ```
+
+模块依赖边界和本次审查结论见 `docs/btry完成度审查与模块化改造方案.md`；解耦设计见 `docs/模块解耦设计计划.md`；当前进度见 `docs/模块解耦实施清单.md`。
+后端岗位能力调研见 `docs/后端岗位能力调研与btry补齐建议.md`。
 
 ## 账号与权限
 
@@ -222,6 +231,7 @@ web/
 - 用户列表使用 MyBatis 动态 SQL，系列分配在事务内先校验后替换。
 
 生产配置、部署、备份恢复和故障处置见 `docs/生产运维手册.md`。
+Docker 本地/staging 运行与云服务器验证见 `docs/Docker运行与云服务器验证.md`。
 
 ## 订单与 Mock 支付
 
@@ -360,6 +370,19 @@ node tools\video-load-test.mjs
 - COS 对象使用 `edu/video/91/demo-real-181s-faststart-cache.mp4`，已设置 `Cache-Control: private, max-age=3600`。
 - 原对象 `edu/video/91/demo-real-181s.mp4` 和中间缓存对象 `edu/video/91/demo-real-181s-cache.mp4` 保留。
 - faststart 重封装已完成，当前对象已把 `moov` 放到文件头。
+
+## 工程验证
+
+- 后端工程深度优化实施计划见 `docs/后端工程深度优化实施计划.md`。
+- 订单链路 SQL 与索引审计见 `docs/订单链路SQL与索引审计.md`。
+- 并发、幂等与故障恢复测试矩阵见 `docs/并发与幂等测试矩阵.md`。
+- JVM/GC 基线见 `docs/JVM与GC基线报告.md`。
+- k6 压测与容量结论见 `docs/压测报告.md`。
+- OpenTelemetry 接入与排障见 `docs/链路追踪接入与排障.md`。
+- Prometheus/Grafana 面板与告警边界见 `docs/监控面板与告警.md`。
+- Docker/staging、集成测试库、观测栈和压测入口见 `docs/Docker运行与云服务器验证.md`。
+- 支付链路日志字段与真实支付排障见 `docs/支付链路日志与排障.md`。
+
 ## 视频 v1 状态
 
 **FROZEN（2026-11-02）**

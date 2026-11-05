@@ -1,0 +1,48 @@
+spring:
+  datasource:
+    url: ${IT_DB_URL}
+    username: ${IT_DB_USER:btry}
+    password: ${IT_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 24
+      minimum-idle: 4
+      connection-timeout: 10000
+  data:
+    redis:
+      host: ${IT_REDIS_HOST:127.0.0.1}
+      port: ${IT_REDIS_PORT:16379}
+      password: ${IT_REDIS_PASSWORD:}
+      database: ${IT_REDIS_DATABASE:15}
+  flyway:
+    enabled: true
+
+server:
+  port: 0
+
+management:
+  server:
+    port: 0
+
+app:
+  security:
+    login-protection-enabled: false
+  payment:
+    provider: mock
+    mock-enabled: true
+    mock-secret: integration-mock-secret
+    reconcile-interval-ms: 3600000
+    reconcile-initial-delay-ms: 3600000
+    query-after-seconds: 0
+    reconcile-batch-size: 100
+  alert:
+    enabled: false
+    initial-delay-ms: 3600000
+  seed:
+    admin-password: Integration1Pass
+    teacher-password: Integration1Pass
+    student-password: Integration1Pass
+
+logging:
+  level:
+    root: warn
+    com.wherelee.edu: warn

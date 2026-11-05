@@ -108,6 +108,7 @@ try {
         "ALIPAY_NOTIFY_URL=$($local['ALIPAY_NOTIFY_URL'])"
         "ALIPAY_RETURN_URL=$($local['ALIPAY_RETURN_URL'])"
         'LOG_FILE=/opt/btry/logs/btry-prod.log'
+        "ALERT_WEBHOOK_URL=$($local['ALERT_WEBHOOK_URL'])"
     )
     [IO.File]::WriteAllText((Join-Path $tmp 'btry-prod.env'), (($lines -join "`n") + "`n"), $utf8)
 
@@ -116,13 +117,17 @@ try {
     Write-LfFile (Join-Path $tmp 'btry.service') (Get-Content (Join-Path $deployDir 'btry.service') -Raw)
     Write-LfFile (Join-Path $tmp 'nginx-learn.conf') (Get-Content (Join-Path $deployDir 'nginx-learn.conf') -Raw)
     Write-LfFile (Join-Path $tmp 'setup-server.sh') (Get-Content (Join-Path $deployDir 'setup-server.sh') -Raw)
+    Write-LfFile (Join-Path $tmp 'btry-backup.sh') (Get-Content (Join-Path $deployDir 'btry-backup.sh') -Raw)
+    Write-LfFile (Join-Path $tmp 'btry-backup.service') (Get-Content (Join-Path $deployDir 'btry-backup.service') -Raw)
+    Write-LfFile (Join-Path $tmp 'btry-backup.timer') (Get-Content (Join-Path $deployDir 'btry-backup.timer') -Raw)
+    Write-LfFile (Join-Path $tmp 'btry-logrotate') (Get-Content (Join-Path $deployDir 'btry-logrotate') -Raw)
 
     Write-Host '==> Packing frontend dist'
     tar -czf (Join-Path $tmp 'btry-web.tar.gz') -C $dist .
     if ($LASTEXITCODE -ne 0) { throw 'tar failed' }
 
     Write-Host "==> Uploading artifacts to $Server"
-    $files = @('btry-prod.env', 'btry.jar', 'btry-web.tar.gz', 'btry-seed.sql', 'btry.service', 'nginx-learn.conf', 'setup-server.sh') |
+    $files = @('btry-prod.env', 'btry.jar', 'btry-web.tar.gz', 'btry-seed.sql', 'btry.service', 'nginx-learn.conf', 'setup-server.sh', 'btry-backup.sh', 'btry-backup.service', 'btry-backup.timer', 'btry-logrotate') |
         ForEach-Object { Join-Path $tmp $_ }
     & scp -q @files "${Server}:/tmp/"
     if ($LASTEXITCODE -ne 0) { throw 'scp failed' }

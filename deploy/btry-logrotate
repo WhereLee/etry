@@ -1,0 +1,9 @@
+/opt/btry/logs/stdout.log /opt/btry/logs/stderr.log {
+    daily
+    rotate 14
+    compress
+    missingok
+    notifempty
+    copytruncate
+    su ubuntu ubuntu
+}

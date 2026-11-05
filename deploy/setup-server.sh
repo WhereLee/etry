@@ -67,6 +67,16 @@ fi
 nginx -t
 systemctl reload nginx
 
+echo "==> backup and logrotate"
+install -m 0755 /tmp/btry-backup.sh /opt/btry/btry-backup.sh
+cp /tmp/btry-backup.service /etc/systemd/system/btry-backup.service
+cp /tmp/btry-backup.timer /etc/systemd/system/btry-backup.timer
+cp /tmp/btry-logrotate /etc/logrotate.d/btry
+systemctl daemon-reload
+systemctl enable --now btry-backup.timer
+mkdir -p "$APP_DIR/backups"
+chown -R ubuntu:ubuntu "$APP_DIR/backups"
+
 echo "==> web"
 mkdir -p "$WEB_ROOT/learn"
 rm -rf "$WEB_ROOT/learn/assets" "$WEB_ROOT/learn/index.html"

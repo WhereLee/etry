@@ -6,7 +6,7 @@ spring:
   application:
     name: btry-learning-space
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/btry_edu?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/btry_edu?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:root}
     hikari:
@@ -19,6 +19,7 @@ spring:
       host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
       timeout: 2s
   flyway:
     enabled: true
@@ -64,6 +65,9 @@ app:
     dedup-minutes: ${ALERT_DEDUP_MINUTES:30}
     evaluate-interval-ms: ${ALERT_EVALUATE_INTERVAL_MS:300000}
     initial-delay-ms: ${ALERT_INITIAL_DELAY_MS:60000}
+    payment-paid-unfulfilled-minutes: ${ALERT_PAYMENT_PAID_UNFULFILLED_MINUTES:1}
+    payment-paying-stuck-minutes: ${ALERT_PAYMENT_PAYING_STUCK_MINUTES:15}
+    payment-refund-retry-exhausted-threshold: ${ALERT_PAYMENT_REFUND_RETRY_EXHAUSTED_THRESHOLD:1}
   teacher-invitation:
     base-url: ${APP_BASE_URL:http://127.0.0.1:5175}
     expiry-hours: ${TEACHER_INVITE_EXPIRY_HOURS:72}
@@ -88,6 +92,8 @@ app:
     reconcile-batch-size: ${PAYMENT_RECONCILE_BATCH_SIZE:20}
     reconcile-interval-ms: ${PAYMENT_RECONCILE_INTERVAL_MS:15000}
     reconcile-initial-delay-ms: ${PAYMENT_RECONCILE_INITIAL_DELAY_MS:10000}
+    refund-max-attempts: ${PAYMENT_REFUND_MAX_ATTEMPTS:5}
+    refund-retry-base-seconds: ${PAYMENT_REFUND_RETRY_BASE_SECONDS:30}
     alipay:
       app-id: ${ALIPAY_APP_ID:}
       private-key: ${ALIPAY_PRIVATE_KEY:}
@@ -106,6 +112,13 @@ management:
   server:
     port: ${MANAGEMENT_PORT:9091}
     address: ${MANAGEMENT_ADDRESS:127.0.0.1}
+  tracing:
+    enabled: ${TRACING_ENABLED:false}
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://127.0.0.1:4318/v1/traces}
   endpoints:
     web:
       exposure:
@@ -123,6 +136,11 @@ management:
   metrics:
     tags:
       application: btry-learning-space
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
 
 resilience4j:
   circuitbreaker:

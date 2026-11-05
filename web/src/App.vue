@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import { clearSession, hasRole, homePath, isLoggedIn, session } from './store/session'
+import { clearSession, hasRole, homePath, isLoggedIn, session } from '@/store/session'
 
 const router = useRouter()
 const route = useRoute()

@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.wherelee.edu.admin.AdminUserMapper">
+<mapper namespace="com.wherelee.edu.modules.operations.admin.AdminUserMapper">
 
     <sql id="userFilters">
         <where>
@@ -19,7 +19,7 @@
         </where>
     </sql>
 
-    <select id="findPage" resultType="com.wherelee.edu.admin.dto.AdminUserVO">
+    <select id="findPage" resultType="com.wherelee.edu.modules.operations.admin.dto.AdminUserVO">
         SELECT u.id,
                u.username,
                u.nickname,
@@ -57,7 +57,7 @@
         VALUES (#{userId}, #{seriesId}, #{sort}, 'ADMIN', 'ACTIVE', CURRENT_TIMESTAMP(3))
     </insert>
 
-    <select id="findAllSeries" resultType="com.wherelee.edu.admin.dto.SeriesOptionVO">
+    <select id="findAllSeries" resultType="com.wherelee.edu.modules.operations.admin.dto.SeriesOptionVO">
         SELECT id, title FROM t_series WHERE status = 'PUBLISHED' ORDER BY sort, id
     </select>
 </mapper>
