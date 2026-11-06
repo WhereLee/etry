@@ -10,6 +10,37 @@ jobs:
     defaults:
       run:
         working-directory: server
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: itroot
+          MYSQL_DATABASE: btry_it
+          MYSQL_USER: btry
+          MYSQL_PASSWORD: btrypass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      IT_DB_URL: jdbc:mysql://127.0.0.1:3306/btry_it?allowPublicKeyRetrieval=true&useSSL=false&allowMultiQueries=true
+      IT_DB_USER: btry
+      IT_DB_PASSWORD: btrypass
+      IT_REDIS_HOST: 127.0.0.1
+      IT_REDIS_PORT: 6379
+      IT_REDIS_DATABASE: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -19,6 +50,10 @@ jobs:
           cache: maven
       - name: Backend tests
         run: mvn -B test
+      - name: Backend integration tests
+        run: mvn -B -Pintegration test
+      - name: JaCoCo coverage report
+        run: mvn -B -q jacoco:report
 
   frontend:
     runs-on: ubuntu-latest
