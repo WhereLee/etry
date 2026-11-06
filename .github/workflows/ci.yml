@@ -41,6 +41,8 @@ jobs:
       IT_REDIS_HOST: 127.0.0.1
       IT_REDIS_PORT: 6379
       IT_REDIS_DATABASE: 15
+      COS_SECRET_ID: ci-dummy
+      COS_SECRET_KEY: ci-dummy
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

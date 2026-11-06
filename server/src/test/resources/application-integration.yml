@@ -26,6 +26,10 @@ management:
 app:
   security:
     login-protection-enabled: false
+  cos:
+    bucket: ci-test-bucket
+    region: ap-guangzhou
+    url-ttl-minutes: 30
   payment:
     provider: mock
     mock-enabled: true
