@@ -12,20 +12,44 @@ class MockSignatureServiceTest {
 
     @Test
     void signatureRejectsTamperedAmount() {
-        PaymentNotification original = new PaymentNotification(
-                "MOCK", "event-1", "ORD-1", "PAYMENT_SUCCESS", 100L, "TRADE-1", null
-        );
-        PaymentNotification signed = new PaymentNotification(
-                original.provider(), original.eventKey(), original.orderNo(), original.eventType(),
-                original.amountCents(), original.tradeNo(), service.sign(original)
-        );
+        PaymentNotification signed = signed(base(100L, 10L));
 
         assertThat(service.verify(signed)).isTrue();
 
         PaymentNotification tampered = new PaymentNotification(
-                signed.provider(), signed.eventKey(), signed.orderNo(), signed.eventType(),
-                999L, signed.tradeNo(), signed.signature()
+                signed.provider(), signed.eventKey(), signed.attemptId(), signed.orderNo(),
+                signed.eventType(), 999L, signed.tradeNo(), signed.providerTradeNo(),
+                signed.providerNotifyId(), signed.payloadDigest(), signed.signature()
         );
         assertThat(service.verify(tampered)).isFalse();
+    }
+
+    @Test
+    void signatureRejectsTamperedAttemptId() {
+        PaymentNotification signed = signed(base(100L, 10L));
+
+        assertThat(service.verify(signed)).isTrue();
+
+        PaymentNotification tampered = new PaymentNotification(
+                signed.provider(), signed.eventKey(), 20L, signed.orderNo(),
+                signed.eventType(), signed.amountCents(), signed.tradeNo(), signed.providerTradeNo(),
+                signed.providerNotifyId(), signed.payloadDigest(), signed.signature()
+        );
+        assertThat(service.verify(tampered)).isFalse();
+    }
+
+    private PaymentNotification base(long amount, Long attemptId) {
+        return new PaymentNotification(
+                "MOCK", "event-1", attemptId, "ORD-1", "PAYMENT_SUCCESS", amount,
+                "TRADE-1", "MOCK-ORD-1-1", null, null, null
+        );
+    }
+
+    private PaymentNotification signed(PaymentNotification original) {
+        return new PaymentNotification(
+                original.provider(), original.eventKey(), original.attemptId(), original.orderNo(),
+                original.eventType(), original.amountCents(), original.tradeNo(), original.providerTradeNo(),
+                original.providerNotifyId(), original.payloadDigest(), service.sign(original)
+        );
     }
 }

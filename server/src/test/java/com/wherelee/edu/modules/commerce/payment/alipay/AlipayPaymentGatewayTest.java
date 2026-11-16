@@ -1,10 +1,13 @@
 package com.wherelee.edu.modules.commerce.payment.alipay;
 
+import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
+import com.alipay.api.request.AlipayTradeCloseRequest;
 import com.alipay.api.request.AlipayTradeFastpayRefundQueryRequest;
 import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.request.AlipayTradeRefundRequest;
+import com.alipay.api.response.AlipayTradeCloseResponse;
 import com.alipay.api.response.AlipayTradeFastpayRefundQueryResponse;
 import com.alipay.api.response.AlipayTradePagePayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
@@ -133,6 +136,54 @@ class AlipayPaymentGatewayTest {
     void queryWithoutAttemptStaysPending() {
         PaymentGateway.PaymentQueryResult result = gateway.query(order(), null);
         assertThat(result.status()).isEqualTo("PENDING");
+        verifyNoInteractions(client);
+    }
+
+    @Test
+    void closeSuccessReturnsClosed() throws Exception {
+        AlipayTradeCloseResponse response = new AlipayTradeCloseResponse();
+        response.setCode("10000");
+        when(client.execute(any(AlipayTradeCloseRequest.class))).thenReturn(response);
+
+        PaymentGateway.CloseResult result = gateway.close(order(), attempt());
+
+        assertThat(result.status()).isEqualTo("CLOSED");
+        ArgumentCaptor<AlipayTradeCloseRequest> captor = ArgumentCaptor.forClass(AlipayTradeCloseRequest.class);
+        verify(client).execute(captor.capture());
+        assertThat(captor.getValue().getBizContent()).contains("\"out_trade_no\":\"ORD1_1\"");
+    }
+
+    @Test
+    void closeTradeNotExistReturnsNotFound() throws Exception {
+        AlipayTradeCloseResponse response = new AlipayTradeCloseResponse();
+        response.setCode("40004");
+        response.setSubCode("ACQ.TRADE_NOT_EXIST");
+        when(client.execute(any(AlipayTradeCloseRequest.class))).thenReturn(response);
+
+        assertThat(gateway.close(order(), attempt()).status()).isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void closeNetworkExceptionStaysPending() throws Exception {
+        when(client.execute(any(AlipayTradeCloseRequest.class)))
+                .thenThrow(new AlipayApiException("isp.unknow-error", "网络异常"));
+
+        assertThat(gateway.close(order(), attempt()).status()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void closeUnknownBusinessErrorStaysPending() throws Exception {
+        AlipayTradeCloseResponse response = new AlipayTradeCloseResponse();
+        response.setCode("40004");
+        response.setSubCode("ACQ.TRADE_STATUS_INVALID");
+        when(client.execute(any(AlipayTradeCloseRequest.class))).thenReturn(response);
+
+        assertThat(gateway.close(order(), attempt()).status()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void closeWithoutAttemptStaysPending() {
+        assertThat(gateway.close(order(), null).status()).isEqualTo("PENDING");
         verifyNoInteractions(client);
     }
 

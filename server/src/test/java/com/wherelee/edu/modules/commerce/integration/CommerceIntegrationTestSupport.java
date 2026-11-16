@@ -68,13 +68,39 @@ public abstract class CommerceIntegrationTestSupport {
     protected PaymentNotification successNotification(String orderNo) {
         var order = orderRepository.findByOrderNo(orderNo).orElseThrow();
         PaymentAttemptRecord attempt = paymentRepository.findLatestAttempt(order.id()).orElseThrow();
+        return successNotification(orderNo, attempt);
+    }
+
+    protected PaymentNotification successNotification(String orderNo, PaymentAttemptRecord attempt) {
+        var order = orderRepository.findByOrderNo(orderNo).orElseThrow();
         return new PaymentNotification(
                 "MOCK",
-                "IT:" + orderNo + ":PAID",
+                "IT:" + orderNo + ":" + attempt.attemptNo() + ":PAID",
+                attempt.id(),
                 orderNo,
                 "PAYMENT_SUCCESS",
                 order.priceCents(),
                 attempt.providerTradeNo(),
+                attempt.providerTradeNo(),
+                null,
+                null,
+                null
+        );
+    }
+
+    protected PaymentNotification failureNotification(String orderNo, PaymentAttemptRecord attempt) {
+        var order = orderRepository.findByOrderNo(orderNo).orElseThrow();
+        return new PaymentNotification(
+                "MOCK",
+                "IT:" + orderNo + ":" + attempt.attemptNo() + ":FAILED",
+                attempt.id(),
+                orderNo,
+                "PAYMENT_FAILED",
+                order.priceCents(),
+                attempt.providerTradeNo(),
+                attempt.providerTradeNo(),
+                null,
+                null,
                 null
         );
     }

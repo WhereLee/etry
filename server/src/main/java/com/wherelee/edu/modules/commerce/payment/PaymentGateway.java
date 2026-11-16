@@ -15,12 +15,21 @@ public interface PaymentGateway {
 
     PaymentQueryResult query(OrderRecord order, PaymentAttemptRecord attempt);
 
+    /**
+     * 关闭旧收银台交易。只有明确关闭成功或交易不存在才返回 CLOSED/NOT_FOUND；
+     * 网络异常、超时、未知返回一律 PENDING，由补偿任务重试，不能臆断关闭成功。
+     */
+    CloseResult close(OrderRecord order, PaymentAttemptRecord attempt);
+
     RefundResult refund(OrderRecord order, RefundRecord refund, boolean simulateFailure);
 
     record PaymentAction(String cashierUrl) {
     }
 
     record PaymentQueryResult(String status, long amountCents, String tradeNo, String message) {
+    }
+
+    record CloseResult(String status, String message) {
     }
 
     record RefundResult(boolean success, String providerRefundNo, String message) {

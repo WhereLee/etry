@@ -16,6 +16,7 @@ public class PaymentMetrics {
     public void paymentConfirmed() { inc("payment.order.paid"); }
     public void paymentFailed() { inc("payment.order.pay_failed"); }
     public void callbackDuplicate() { inc("payment.callback.duplicate"); }
+    public void callbackCollision() { inc("payment.callback.collision"); }
     public void callbackInvalid() { inc("payment.callback.invalid"); }
     public void amountMismatch() { inc("payment.callback.amount_mismatch"); }
     public void fulfillmentFailed() { inc("payment.fulfillment.failed"); }

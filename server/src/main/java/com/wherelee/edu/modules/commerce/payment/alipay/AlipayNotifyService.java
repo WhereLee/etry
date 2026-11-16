@@ -16,6 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.Map;
 
 /**
@@ -128,27 +131,53 @@ public class AlipayNotifyService {
 
         paymentRepository.updateProviderState(attempt.id(), tradeStatus, amountCents, null);
 
-        String eventKey = params.get("notify_id");
-        if (eventKey == null || eventKey.isBlank()) {
-            eventKey = params.get("trade_no") + ":" + tradeStatus;
-        }
-        log.info("payment_callback_verified notifyId={} outTradeNo={} tradeNo={} tradeStatus={} amountCents={} orderNo={} attemptNo={}",
-                eventKey, outTradeNo, params.get("trade_no"), tradeStatus,
+        // 业务幂等键：支付尝试对应的交易号 + 交易状态。notify_id 只用于追踪投递，不作业务主键。
+        String tradeNo = params.get("trade_no");
+        String keyTradeNo = tradeNo == null || tradeNo.isBlank() ? outTradeNo : tradeNo;
+        String eventKey = CHANNEL + ":" + keyTradeNo + ":" + tradeStatus;
+        String notifyId = params.get("notify_id");
+        log.info("payment_callback_verified notifyId={} eventKey={} outTradeNo={} tradeNo={} tradeStatus={} amountCents={} orderNo={} attemptNo={}",
+                notifyId, eventKey, outTradeNo, tradeNo, tradeStatus,
                 amountCents, order.orderNo(), attempt.attemptNo());
         PaymentNotification notification = new PaymentNotification(
-                CHANNEL, eventKey, order.orderNo(), eventType, amountCents, params.get("trade_no"), null);
+                CHANNEL, eventKey, attempt.id(), order.orderNo(), eventType, amountCents,
+                tradeNo, outTradeNo, notifyId, payloadDigest(params), null);
         try {
             PaymentConfirmationService.ConfirmationResult result = paymentService.acceptVerified(notification);
-            log.info("payment_callback_processed notifyId={} orderNo={} success={} duplicate={} orderStatus={}",
-                    eventKey, order.orderNo(), result.success(), result.duplicate(),
+            log.info("payment_callback_processed notifyId={} eventKey={} orderNo={} success={} duplicate={} orderStatus={}",
+                    notifyId, eventKey, order.orderNo(), result.success(), result.duplicate(),
                     result.order() == null ? "UNKNOWN" : result.order().status().name());
         } catch (Exception e) {
             log.error("支付宝回调处理异常 orderNo={} notifyId={} outTradeNo={} tradeNo={}",
-                    order.orderNo(), eventKey, outTradeNo, params.get("trade_no"), e);
+                    order.orderNo(), notifyId, outTradeNo, tradeNo, e);
             return "failure";
         }
-        log.info("支付宝回调已处理 orderNo={} tradeStatus={} notifyId={}", order.orderNo(), tradeStatus, eventKey);
+        log.info("支付宝回调已处理 orderNo={} tradeStatus={} notifyId={}", order.orderNo(), tradeStatus, notifyId);
         return "success";
+    }
+
+    /**
+     * 脱敏报文摘要：只取业务字段，不含买家身份、签名与完整报文。
+     */
+    private String payloadDigest(Map<String, String> params) {
+        String canonical = String.join("|",
+                value(params.get("app_id")),
+                value(params.get("out_trade_no")),
+                value(params.get("trade_no")),
+                value(params.get("trade_status")),
+                value(params.get("total_amount")),
+                value(params.get("seller_id")));
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(canonical.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            log.warn("支付宝回调摘要计算失败", e);
+            return null;
+        }
+    }
+
+    private String value(String input) {
+        return input == null ? "" : input;
     }
 
     private String mapEvent(String tradeStatus) {

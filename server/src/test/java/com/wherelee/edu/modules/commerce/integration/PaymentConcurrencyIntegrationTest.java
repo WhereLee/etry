@@ -52,10 +52,14 @@ class PaymentConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         var result = paymentService.acceptVerified(new com.wherelee.edu.modules.commerce.payment.PaymentNotification(
                 "MOCK",
                 "IT:" + order.orderNo() + ":MISMATCH",
+                attempt.id(),
                 order.orderNo(),
                 "PAYMENT_SUCCESS",
                 fx.priceCents() + 100,
                 attempt.providerTradeNo(),
+                attempt.providerTradeNo(),
+                null,
+                null,
                 null
         ));
 
@@ -77,10 +81,14 @@ class PaymentConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         var result = paymentService.acceptVerified(new com.wherelee.edu.modules.commerce.payment.PaymentNotification(
                 "MOCK",
                 "IT:" + order.orderNo() + ":LATE_FAILURE",
+                attempt.id(),
                 order.orderNo(),
                 "PAYMENT_FAILED",
                 fx.priceCents(),
                 attempt.providerTradeNo(),
+                attempt.providerTradeNo(),
+                null,
+                null,
                 null
         ));
 

@@ -33,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -83,12 +84,50 @@ class AlipayNotifyServiceTest {
         verify(paymentService).acceptVerified(captor.capture());
         PaymentNotification notification = captor.getValue();
         assertThat(notification.provider()).isEqualTo("ALIPAY");
-        assertThat(notification.eventKey()).isEqualTo("NOTIFY-1");
+        assertThat(notification.eventKey()).isEqualTo("ALIPAY:2026110522001400001:TRADE_SUCCESS");
+        assertThat(notification.attemptId()).isEqualTo(1L);
         assertThat(notification.orderNo()).isEqualTo("ORD1");
         assertThat(notification.eventType()).isEqualTo("PAYMENT_SUCCESS");
         assertThat(notification.amountCents()).isEqualTo(1);
         assertThat(notification.tradeNo()).isEqualTo("2026110522001400001");
+        assertThat(notification.providerTradeNo()).isEqualTo("ORD1_1");
+        assertThat(notification.providerNotifyId()).isEqualTo("NOTIFY-1");
+        assertThat(notification.payloadDigest()).isNotBlank().hasSize(64);
         verify(paymentRepository).updateProviderState(eq(1L), eq("TRADE_SUCCESS"), eq(1L), any());
+    }
+
+    @Test
+    void missingTradeNoFallsBackToOutTradeNoKey() throws Exception {
+        stubOrderLookup();
+        when(paymentService.acceptVerified(any())).thenReturn(
+                new PaymentConfirmationService.ConfirmationResult(true, false, "支付已确认", order(OrderStatus.PAID)));
+        Map<String, String> params = baseParams("TRADE_SUCCESS");
+        params.remove("trade_no");
+
+        assertThat(service.handle(signedBody(params))).isEqualTo("success");
+        ArgumentCaptor<PaymentNotification> captor = ArgumentCaptor.forClass(PaymentNotification.class);
+        verify(paymentService).acceptVerified(captor.capture());
+        assertThat(captor.getValue().eventKey()).isEqualTo("ALIPAY:ORD1_1:TRADE_SUCCESS");
+        assertThat(captor.getValue().tradeNo()).isNull();
+    }
+
+    @Test
+    void redeliveryWithDifferentNotifyIdKeepsBusinessKey() throws Exception {
+        stubOrderLookup();
+        when(paymentService.acceptVerified(any())).thenReturn(
+                new PaymentConfirmationService.ConfirmationResult(true, false, "支付已确认", order(OrderStatus.PAID)));
+        Map<String, String> first = baseParams("TRADE_SUCCESS");
+        Map<String, String> second = baseParams("TRADE_SUCCESS");
+        second.put("notify_id", "NOTIFY-2");
+
+        assertThat(service.handle(signedBody(first))).isEqualTo("success");
+        assertThat(service.handle(signedBody(second))).isEqualTo("success");
+        ArgumentCaptor<PaymentNotification> captor = ArgumentCaptor.forClass(PaymentNotification.class);
+        verify(paymentService, times(2)).acceptVerified(captor.capture());
+        assertThat(captor.getAllValues()).extracting(PaymentNotification::eventKey)
+                .containsOnly("ALIPAY:2026110522001400001:TRADE_SUCCESS");
+        assertThat(captor.getAllValues()).extracting(PaymentNotification::providerNotifyId)
+                .containsExactly("NOTIFY-1", "NOTIFY-2");
     }
 
     @Test

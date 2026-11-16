@@ -2,10 +2,12 @@ package com.wherelee.edu.modules.commerce.payment.alipay;
 
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
+import com.alipay.api.request.AlipayTradeCloseRequest;
 import com.alipay.api.request.AlipayTradeFastpayRefundQueryRequest;
 import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.request.AlipayTradeRefundRequest;
+import com.alipay.api.response.AlipayTradeCloseResponse;
 import com.alipay.api.response.AlipayTradeFastpayRefundQueryResponse;
 import com.alipay.api.response.AlipayTradePagePayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
@@ -119,6 +121,32 @@ public class AlipayPaymentGateway implements PaymentGateway {
             log.warn("支付宝查单异常 orderNo={} errCode={}", order.orderNo(), e.getErrCode(), e);
             return new PaymentQueryResult("PENDING", order.priceCents(), attempt.providerTradeNo(),
                     "查单异常：" + e.getErrCode());
+        }
+    }
+
+    @Override
+    public CloseResult close(OrderRecord order, PaymentAttemptRecord attempt) {
+        if (attempt == null || attempt.providerTradeNo() == null || attempt.providerTradeNo().isBlank()) {
+            return new CloseResult("PENDING", "尚无支付尝试");
+        }
+        AlipayTradeCloseRequest request = new AlipayTradeCloseRequest();
+        request.setBizContent(toJson(Map.of("out_trade_no", attempt.providerTradeNo())));
+        try {
+            AlipayTradeCloseResponse response = client.execute(request);
+            if (response.isSuccess()) {
+                return new CloseResult("CLOSED", response.getSubMsg());
+            }
+            if ("ACQ.TRADE_NOT_EXIST".equals(response.getSubCode())) {
+                return new CloseResult("NOT_FOUND", message(response.getSubCode(), response.getSubMsg()));
+            }
+            // 其余错误（含已付款交易不可关闭）按未知处理，保留 SUPERSEDED 重试，不臆断关闭成功
+            log.warn("支付宝关闭交易未确认 orderNo={} attemptId={} subCode={} subMsg={}",
+                    order.orderNo(), attempt.id(), response.getSubCode(), response.getSubMsg());
+            return new CloseResult("PENDING", message(response.getSubCode(), response.getSubMsg()));
+        } catch (AlipayApiException e) {
+            log.warn("支付宝关闭交易异常 orderNo={} attemptId={} errCode={}",
+                    order.orderNo(), attempt.id(), e.getErrCode(), e);
+            return new CloseResult("PENDING", "关闭异常：" + e.getErrCode());
         }
     }
 

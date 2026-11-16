@@ -38,7 +38,8 @@ public class MockSignatureService {
 
     private String canonical(PaymentNotification notification) {
         return notification.provider() + "|" + notification.eventKey() + "|"
-                + notification.orderNo() + "|" + notification.eventType() + "|"
-                + notification.amountCents() + "|" + notification.tradeNo();
+                + notification.attemptId() + "|" + notification.orderNo() + "|"
+                + notification.eventType() + "|" + notification.amountCents() + "|"
+                + notification.tradeNo();
     }
 }

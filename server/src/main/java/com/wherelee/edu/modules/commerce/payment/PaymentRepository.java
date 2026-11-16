@@ -37,10 +37,13 @@ public class PaymentRepository {
             rs.getLong("id"),
             rs.getString("provider"),
             rs.getString("event_key"),
+            (Long) rs.getObject("attempt_id"),
             rs.getLong("order_id"),
             rs.getString("order_no"),
             rs.getString("event_type"),
             rs.getLong("amount_cents"),
+            rs.getString("provider_trade_no"),
+            rs.getString("provider_notify_id"),
             rs.getString("process_status"),
             rs.getString("error_message"),
             rs.getTimestamp("received_at").toLocalDateTime(),
@@ -108,6 +111,12 @@ public class PaymentRepository {
                 """, ATTEMPT_MAPPER, orderId).stream().findFirst();
     }
 
+    public Optional<PaymentAttemptRecord> findAttemptById(Long attemptId) {
+        return jdbc.query("""
+                SELECT * FROM t_payment_attempt WHERE id = ?
+                """, ATTEMPT_MAPPER, attemptId).stream().findFirst();
+    }
+
     public Optional<PaymentAttemptRecord> findAttemptByProviderTradeNo(String providerTradeNo) {
         return jdbc.query("""
                 SELECT * FROM t_payment_attempt WHERE provider_trade_no = ?
@@ -121,6 +130,24 @@ public class PaymentRepository {
                 """, ATTEMPT_MAPPER, orderId);
     }
 
+    public List<PaymentAttemptRecord> findSupersededAttempts(int limit) {
+        return jdbc.query("""
+                SELECT * FROM t_payment_attempt WHERE status = 'SUPERSEDED'
+                ORDER BY id LIMIT ?
+                """, ATTEMPT_MAPPER, limit);
+    }
+
+    /**
+     * 渠道明确关闭成功或交易不存在后落 CLOSED；仅从 SUPERSEDED 转换，网络异常保留重试。
+     */
+    public void markAttemptClosed(Long attemptId) {
+        jdbc.update("""
+                UPDATE t_payment_attempt
+                SET status = 'CLOSED', finished_at = CURRENT_TIMESTAMP(3)
+                WHERE id = ? AND status = 'SUPERSEDED'
+                """, attemptId);
+    }
+
     public void updateProviderState(Long attemptId, String providerStatus, long providerAmountCents,
                                     String scenario) {
         jdbc.update("""
@@ -131,32 +158,51 @@ public class PaymentRepository {
                 """, providerStatus, providerAmountCents, scenario, attemptId);
     }
 
+    /**
+     * 资金事实优先：允许把 PROCESSING/FAILED/SUPERSEDED 修正为 SUCCESS。
+     * 不清除 failure_code/failure_message，旧状态留作审计；SUCCESS/CLOSED 不重复改写。
+     */
     public void markAttemptSuccess(Long attemptId) {
         jdbc.update("""
                 UPDATE t_payment_attempt
                 SET status = 'SUCCESS', finished_at = CURRENT_TIMESTAMP(3)
-                WHERE id = ? AND status = 'PROCESSING'
+                WHERE id = ? AND status IN ('PROCESSING', 'FAILED', 'SUPERSEDED')
                 """, attemptId);
     }
 
+    /**
+     * 失败只能写入仍在 PROCESSING/SUPERSEDED 的尝试，不能覆盖 SUCCESS。
+     */
     public void markAttemptFailed(Long attemptId, String code, String message) {
         jdbc.update("""
                 UPDATE t_payment_attempt
                 SET status = 'FAILED', failure_code = ?, failure_message = ?,
                     finished_at = CURRENT_TIMESTAMP(3)
-                WHERE id = ? AND status = 'PROCESSING'
+                WHERE id = ? AND status IN ('PROCESSING', 'SUPERSEDED')
                 """, code, message, attemptId);
     }
 
-    public boolean insertEvent(String provider, String eventKey, Long orderId, String orderNo,
-                               String eventType, long amountCents, String payloadDigest) {
+    /**
+     * 某次尝试成功后，同订单其余仍可支付的尝试让位，等待补偿任务关闭旧收银台。
+     */
+    public void markOtherProcessingSuperseded(Long orderId, Long succeededAttemptId) {
+        jdbc.update("""
+                UPDATE t_payment_attempt
+                SET status = 'SUPERSEDED', finished_at = CURRENT_TIMESTAMP(3)
+                WHERE order_id = ? AND id <> ? AND status = 'PROCESSING'
+                """, orderId, succeededAttemptId);
+    }
+
+    public boolean insertEvent(String provider, String eventKey, Long attemptId, Long orderId, String orderNo,
+                               String eventType, long amountCents, String providerTradeNo,
+                               String providerNotifyId, String payloadDigest) {
         return jdbc.update("""
                 INSERT IGNORE INTO t_payment_event
-                    (provider, event_key, order_id, order_no, event_type,
-                     amount_cents, payload_digest, process_status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'RECEIVED')
-                """, provider, eventKey, orderId, orderNo, eventType,
-                amountCents, payloadDigest) > 0;
+                    (provider, event_key, attempt_id, order_id, order_no, event_type,
+                     amount_cents, provider_trade_no, provider_notify_id, payload_digest, process_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED')
+                """, provider, eventKey, attemptId, orderId, orderNo, eventType,
+                amountCents, providerTradeNo, providerNotifyId, payloadDigest) > 0;
     }
 
     public Optional<PaymentEventRecord> findEvent(String provider, String eventKey) {

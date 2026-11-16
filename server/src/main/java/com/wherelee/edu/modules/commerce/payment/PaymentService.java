@@ -182,8 +182,10 @@ public class PaymentService {
                 PaymentNotification notification = new PaymentNotification(
                         paymentGateway.channel(),
                         "MOCK:" + order.orderNo() + ":" + attempt.attemptNo() + ":MISMATCH",
+                        attempt.id(),
                         order.orderNo(), "PAYMENT_SUCCESS", wrongAmount,
-                        attempt.providerTradeNo(), null
+                        attempt.providerTradeNo(), attempt.providerTradeNo(), null,
+                        digest(order.orderNo() + "|" + attempt.id() + "|" + wrongAmount), null
                 );
                 accept(sign(notification));
             }
@@ -268,6 +270,36 @@ public class PaymentService {
                 log.warn("订单补履约失败 orderNo={}", order.orderNo(), e);
             }
         }
+        for (PaymentAttemptRecord attempt : paymentRepository.findSupersededAttempts(properties.reconcileBatchSize())) {
+            try {
+                closeSupersededAttempt(attempt);
+            } catch (Exception e) {
+                log.warn("关闭旧支付交易失败 attemptId={}", attempt.id(), e);
+            }
+        }
+    }
+
+    /**
+     * 提交后由补偿任务关闭被取代的旧收银台。只有渠道明确关闭成功或交易不存在才落 CLOSED；
+     * 网络异常、超时、未知返回保留 SUPERSEDED 下轮重试。关闭前已付款的迟到成功仍按重复付款告警。
+     */
+    private void closeSupersededAttempt(PaymentAttemptRecord attempt) {
+        OrderRecord order = orderRepository.findById(attempt.orderId()).orElse(null);
+        if (order == null) {
+            return;
+        }
+        PaymentGateway.CloseResult result = traceSpans.trace("payment.gateway.close", TraceSpans.tags(
+                "order.no", order.orderNo(),
+                "payment.channel", paymentGateway.channel()
+        ), () -> paymentGateway.close(order, attempt));
+        if ("CLOSED".equals(result.status()) || "NOT_FOUND".equals(result.status())) {
+            paymentRepository.markAttemptClosed(attempt.id());
+            log.info("payment_close_result orderNo={} attemptId={} status={} message={}",
+                    order.orderNo(), attempt.id(), result.status(), result.message());
+        } else {
+            log.info("payment_close_pending orderNo={} attemptId={} message={}",
+                    order.orderNo(), attempt.id(), result.message());
+        }
     }
 
     public OrderRecord reconcileOrder(OrderRecord order) {
@@ -301,10 +333,14 @@ public class PaymentService {
             PaymentNotification notification = new PaymentNotification(
                     paymentGateway.channel(),
                     paymentGateway.channel() + "_QUERY:" + order.orderNo() + ":" + result.tradeNo(),
+                    attempt.id(),
                     order.orderNo(),
                     "PAYMENT_SUCCESS",
                     result.amountCents(),
                     result.tradeNo(),
+                    attempt.providerTradeNo(),
+                    null,
+                    digest(order.orderNo() + "|" + attempt.id() + "|" + result.tradeNo() + "|" + result.amountCents()),
                     null
             );
             acceptVerified(notification);
@@ -312,10 +348,14 @@ public class PaymentService {
             PaymentNotification notification = new PaymentNotification(
                     paymentGateway.channel(),
                     paymentGateway.channel() + "_QUERY_FAIL:" + order.orderNo() + ":" + result.tradeNo(),
+                    attempt.id(),
                     order.orderNo(),
                     "PAYMENT_FAILED",
                     result.amountCents(),
                     result.tradeNo(),
+                    attempt.providerTradeNo(),
+                    null,
+                    digest(order.orderNo() + "|" + attempt.id() + "|" + result.tradeNo() + "|FAILED"),
                     null
             );
             acceptVerified(notification);
@@ -371,10 +411,14 @@ public class PaymentService {
         return sign(new PaymentNotification(
                 paymentGateway.channel(),
                 "MOCK:" + order.orderNo() + ":" + attempt.attemptNo() + ":PAID",
+                attempt.id(),
                 order.orderNo(),
                 "PAYMENT_SUCCESS",
                 order.priceCents(),
                 attempt.providerTradeNo(),
+                attempt.providerTradeNo(),
+                null,
+                digest(order.orderNo() + "|" + attempt.id() + "|" + order.priceCents()),
                 null
         ));
     }
@@ -383,10 +427,14 @@ public class PaymentService {
         return sign(new PaymentNotification(
                 paymentGateway.channel(),
                 "MOCK:" + order.orderNo() + ":" + attempt.attemptNo() + ":FAILED",
+                attempt.id(),
                 order.orderNo(),
                 "PAYMENT_FAILED",
                 order.priceCents(),
                 attempt.providerTradeNo(),
+                attempt.providerTradeNo(),
+                null,
+                digest(order.orderNo() + "|" + attempt.id() + "|FAILED"),
                 null
         ));
     }
@@ -394,8 +442,10 @@ public class PaymentService {
     private PaymentNotification sign(PaymentNotification notification) {
         String signature = signatureService.sign(notification);
         return new PaymentNotification(
-                notification.provider(), notification.eventKey(), notification.orderNo(),
-                notification.eventType(), notification.amountCents(), notification.tradeNo(), signature
+                notification.provider(), notification.eventKey(), notification.attemptId(),
+                notification.orderNo(), notification.eventType(), notification.amountCents(),
+                notification.tradeNo(), notification.providerTradeNo(), notification.providerNotifyId(),
+                notification.payloadDigest(), signature
         );
     }
 
