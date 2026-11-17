@@ -53,7 +53,6 @@ class TableOwnershipTest {
     /** 读模型门面豁免：accessor 简名 → 允许跨读的表。跨表 join 只留于此。 */
     private static final Map<String, Set<String>> READ_MODEL_EXEMPTIONS = Map.of(
             "SeriesRepository", Set.of("t_user", "t_learning_progress"),
-            "TeacherContentRepository", Set.of("t_user"),
             "AdminSeriesMapper", Set.of("t_user", "t_entitlement"),
             "AdminOrderMapper", Set.of("t_order", "t_user"),
             "AdminUserMapper", Set.of("t_user", "t_entitlement", "t_series")

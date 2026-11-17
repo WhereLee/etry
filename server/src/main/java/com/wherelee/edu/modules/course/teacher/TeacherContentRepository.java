@@ -1,6 +1,7 @@
 package com.wherelee.edu.modules.course.teacher;
 
 import com.wherelee.edu.modules.course.series.dto.SeriesDtos;
+import com.wherelee.edu.modules.identity.api.UserDirectoryQuery;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -16,9 +17,11 @@ import java.util.Optional;
 public class TeacherContentRepository {
 
     private final JdbcTemplate jdbc;
+    private final UserDirectoryQuery userDirectory;
 
-    public TeacherContentRepository(JdbcTemplate jdbc) {
+    public TeacherContentRepository(JdbcTemplate jdbc, UserDirectoryQuery userDirectory) {
         this.jdbc = jdbc;
+        this.userDirectory = userDirectory;
     }
 
     public List<SeriesDtos.TeacherSeriesSummary> findSeries(Long teacherId) {
@@ -44,14 +47,14 @@ public class TeacherContentRepository {
     }
 
     public Optional<SeriesHeader> findSeriesHeader(Long teacherId, Long seriesId) {
+        String teacherName = userDirectory.nicknamesById(List.of(teacherId)).get(teacherId);
         List<SeriesHeader> rows = jdbc.query("""
-                SELECT s.id, s.title, s.summary, s.status, s.sort, u.nickname AS teacher_name
+                SELECT s.id, s.title, s.summary, s.status, s.sort
                 FROM t_series s
-                JOIN t_user u ON u.id = s.teacher_id
                 WHERE s.id = ? AND s.teacher_id = ?
                 """, (rs, rowNum) -> new SeriesHeader(
                 rs.getLong("id"), rs.getString("title"), rs.getString("summary"),
-                rs.getString("status"), rs.getInt("sort"), rs.getString("teacher_name")
+                rs.getString("status"), rs.getInt("sort"), teacherName
         ), seriesId, teacherId);
         return rows.stream().findFirst();
     }

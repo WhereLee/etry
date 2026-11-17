@@ -39,3 +39,7 @@ export function getAdminSeriesContent(id) {
 export function updateAdminSeriesStatus(id, status) {
   return put(`/admin/content/series/${id}/status`, { status })
 }
+
+export function updateSeriesSale(seriesId, saleStatus, priceCents) {
+  return put(`/admin/content/series/${seriesId}/sale`, { saleStatus, priceCents })
+}

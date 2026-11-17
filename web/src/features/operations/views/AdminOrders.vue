@@ -10,7 +10,7 @@ import {
   queryAdminOrder,
   refundDuplicateAdminOrder,
   refundAdminOrder
-} from '@/features/commerce/api/order'
+} from '@/features/operations/api/order'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusTag from '@/components/StatusTag.vue'
 

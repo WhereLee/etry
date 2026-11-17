@@ -4,7 +4,7 @@ import {
   createTeacherInvitation,
   listTeacherInvitations,
   revokeTeacherInvitation
-} from '@/features/identity/api/invitation'
+} from '@/features/operations/api/invitation'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusTag from '@/components/StatusTag.vue'
 

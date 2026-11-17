@@ -3,9 +3,9 @@ import { onMounted, reactive, ref } from 'vue'
 import {
   getAdminSeriesContent,
   listAdminSeriesContent,
-  updateAdminSeriesStatus
+  updateAdminSeriesStatus,
+  updateSeriesSale
 } from '@/features/operations/api/admin'
-import { updateSeriesSale } from '@/features/commerce/api/order'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusTag from '@/components/StatusTag.vue'
 
