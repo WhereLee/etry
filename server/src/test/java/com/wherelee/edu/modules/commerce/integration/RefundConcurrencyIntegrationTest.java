@@ -6,12 +6,15 @@ import com.wherelee.edu.modules.commerce.order.OrderRecord;
 import com.wherelee.edu.modules.commerce.order.OrderStatus;
 import com.wherelee.edu.modules.commerce.api.OrderDtos;
 import com.wherelee.edu.modules.commerce.payment.RefundRecord;
+import com.wherelee.edu.modules.platform.common.BizException;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RefundConcurrencyIntegrationTest extends IntegrationTestSupport {
 
@@ -68,5 +71,77 @@ class RefundConcurrencyIntegrationTest extends IntegrationTestSupport {
         assertThat(paymentRepository.findRefundByOrder(orderId).orElseThrow().status()).isEqualTo("SUCCEEDED");
         assertThat(count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId())).isZero();
+    }
+
+    @Test
+    void legacyStyleRefundsAreGuardedPerOrderForRollbackCompatibility() {
+        OrderDtos.OrderView order = createOrder(nextRequestId());
+        completePayment(order.orderNo());
+        Long orderId = orderRepository.findByOrderNo(order.orderNo()).orElseThrow().id();
+
+        // 模拟回滚后的旧 jar：插入 attempt_id 为 NULL 的旧式退款，同订单第二条必须被唯一键拦截
+        jdbc.update("""
+                INSERT INTO t_refund (refund_no, order_id, amount_cents, status, reason, requested_by)
+                VALUES ('REF-LEGACY-1', ?, 199, 'PROCESSING', '旧式退款', ?)
+                """, orderId, fx.adminId());
+        assertThatThrownBy(() -> jdbc.update("""
+                INSERT INTO t_refund (refund_no, order_id, amount_cents, status, reason, requested_by)
+                VALUES ('REF-LEGACY-2', ?, 199, 'PROCESSING', '旧式并发退款', ?)
+                """, orderId, fx.adminId()))
+                .isInstanceOf(DuplicateKeyException.class);
+        assertThat(count("t_refund", "order_id = ? AND attempt_id IS NULL", orderId)).isEqualTo(1);
+    }
+
+    @Test
+    void attemptScopedRefundsStillCoexistUnderLegacyGuard() {
+        OrderDtos.OrderView order = createOrder(nextRequestId());
+        completePayment(order.orderNo());
+        Long orderId = orderRepository.findByOrderNo(order.orderNo()).orElseThrow().id();
+        Long firstAttemptId = paymentRepository.findLatestAttempt(orderId).orElseThrow().id();
+        jdbc.update("""
+                INSERT INTO t_payment_attempt
+                    (order_id, attempt_no, channel, status, provider_trade_no,
+                     provider_status, provider_amount_cents, channel_trade_no)
+                VALUES (?, 2, 'MOCK', 'SUCCESS', 'IT-SECOND-TRADE', 'TRADE_SUCCESS', 199, 'IT-SECOND-CHANNEL')
+                """, orderId);
+        Long secondAttemptId = paymentRepository.findLatestAttempt(orderId).orElseThrow().id();
+
+        // 新式退款（attempt_id 非空）不受旧式防重键约束，同订单多笔可共存
+        jdbc.update("""
+                INSERT INTO t_refund (refund_no, order_id, attempt_id, refund_kind, amount_cents, status, reason, requested_by)
+                VALUES ('REF-NEW-1', ?, ?, 'ORDER', 199, 'SUCCEEDED', '新式订单退款', ?)
+                """, orderId, firstAttemptId, fx.adminId());
+        jdbc.update("""
+                INSERT INTO t_refund (refund_no, order_id, attempt_id, refund_kind, amount_cents, status, reason, requested_by)
+                VALUES ('REF-NEW-2', ?, ?, 'DUPLICATE_PAYMENT', 199, 'SUCCEEDED', '新式重复款退款', ?)
+                """, orderId, secondAttemptId, fx.adminId());
+        assertThat(count("t_refund", "order_id = ?", orderId)).isEqualTo(2);
+    }
+
+    @Test
+    void multiSuccessWithoutChannelTradeNoRefusesSafelyAndSurfacesForManualReview() {
+        OrderDtos.OrderView order = createOrder(nextRequestId());
+        pay(order.orderNo());
+        paymentService.acceptVerified(successNotification(order.orderNo()));
+        Long orderId = orderRepository.findByOrderNo(order.orderNo()).orElseThrow().id();
+
+        // 模拟 V15 跳过回填的历史多笔成功单：两笔 SUCCESS 都没有渠道交易号
+        jdbc.update("UPDATE t_payment_attempt SET channel_trade_no = NULL WHERE order_id = ?", orderId);
+        jdbc.update("""
+                INSERT INTO t_payment_attempt
+                    (order_id, attempt_no, channel, status, provider_trade_no,
+                     provider_status, provider_amount_cents)
+                VALUES (?, 2, 'MOCK', 'SUCCESS', 'IT-HIST-SECOND', 'TRADE_SUCCESS', 199)
+                """, orderId);
+
+        assertThat(paymentRepository.countMultiSuccessMissingChannelTradeNo()).isEqualTo(1);
+        // 两条退款路都安全拒绝，不产生任何退款记录（资金不动）
+        assertThatThrownBy(() -> refundService.refund(order.orderNo(), fx.adminId(), "历史单退款", false))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("多笔成功支付");
+        assertThatThrownBy(() -> refundService.refundDuplicatePayment(order.orderNo(), 2, fx.adminId(), "历史重复款", false))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("没有可退款的渠道成功交易");
+        assertThat(count("t_refund", "order_id = ?", orderId)).isZero();
     }
 }

@@ -71,6 +71,11 @@ public class PaymentAlertJob {
             emit("PAYMENT_DUPLICATE_UNREFUNDED", "HIGH",
                     "已识别但尚未退款的重复付款 " + duplicateUnrefunded + " 笔");
         }
+        long multiSuccessAmbiguous = paymentRepository.countMultiSuccessMissingChannelTradeNo();
+        if (multiSuccessAmbiguous > 0) {
+            emit("PAYMENT_MULTI_SUCCESS_MANUAL", "HIGH",
+                    "多笔成功支付且缺渠道交易号、需人工核对退款的订单 " + multiSuccessAmbiguous + " 笔");
+        }
     }
 
     private void emit(String type, String severity, String message) {

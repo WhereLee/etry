@@ -471,6 +471,25 @@ public class PaymentRepository {
         return count == null ? 0 : count;
     }
 
+    /**
+     * 多笔成功支付且存在缺渠道交易号尝试的订单：无法自动判定主支付，
+     * 订单退款与重复款退款两条路都会安全拒绝，必须人工核对渠道账单后处置。
+     * 典型来源：V15 对多笔 SUCCESS 历史单跳过渠道号回填。
+     */
+    public long countMultiSuccessMissingChannelTradeNo() {
+        Long count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM (
+                    SELECT a.order_id
+                    FROM t_payment_attempt a
+                    WHERE a.status = 'SUCCESS'
+                    GROUP BY a.order_id
+                    HAVING COUNT(*) > 1
+                       AND SUM(a.channel_trade_no IS NULL OR a.channel_trade_no = '') > 0
+                ) ambiguous
+                """, Long.class);
+        return count == null ? 0 : count;
+    }
+
     private static LocalDateTime toLocal(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
     }

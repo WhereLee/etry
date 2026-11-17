@@ -62,4 +62,28 @@ class PaymentAlertJobTest {
                 "PAYMENT_DUPLICATE_UNREFUNDED", "HIGH",
                 "已识别但尚未退款的重复付款 2 笔", true, null);
     }
+
+    @Test
+    void emitsMultiSuccessManualReviewAlert() {
+        AlertProperties properties = new AlertProperties(
+                true, null, 10, 5, 10, 0.8, 20, 30, 300000, 60000, 1, 15, 1);
+        PaymentProperties paymentProperties = new PaymentProperties(
+                "alipay", false, null, 15, 60, 50, 60000, 30000, 5, 30);
+        PaymentRepository repository = mock(PaymentRepository.class);
+        AlertNotifier notifier = mock(AlertNotifier.class);
+        AlertPublisher publisher = mock(AlertPublisher.class);
+        LocalFallbackCache dedup = mock(LocalFallbackCache.class);
+        when(repository.countPaidUnfulfilledBefore(any())).thenReturn(0L);
+        when(repository.countPayingBefore(any())).thenReturn(0L);
+        when(repository.countRefundRetryExhausted(5)).thenReturn(0L);
+        when(repository.countMultiSuccessMissingChannelTradeNo()).thenReturn(3L);
+        when(dedup.reserve(anyString(), any(Duration.class))).thenReturn(true);
+        when(notifier.send(anyString())).thenReturn(new AlertNotifier.DeliveryResult(true, null));
+
+        new PaymentAlertJob(properties, paymentProperties, repository, notifier, publisher, dedup).evaluate();
+
+        verify(publisher).publish(
+                "PAYMENT_MULTI_SUCCESS_MANUAL", "HIGH",
+                "多笔成功支付且缺渠道交易号、需人工核对退款的订单 3 笔", true, null);
+    }
 }
