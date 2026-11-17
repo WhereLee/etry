@@ -2,12 +2,12 @@ package com.wherelee.edu.modules.learning.playback;
 
 import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
 import com.wherelee.edu.modules.entitlement.api.ProductTypes;
+import com.wherelee.edu.modules.learning.api.CourseContentQuery;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -15,10 +15,13 @@ public class PlaybackLogRepository {
 
     private final JdbcTemplate jdbc;
     private final EntitlementQuery entitlementQuery;
+    private final CourseContentQuery courseContentQuery;
 
-    public PlaybackLogRepository(JdbcTemplate jdbc, EntitlementQuery entitlementQuery) {
+    public PlaybackLogRepository(JdbcTemplate jdbc, EntitlementQuery entitlementQuery,
+                                 CourseContentQuery courseContentQuery) {
         this.jdbc = jdbc;
         this.entitlementQuery = entitlementQuery;
+        this.courseContentQuery = courseContentQuery;
     }
 
     public void insert(Long userId, Long videoId, Long seriesId, String source, String eventType,
@@ -38,17 +41,9 @@ public class PlaybackLogRepository {
     }
 
     public Optional<VideoOwnership> findOwnedVideo(Long userId, Long videoId) {
-        List<VideoOwnership> rows = jdbc.query("""
-                SELECT v.id AS video_id, c.series_id
-                FROM t_series_video v
-                JOIN t_series_chapter c ON c.id = v.chapter_id
-                WHERE v.id = ?
-                """, (rs, rowNum) -> new VideoOwnership(
-                rs.getLong("video_id"),
-                rs.getLong("series_id")
-        ), videoId);
-        return rows.stream().findFirst()
-                .filter(video -> entitlementQuery.hasActive(userId, video.seriesId(), ProductTypes.COURSE_SERIES));
+        return courseContentQuery.findVideo(videoId)
+                .filter(video -> entitlementQuery.hasActive(userId, video.seriesId(), ProductTypes.COURSE_SERIES))
+                .map(video -> new VideoOwnership(video.videoId(), video.seriesId()));
     }
 
     public record VideoOwnership(Long videoId, Long seriesId) {

@@ -2,6 +2,7 @@ package com.wherelee.edu.modules.commerce.order;
 
 import com.wherelee.edu.modules.platform.common.BizException;
 import com.wherelee.edu.modules.platform.common.PageResult;
+import com.wherelee.edu.modules.commerce.api.CatalogDisplayQuery;
 import com.wherelee.edu.modules.commerce.api.SellableCatalog;
 import com.wherelee.edu.modules.commerce.entitlement.EntitlementRepository;
 import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
@@ -35,22 +36,21 @@ public class OrderService {
     private static final int MAX_PAGE_SIZE = 50;
     private static final DateTimeFormatter ORDER_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
-    private final CatalogRepository catalogRepository;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final EntitlementRepository entitlementRepository;
     private final PaymentProperties paymentProperties;
     private final PaymentMetrics paymentMetrics;
     private final Map<String, SellableCatalog> catalogs;
+    private final Map<String, CatalogDisplayQuery> displays;
 
-    public OrderService(CatalogRepository catalogRepository,
-                        OrderRepository orderRepository,
+    public OrderService(OrderRepository orderRepository,
                         PaymentRepository paymentRepository,
                         EntitlementRepository entitlementRepository,
                         PaymentProperties paymentProperties,
                         PaymentMetrics paymentMetrics,
-                        List<SellableCatalog> catalogList) {
-        this.catalogRepository = catalogRepository;
+                        List<SellableCatalog> catalogList,
+                        List<CatalogDisplayQuery> displayList) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.entitlementRepository = entitlementRepository;
@@ -58,10 +58,30 @@ public class OrderService {
         this.paymentMetrics = paymentMetrics;
         this.catalogs = catalogList.stream()
                 .collect(Collectors.toMap(SellableCatalog::productType, Function.identity()));
+        this.displays = displayList.stream()
+                .collect(Collectors.toMap(CatalogDisplayQuery::productType, Function.identity()));
     }
 
     public List<CatalogItem> catalog(Long userId) {
-        return catalogRepository.findOnSale(userId);
+        List<CatalogItem> items = new ArrayList<>();
+        for (CatalogDisplayQuery.DisplayProduct product : display(ProductTypes.COURSE_SERIES).listOnSale()) {
+            boolean owned = entitlementRepository.hasActive(userId, product.productId());
+            OrderRecord active = orderRepository.findActive(userId, product.productId()).orElse(null);
+            items.add(new CatalogItem(product.productId(), product.title(), product.summary(),
+                    product.teacherName(), product.chapterCount(), product.videoCount(),
+                    product.priceCents(), product.currency(), owned,
+                    active == null ? null : active.orderNo(),
+                    active == null ? null : active.status().name()));
+        }
+        return items;
+    }
+
+    private CatalogDisplayQuery display(String productType) {
+        CatalogDisplayQuery display = displays.get(productType);
+        if (display == null) {
+            throw new IllegalStateException("缺少商品目录展示适配器：" + productType);
+        }
+        return display;
     }
 
     private SellableCatalog catalog(String productType) {

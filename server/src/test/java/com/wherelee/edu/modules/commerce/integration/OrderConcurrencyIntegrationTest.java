@@ -1,5 +1,6 @@
 package com.wherelee.edu.modules.commerce.integration;
 
+import com.wherelee.edu.modules.commerce.order.CatalogItem;
 import com.wherelee.edu.modules.commerce.order.OrderStatus;
 import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
 import org.junit.jupiter.api.Test;
@@ -44,5 +45,25 @@ class OrderConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         assertThat(results).allSatisfy(result -> assertThat(result.error()).isNull());
         assertThat(results.stream().map(result -> result.value().orderNo()).distinct().toList()).hasSize(1);
         assertThat(count("t_order", null)).isEqualTo(1);
+    }
+
+    @Test
+    void catalogOverlaysOwnedAndActiveOrderFromReadModel() {
+        OrderDtos.OrderView order = createOrder(nextRequestId());
+
+        CatalogItem before = orderService.catalog(fx.studentId()).stream()
+                .filter(item -> item.seriesId().equals(fx.seriesId())).findFirst().orElseThrow();
+        assertThat(before.title()).isEqualTo("IT 系列");
+        assertThat(before.teacherName()).isEqualTo("集成测试老师");
+        assertThat(before.videoCount()).isEqualTo(1);
+        assertThat(before.owned()).isFalse();
+        assertThat(before.activeOrderNo()).isEqualTo(order.orderNo());
+
+        completePayment(order.orderNo());
+
+        CatalogItem after = orderService.catalog(fx.studentId()).stream()
+                .filter(item -> item.seriesId().equals(fx.seriesId())).findFirst().orElseThrow();
+        assertThat(after.owned()).isTrue();
+        assertThat(after.activeOrderNo()).isNull();
     }
 }

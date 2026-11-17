@@ -2,10 +2,10 @@ package com.wherelee.edu.modules.learning.learning;
 
 import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
 import com.wherelee.edu.modules.entitlement.api.ProductTypes;
+import com.wherelee.edu.modules.learning.api.CourseContentQuery;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -13,23 +13,19 @@ public class LearningProgressRepository {
 
     private final JdbcTemplate jdbc;
     private final EntitlementQuery entitlementQuery;
+    private final CourseContentQuery courseContentQuery;
 
-    public LearningProgressRepository(JdbcTemplate jdbc, EntitlementQuery entitlementQuery) {
+    public LearningProgressRepository(JdbcTemplate jdbc, EntitlementQuery entitlementQuery,
+                                      CourseContentQuery courseContentQuery) {
         this.jdbc = jdbc;
         this.entitlementQuery = entitlementQuery;
+        this.courseContentQuery = courseContentQuery;
     }
 
     public Optional<AccessibleVideo> findAccessibleVideo(Long userId, Long videoId) {
-        List<AccessibleVideo> rows = jdbc.query("""
-                SELECT v.id AS video_id, c.series_id, v.duration_seconds
-                FROM t_series_video v
-                JOIN t_series_chapter c ON c.id = v.chapter_id
-                WHERE v.id = ?
-                """, (rs, rowNum) -> new AccessibleVideo(
-                rs.getLong("video_id"), rs.getLong("series_id"),
-                rs.getInt("duration_seconds")), videoId);
-        return rows.stream().findFirst()
-                .filter(video -> entitlementQuery.hasActive(userId, video.seriesId(), ProductTypes.COURSE_SERIES));
+        return courseContentQuery.findVideo(videoId)
+                .filter(video -> entitlementQuery.hasActive(userId, video.seriesId(), ProductTypes.COURSE_SERIES))
+                .map(video -> new AccessibleVideo(video.videoId(), video.seriesId(), video.durationSeconds()));
     }
 
     public void upsert(Long userId, Long seriesId, Long videoId,
