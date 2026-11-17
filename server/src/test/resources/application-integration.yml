@@ -38,6 +38,13 @@ app:
     reconcile-initial-delay-ms: 3600000
     query-after-seconds: 0
     reconcile-batch-size: 100
+  outbox:
+    interval-ms: 3600000
+    initial-delay-ms: 3600000
+    batch-size: 100
+    lease-seconds: 60
+    max-retry: 5
+    retry-base-seconds: 1
   alert:
     enabled: false
     initial-delay-ms: 3600000

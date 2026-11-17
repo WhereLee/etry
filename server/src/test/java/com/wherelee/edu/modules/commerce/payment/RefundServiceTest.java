@@ -1,6 +1,6 @@
 package com.wherelee.edu.modules.commerce.payment;
 
-import com.wherelee.edu.modules.commerce.entitlement.EntitlementRepository;
+import com.wherelee.edu.modules.commerce.outbox.OutboxRepository;
 import com.wherelee.edu.modules.commerce.order.OrderRecord;
 import com.wherelee.edu.modules.commerce.order.OrderRepository;
 import com.wherelee.edu.modules.commerce.order.OrderService;
@@ -33,7 +33,7 @@ class RefundServiceTest {
     @Mock private OrderService orderService;
     @Mock private OrderRepository orderRepository;
     @Mock private PaymentRepository paymentRepository;
-    @Mock private EntitlementRepository entitlementRepository;
+    @Mock private OutboxRepository outboxRepository;
     @Mock private PaymentGateway paymentGateway;
     @Mock private PlatformTransactionManager transactionManager;
     @Mock private TransactionStatus transactionStatus;
@@ -46,14 +46,14 @@ class RefundServiceTest {
     void setUp() {
         when(transactionManager.getTransaction(any())).thenReturn(transactionStatus);
         service = new RefundService(
-                orderService, orderRepository, paymentRepository, entitlementRepository,
+                orderService, orderRepository, paymentRepository, outboxRepository,
                 paymentGateway,
                 new PaymentProperties("mock", true, "secret", 15, 15, 20, 15000, 10000, 5, 30),
                 transactionManager, metrics, alertPublisher, TraceSpans.noop());
     }
 
     @Test
-    void reconcileRetriesFailedRefundAndRevokesOrderEntitlement() {
+    void reconcileRetriesFailedRefundAndEnqueuesRevoke() {
         OrderRecord order = order(OrderStatus.PAID);
         PaymentAttemptRecord attempt = attempt();
         RefundRecord refund = refund(RefundKind.ORDER);
@@ -71,7 +71,7 @@ class RefundServiceTest {
 
         verify(paymentRepository).markRefundSucceeded(1L, "REF1");
         verify(orderRepository).markRefunded("ORD-1");
-        verify(entitlementRepository).revokeOrder(1L, 1L, 1L, "订单退款：REF1");
+        verify(outboxRepository).enqueueRevoke(any(OrderRecord.class), eq("订单退款：REF1"));
     }
 
     @Test
@@ -101,7 +101,7 @@ class RefundServiceTest {
         verify(paymentRepository).markRefundFailed(eq(2L), anyString(), eq("退款失败"), any());
         verify(orderRepository, never()).markRefunded(anyString());
         verify(orderRepository, never()).markRefundFailed(anyString(), anyString());
-        verify(entitlementRepository, never()).revokeOrder(any(), any(), any(), anyString());
+        verify(outboxRepository, never()).enqueueRevoke(any(), anyString());
     }
 
     private OrderRecord order(OrderStatus status) {

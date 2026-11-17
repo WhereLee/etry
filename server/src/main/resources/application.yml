@@ -111,6 +111,13 @@ app:
       format: ${ALIPAY_FORMAT:json}
       connect-timeout-ms: ${ALIPAY_CONNECT_TIMEOUT_MS:5000}
       read-timeout-ms: ${ALIPAY_READ_TIMEOUT_MS:15000}
+  outbox:
+    interval-ms: ${OUTBOX_INTERVAL_MS:2000}
+    initial-delay-ms: ${OUTBOX_INITIAL_DELAY_MS:5000}
+    batch-size: ${OUTBOX_BATCH_SIZE:50}
+    lease-seconds: ${OUTBOX_LEASE_SECONDS:60}
+    max-retry: ${OUTBOX_MAX_RETRY:5}
+    retry-base-seconds: ${OUTBOX_RETRY_BASE_SECONDS:5}
 
 management:
   server:

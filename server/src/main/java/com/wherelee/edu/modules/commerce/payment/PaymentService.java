@@ -243,11 +243,8 @@ public class PaymentService {
                     notification.tradeNo(), notification.amountCents(), result.duplicate(),
                     orderStatus, result.message());
         }
-        if (result.success() && result.order() != null
-                && (result.order().status() == OrderStatus.PAID
-                || result.order().status() == OrderStatus.FULFILLED)) {
-            fulfillmentService.fulfill(result.order().orderNo());
-        }
+        // 履约不再同步调用：confirm 事务内已写入 outbox FULFILL 意图，由 OutboxRelay 异步幂等投递。
+        // PAID 未履约的极端漏网仍由 reconcile() 的 findPaidUnfulfilled 兜底。
         return result;
     }
 

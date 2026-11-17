@@ -52,6 +52,7 @@ class EntitlementEquivalenceIntegrationTest extends CommerceIntegrationTestSuppo
         String orderNo = createOrder(nextRequestId()).orderNo();
         completePayment(orderNo);
         refundService.refund(orderNo, fx.adminId(), "等价测试退款", false);
+        drainOutbox();
 
         assertThat(count("t_student_series",
                 "user_id=? AND series_id=? AND source='ORDER' AND status='REVOKED'",

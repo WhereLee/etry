@@ -1,6 +1,6 @@
 package com.wherelee.edu.modules.commerce.payment;
 
-import com.wherelee.edu.modules.commerce.entitlement.EntitlementRepository;
+import com.wherelee.edu.modules.commerce.outbox.OutboxRepository;
 import com.wherelee.edu.modules.commerce.order.OrderRecord;
 import com.wherelee.edu.modules.commerce.order.OrderRepository;
 import com.wherelee.edu.modules.commerce.order.OrderService;
@@ -29,7 +29,7 @@ public class RefundService {
     private final OrderService orderService;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
-    private final EntitlementRepository entitlementRepository;
+    private final OutboxRepository outboxRepository;
     private final PaymentGateway paymentGateway;
     private final PaymentProperties properties;
     private final TransactionTemplate transactionTemplate;
@@ -40,7 +40,7 @@ public class RefundService {
     public RefundService(OrderService orderService,
                          OrderRepository orderRepository,
                          PaymentRepository paymentRepository,
-                         EntitlementRepository entitlementRepository,
+                         OutboxRepository outboxRepository,
                          PaymentGateway paymentGateway,
                          PaymentProperties properties,
                          PlatformTransactionManager transactionManager,
@@ -50,7 +50,7 @@ public class RefundService {
         this.orderService = orderService;
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
-        this.entitlementRepository = entitlementRepository;
+        this.outboxRepository = outboxRepository;
         this.paymentGateway = paymentGateway;
         this.properties = properties;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -206,9 +206,8 @@ public class RefundService {
                         orderRepository.markRefunding(lockedOrder.orderNo());
                     }
                     orderRepository.markRefunded(lockedOrder.orderNo());
-                    entitlementRepository.revokeOrder(
-                            lockedOrder.userId(), lockedOrder.seriesId(), lockedOrder.id(),
-                            "订单退款：" + lockedRefund.refundNo());
+                    // 退款事务内持久化撤销意图（事务性 outbox），由 relay 异步幂等投递。
+                    outboxRepository.enqueueRevoke(lockedOrder, "订单退款：" + lockedRefund.refundNo());
                 }
             } else {
                 int changed = paymentRepository.markRefundFailed(

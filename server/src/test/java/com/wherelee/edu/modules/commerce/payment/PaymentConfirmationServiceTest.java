@@ -4,6 +4,7 @@ import com.wherelee.edu.modules.platform.alert.AlertPublisher;
 import com.wherelee.edu.modules.commerce.order.OrderRecord;
 import com.wherelee.edu.modules.commerce.order.OrderRepository;
 import com.wherelee.edu.modules.commerce.order.OrderStatus;
+import com.wherelee.edu.modules.commerce.outbox.OutboxRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,13 +25,14 @@ class PaymentConfirmationServiceTest {
     @Mock private PaymentRepository paymentRepository;
     @Mock private AlertPublisher alertPublisher;
     @Mock private PaymentMetrics metrics;
+    @Mock private OutboxRepository outboxRepository;
 
     private PaymentConfirmationService service;
     private final LocalDateTime now = LocalDateTime.now();
 
     @BeforeEach
     void setUp() {
-        service = new PaymentConfirmationService(orderRepository, paymentRepository, alertPublisher, metrics);
+        service = new PaymentConfirmationService(orderRepository, paymentRepository, alertPublisher, metrics, outboxRepository);
     }
 
     @Test
@@ -50,6 +52,7 @@ class PaymentConfirmationServiceTest {
         verify(paymentRepository).markAttemptSuccess(10L, "TRADE-1");
         verify(paymentRepository).markOtherProcessingSuperseded(1L, 10L);
         verify(paymentRepository).markEventProcessed(1L);
+        verify(outboxRepository).enqueueFulfill(any(OrderRecord.class));
     }
 
     @Test
@@ -78,6 +81,7 @@ class PaymentConfirmationServiceTest {
 
         assertThat(result.success()).isFalse();
         verify(orderRepository, never()).markPaid(anyString(), anyString(), anyString());
+        verify(outboxRepository, never()).enqueueFulfill(any());
         verify(paymentRepository, never()).markAttemptSuccess(anyLong(), anyString());
         verify(paymentRepository).markEventFailed(eq(1L), contains("金额不一致"));
         verify(alertPublisher).publish(eq("PAYMENT_AMOUNT_MISMATCH"), eq("ERROR"),

@@ -3,6 +3,8 @@ package com.wherelee.edu.modules.commerce.integration;
 import com.wherelee.edu.modules.commerce.entitlement.EntitlementRepository;
 import com.wherelee.edu.modules.commerce.order.OrderRepository;
 import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
+import com.wherelee.edu.modules.commerce.outbox.OutboxRelay;
+import com.wherelee.edu.modules.commerce.outbox.OutboxRepository;
 import com.wherelee.edu.modules.commerce.payment.OrderFulfillmentService;
 import com.wherelee.edu.modules.commerce.payment.PaymentAttemptRecord;
 import com.wherelee.edu.modules.commerce.payment.PaymentNotification;
@@ -44,6 +46,8 @@ public abstract class CommerceIntegrationTestSupport {
     @Autowired protected OrderRepository orderRepository;
     @Autowired protected PaymentRepository paymentRepository;
     @Autowired protected EntitlementRepository entitlementRepository;
+    @Autowired protected OutboxRelay outboxRelay;
+    @Autowired protected OutboxRepository outboxRepository;
 
     protected Fixture fx;
 
@@ -108,6 +112,19 @@ public abstract class CommerceIntegrationTestSupport {
     protected void completePayment(String orderNo) {
         pay(orderNo);
         paymentService.acceptVerified(successNotification(orderNo));
+        drainOutbox();
+    }
+
+    /**
+     * 显式投递发件箱（集成 profile 禁用了自动 relay）。循环 drain 直到无可投递消息，
+     * 模拟 relay 完成异步履约/撤销，使断言确定。
+     */
+    protected void drainOutbox() {
+        for (int i = 0; i < 5; i++) {
+            if (outboxRelay.drain() == 0) {
+                break;
+            }
+        }
     }
 
     protected int count(String table, String where, Object... args) {
@@ -158,6 +175,7 @@ public abstract class CommerceIntegrationTestSupport {
                 "t_recon_statement_item", "t_recon_statement_file",
                 "t_playback_log", "t_admin_audit_log", "t_alert_log",
                 "t_refund", "t_payment_event", "t_payment_attempt", "t_order",
+                "t_outbox_message",
                 "t_entitlement", "t_student_series", "t_learning_progress",
                 "t_series_video", "t_series_chapter", "t_series",
                 "t_teacher_invitation", "t_user")) {

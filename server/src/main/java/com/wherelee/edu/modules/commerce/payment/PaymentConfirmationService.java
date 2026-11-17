@@ -4,6 +4,7 @@ import com.wherelee.edu.modules.platform.alert.AlertPublisher;
 import com.wherelee.edu.modules.commerce.order.OrderRecord;
 import com.wherelee.edu.modules.commerce.order.OrderRepository;
 import com.wherelee.edu.modules.commerce.order.OrderStatus;
+import com.wherelee.edu.modules.commerce.outbox.OutboxRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -27,15 +28,18 @@ public class PaymentConfirmationService {
     private final PaymentRepository paymentRepository;
     private final AlertPublisher alertPublisher;
     private final PaymentMetrics metrics;
+    private final OutboxRepository outboxRepository;
 
     public PaymentConfirmationService(OrderRepository orderRepository,
                                       PaymentRepository paymentRepository,
                                       AlertPublisher alertPublisher,
-                                      PaymentMetrics metrics) {
+                                      PaymentMetrics metrics,
+                                      OutboxRepository outboxRepository) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.alertPublisher = alertPublisher;
         this.metrics = metrics;
+        this.outboxRepository = outboxRepository;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -180,6 +184,10 @@ public class PaymentConfirmationService {
             return new ConfirmationResult(false, false, "订单状态不允许支付确认", updated);
         }
         paymentRepository.markEventProcessed(event.id());
+        // 资金事务内持久化履约意图（事务性 outbox），由 relay 异步幂等投递，崩溃不丢。
+        if (updated.status() == OrderStatus.PAID) {
+            outboxRepository.enqueueFulfill(updated);
+        }
         metrics.paymentConfirmed();
         return new ConfirmationResult(true, false, "支付已确认", updated);
     }

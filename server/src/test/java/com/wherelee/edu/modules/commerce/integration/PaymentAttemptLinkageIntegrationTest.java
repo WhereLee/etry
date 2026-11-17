@@ -49,6 +49,7 @@ class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSuppor
         PaymentConfirmationService.ConfirmationResult result =
                 paymentService.acceptVerified(successNotification(order.orderNo(), attempt1));
 
+        drainOutbox();
         assertThat(result.success()).isTrue();
         assertThat(orderRepository.findByOrderNo(order.orderNo()).orElseThrow().status())
                 .isEqualTo(OrderStatus.FULFILLED);
@@ -74,6 +75,7 @@ class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSuppor
         PaymentConfirmationService.ConfirmationResult result =
                 paymentService.acceptVerified(successNotification(order.orderNo(), attempt2));
 
+        drainOutbox();
         assertThat(result.success()).isFalse();
         assertThat(orderRepository.findByOrderNo(order.orderNo()).orElseThrow().status())
                 .isEqualTo(OrderStatus.FULFILLED);
@@ -116,6 +118,7 @@ class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSuppor
                 notification(order.orderNo(), attempt, "PAYMENT_SUCCESS",
                         "1:PAID", attempt.providerTradeNo(), "NOTIFY-B"));
 
+        drainOutbox();
         assertThat(result.duplicate()).isTrue();
         assertThat(count("t_payment_event", "order_no = ?", order.orderNo())).isEqualTo(1);
         assertThat(activeEntitlements()).isEqualTo(1);
@@ -160,6 +163,7 @@ class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSuppor
         assertThat(paymentRepository.findAttemptById(attempt2.id()).orElseThrow().status())
                 .isEqualTo("SUPERSEDED");
 
+        drainOutbox();
         paymentService.reconcile();
 
         assertThat(paymentRepository.findAttemptById(attempt2.id()).orElseThrow().status())
@@ -211,6 +215,7 @@ class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSuppor
         assertThat(paymentRepository.findAttemptById(attempt2.id()).orElseThrow().status())
                 .isEqualTo("SUPERSEDED");
 
+        drainOutbox();
         jdbc.update("""
                 UPDATE t_payment_attempt
                 SET provider_status = 'PAID', provider_amount_cents = ?
@@ -237,6 +242,7 @@ class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSuppor
         PaymentAttemptRecord attempt2 = latestAttempt(order.orderNo());
         paymentService.acceptVerified(successNotification(order.orderNo(), attempt1));
         paymentService.acceptVerified(successNotification(order.orderNo(), attempt2));
+        drainOutbox();
         assertThat(paymentRepository.countUnrefundedDuplicatePayments()).isEqualTo(1);
 
         RefundRecord duplicateRefund = refundService.refundDuplicatePayment(
@@ -251,6 +257,7 @@ class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSuppor
 
         RefundRecord orderRefund = refundService.refund(
                 order.orderNo(), fx.adminId(), "退还主支付", false);
+        drainOutbox();
 
         assertThat(orderRefund.refundKind()).isEqualTo(RefundKind.ORDER);
         assertThat(orderRefund.status()).isEqualTo("SUCCEEDED");

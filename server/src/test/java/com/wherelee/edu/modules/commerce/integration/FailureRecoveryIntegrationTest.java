@@ -15,18 +15,33 @@ class FailureRecoveryIntegrationTest extends CommerceIntegrationTestSupport {
     void fulfillmentFailureIsRecoveredByReconcile() {
         OrderDtos.OrderView order = createOrder(nextRequestId());
         pay(order.orderNo());
+        Long orderId = orderRepository.findByOrderNo(order.orderNo()).orElseThrow().id();
         PaymentDtos.MockEventResponse simulated =
                 paymentService.simulate(fx.studentId(), order.orderNo(), "FULFILLMENT_FAIL_ONCE");
         assertThat(simulated.orderStatus()).isEqualTo(OrderStatus.PAID.name());
         assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId())).isZero();
+        assertThat(count("t_outbox_message",
+                "order_id = ? AND message_type = 'FULFILL' AND status = 'NEW'", orderId)).isEqualTo(1);
 
+        // 首次 relay 投递触发 Mock 首次履约失败，outbox 转重试，订单仍 PAID
+        drainOutbox();
+        assertThat(orderRepository.findByOrderNo(order.orderNo()).orElseThrow().status())
+                .isEqualTo(OrderStatus.PAID);
+
+        // 补偿兜底履约成功
         paymentService.reconcile();
 
         OrderRecord current = orderRepository.findByOrderNo(order.orderNo()).orElseThrow();
         assertThat(current.status()).isEqualTo(OrderStatus.FULFILLED);
         assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId())).isEqualTo(1);
+
+        // outbox 重试投递幂等完成（已履约，fulfill 返回 true）
+        jdbc.update("UPDATE t_outbox_message SET next_retry_at = TIMESTAMPADD(SECOND, -1, CURRENT_TIMESTAMP(3)) WHERE order_id = ?", orderId);
+        drainOutbox();
+        assertThat(count("t_outbox_message",
+                "order_id = ? AND message_type = 'FULFILL' AND status = 'DONE'", orderId)).isEqualTo(1);
     }
 
     @Test

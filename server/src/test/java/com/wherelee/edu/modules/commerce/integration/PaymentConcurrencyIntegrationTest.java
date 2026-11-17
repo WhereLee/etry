@@ -34,6 +34,7 @@ class PaymentConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         List<CallResult<com.wherelee.edu.modules.commerce.payment.PaymentConfirmationService.ConfirmationResult>> results =
                 runConcurrently(20, () -> paymentService.acceptVerified(notification));
 
+        drainOutbox();
         assertThat(results).allSatisfy(result -> assertThat(result.error()).isNull());
         assertThat(count("t_payment_event", "order_no = ?", order.orderNo())).isEqualTo(1);
         assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",

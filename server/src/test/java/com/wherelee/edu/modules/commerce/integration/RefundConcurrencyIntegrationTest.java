@@ -22,6 +22,7 @@ class RefundConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         List<CallResult<RefundRecord>> results =
                 runConcurrently(10, () -> refundService.refund(order.orderNo(), fx.adminId(), "集成测试退款", false));
 
+        drainOutbox();
         assertThat(results).allSatisfy(result -> assertThat(result.error()).isNull());
         assertThat(count("t_refund", "order_id = ?", orderId)).isEqualTo(1);
         assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'REVOKED'",
@@ -58,6 +59,7 @@ class RefundConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
             return refundService.refund(order.orderNo(), fx.adminId(), "退款履约并发", false);
         });
 
+        drainOutbox();
         assertThat(results).allSatisfy(result -> assertThat(result.error()).isNull());
         OrderRecord current = orderRepository.findByOrderNo(order.orderNo()).orElseThrow();
         assertThat(current.status()).isEqualTo(OrderStatus.REFUNDED);

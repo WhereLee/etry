@@ -104,6 +104,32 @@ public class OrderFulfillmentService {
         }
     }
 
+    /**
+     * 撤销订单 ORDER 来源权益（退款驱动）。幂等：重复撤销无副作用。
+     * 由发件箱 relay 异步投递，与资金退款事务解耦。
+     */
+    public boolean revoke(String orderNo, String reason) {
+        return traceSpans.trace("order.revoke", TraceSpans.tags("order.no", orderNo),
+                () -> revokeInternal(orderNo, reason));
+    }
+
+    private boolean revokeInternal(String orderNo, String reason) {
+        OrderRecord order = orderRepository.findByOrderNo(orderNo).orElse(null);
+        if (order == null) {
+            return true;
+        }
+        try {
+            transactionTemplate.executeWithoutResult(status ->
+                    entitlementRepository.revokeOrder(order.userId(), order.seriesId(), order.id(), reason));
+            log.info("order_entitlement_revoked orderNo={} userId={} seriesId={}",
+                    orderNo, order.userId(), order.seriesId());
+            return true;
+        } catch (Exception e) {
+            log.error("订单权益撤销失败 orderNo={}", orderNo, e);
+            return false;
+        }
+    }
+
     private String truncate(String value) {
         if (value == null) {
             return "履约失败";
