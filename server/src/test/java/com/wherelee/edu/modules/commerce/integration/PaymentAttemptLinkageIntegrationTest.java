@@ -289,7 +289,7 @@ class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSuppor
     }
 
     private int activeEntitlements() {
-        return count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",
+        return count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId());
     }
 

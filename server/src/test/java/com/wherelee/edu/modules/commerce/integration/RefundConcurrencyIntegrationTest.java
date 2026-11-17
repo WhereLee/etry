@@ -25,7 +25,7 @@ class RefundConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         drainOutbox();
         assertThat(results).allSatisfy(result -> assertThat(result.error()).isNull());
         assertThat(count("t_refund", "order_id = ?", orderId)).isEqualTo(1);
-        assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'REVOKED'",
+        assertThat(count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'REVOKED'",
                 fx.studentId(), fx.seriesId())).isEqualTo(1);
 
         OrderRecord current = orderRepository.findByOrderNo(order.orderNo()).orElseThrow();
@@ -64,7 +64,7 @@ class RefundConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         OrderRecord current = orderRepository.findByOrderNo(order.orderNo()).orElseThrow();
         assertThat(current.status()).isEqualTo(OrderStatus.REFUNDED);
         assertThat(paymentRepository.findRefundByOrder(orderId).orElseThrow().status()).isEqualTo("SUCCEEDED");
-        assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",
+        assertThat(count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId())).isZero();
     }
 }

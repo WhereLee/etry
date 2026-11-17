@@ -32,8 +32,8 @@
                u.nickname AS teacherName,
                COUNT(DISTINCT c.id) AS chapterCount,
                COUNT(DISTINCT v.id) AS videoCount,
-               (SELECT COUNT(DISTINCT ss.user_id) FROM t_student_series ss
-                WHERE ss.series_id = s.id AND ss.status = 'ACTIVE') AS assignedStudentCount,
+               (SELECT COUNT(DISTINCT e.user_id) FROM t_entitlement e
+                WHERE e.product_id = s.id AND e.product_type = 'COURSE_SERIES' AND e.status = 'ACTIVE') AS assignedStudentCount,
                s.published_at AS publishedAt,
                s.updated_at AS updatedAt
         FROM t_series s

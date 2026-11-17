@@ -37,7 +37,7 @@ class PaymentConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         drainOutbox();
         assertThat(results).allSatisfy(result -> assertThat(result.error()).isNull());
         assertThat(count("t_payment_event", "order_no = ?", order.orderNo())).isEqualTo(1);
-        assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",
+        assertThat(count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId())).isEqualTo(1);
 
         OrderRecord current = orderRepository.findByOrderNo(order.orderNo()).orElseThrow();
@@ -65,7 +65,7 @@ class PaymentConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         ));
 
         assertThat(result.success()).isFalse();
-        assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",
+        assertThat(count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId())).isZero();
         assertThat(count("t_payment_event", "order_no = ? AND process_status = 'FAILED'",
                 order.orderNo())).isEqualTo(1);
@@ -96,7 +96,7 @@ class PaymentConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         assertThat(result.success()).isTrue();
         assertThat(orderRepository.findByOrderNo(order.orderNo()).orElseThrow().status())
                 .isEqualTo(OrderStatus.FULFILLED);
-        assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",
+        assertThat(count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId())).isEqualTo(1);
     }
 

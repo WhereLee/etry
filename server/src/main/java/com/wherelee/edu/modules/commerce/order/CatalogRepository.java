@@ -27,9 +27,10 @@ public class CatalogRepository {
                        s.price_cents,
                        s.currency,
                        CASE WHEN EXISTS (
-                           SELECT 1 FROM t_student_series ss
-                           WHERE ss.user_id = ? AND ss.series_id = s.id AND ss.status = 'ACTIVE'
-                             AND (ss.valid_to IS NULL OR ss.valid_to > CURRENT_TIMESTAMP(3))
+                           SELECT 1 FROM t_entitlement e
+                           WHERE e.user_id = ? AND e.product_id = s.id AND e.product_type = 'COURSE_SERIES'
+                             AND e.status = 'ACTIVE'
+                             AND (e.valid_to IS NULL OR e.valid_to > CURRENT_TIMESTAMP(3))
                        ) THEN 1 ELSE 0 END AS owned,
                        (SELECT o.order_no FROM t_order o
                         WHERE o.user_id = ? AND o.series_id = s.id

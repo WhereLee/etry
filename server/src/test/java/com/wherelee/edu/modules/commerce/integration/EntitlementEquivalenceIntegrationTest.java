@@ -11,8 +11,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 权益中心等價集成测试：Phase 1 双写下，履约/退款/管理员分配在 t_student_series（权威）
- * 与 t_entitlement（影子）两表语义一致，端口读行为与旧表一致。
+ * 权益中心语义集成测试：Phase 3 权威翻转后 t_entitlement 为唯一事实源，
+ * 履约/退款/管理员分配的 grant-once/revoke-once/有效期/排序语义钉死。
  */
 class EntitlementEquivalenceIntegrationTest extends CommerceIntegrationTestSupport {
 
@@ -20,13 +20,10 @@ class EntitlementEquivalenceIntegrationTest extends CommerceIntegrationTestSuppo
     @Autowired private EntitlementQuery entitlementQuery;
 
     @Test
-    void orderFulfillmentDualWritesBothTables() {
+    void orderFulfillmentGrantsEntitlement() {
         String orderNo = createOrder(nextRequestId()).orderNo();
         completePayment(orderNo);
 
-        assertThat(count("t_student_series",
-                "user_id=? AND series_id=? AND source='ORDER' AND status='ACTIVE'",
-                fx.studentId(), fx.seriesId())).isEqualTo(1);
         assertThat(count("t_entitlement",
                 "user_id=? AND product_id=? AND product_type='COURSE_SERIES' AND source='ORDER' AND status='ACTIVE'",
                 fx.studentId(), fx.seriesId())).isEqualTo(1);
@@ -34,29 +31,24 @@ class EntitlementEquivalenceIntegrationTest extends CommerceIntegrationTestSuppo
     }
 
     @Test
-    void fulfillmentIsIdempotentAcrossBothTables() {
+    void fulfillmentIsIdempotent() {
         String orderNo = createOrder(nextRequestId()).orderNo();
         completePayment(orderNo);
         fulfillmentService.fulfill(orderNo);
         fulfillmentService.fulfill(orderNo);
 
-        assertThat(count("t_student_series",
-                "user_id=? AND series_id=? AND source='ORDER'", fx.studentId(), fx.seriesId())).isEqualTo(1);
         assertThat(count("t_entitlement",
                 "user_id=? AND product_id=? AND product_type='COURSE_SERIES' AND source='ORDER'",
                 fx.studentId(), fx.seriesId())).isEqualTo(1);
     }
 
     @Test
-    void refundRevokesBothTables() {
+    void refundRevokesEntitlement() {
         String orderNo = createOrder(nextRequestId()).orderNo();
         completePayment(orderNo);
         refundService.refund(orderNo, fx.adminId(), "等价测试退款", false);
         drainOutbox();
 
-        assertThat(count("t_student_series",
-                "user_id=? AND series_id=? AND source='ORDER' AND status='REVOKED'",
-                fx.studentId(), fx.seriesId())).isEqualTo(1);
         assertThat(count("t_entitlement",
                 "user_id=? AND product_id=? AND product_type='COURSE_SERIES' AND source='ORDER' AND status='REVOKED'",
                 fx.studentId(), fx.seriesId())).isEqualTo(1);
@@ -64,11 +56,9 @@ class EntitlementEquivalenceIntegrationTest extends CommerceIntegrationTestSuppo
     }
 
     @Test
-    void adminReplaceManualDualWritesAndOrders() {
+    void adminReplaceManualOrdersEntitlements() {
         entitlementCommand.replaceManual(fx.studentId(), ProductTypes.COURSE_SERIES, List.of(fx.seriesId()));
 
-        assertThat(count("t_student_series",
-                "user_id=? AND source='ADMIN' AND status='ACTIVE'", fx.studentId())).isEqualTo(1);
         assertThat(count("t_entitlement",
                 "user_id=? AND product_type='COURSE_SERIES' AND source='ADMIN' AND status='ACTIVE'",
                 fx.studentId())).isEqualTo(1);
@@ -76,8 +66,6 @@ class EntitlementEquivalenceIntegrationTest extends CommerceIntegrationTestSuppo
                 .containsExactly(fx.seriesId());
 
         entitlementCommand.replaceManual(fx.studentId(), ProductTypes.COURSE_SERIES, List.of());
-        assertThat(count("t_student_series",
-                "user_id=? AND source='ADMIN'", fx.studentId())).isZero();
         assertThat(count("t_entitlement",
                 "user_id=? AND product_type='COURSE_SERIES' AND source='ADMIN'", fx.studentId())).isZero();
     }

@@ -4,7 +4,6 @@
  * <p>依赖方向：entitlement -> platform。commerce 履约与管理员分配走 Command，
  * course/learning 鉴权走 Query，权益事实单一来源。</p>
  *
- * <p>Phase 1 过渡期：t_student_series 仍为权威读写源，t_entitlement 双写影子并对账校验；
- * Phase 3 切换权威到 t_entitlement 并退役旧表。</p>
+ * <p>Phase 3 权威已翻转：t_entitlement 为唯一读写源，t_student_series 退役（表/列保留到回滚窗口过）。</p>
  */
 package com.wherelee.edu.modules.entitlement;

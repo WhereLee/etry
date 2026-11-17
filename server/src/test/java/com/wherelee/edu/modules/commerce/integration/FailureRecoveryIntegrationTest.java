@@ -19,7 +19,7 @@ class FailureRecoveryIntegrationTest extends CommerceIntegrationTestSupport {
         PaymentDtos.MockEventResponse simulated =
                 paymentService.simulate(fx.studentId(), order.orderNo(), "FULFILLMENT_FAIL_ONCE");
         assertThat(simulated.orderStatus()).isEqualTo(OrderStatus.PAID.name());
-        assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",
+        assertThat(count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId())).isZero();
         assertThat(count("t_outbox_message",
                 "order_id = ? AND message_type = 'FULFILL' AND status = 'NEW'", orderId)).isEqualTo(1);
@@ -34,7 +34,7 @@ class FailureRecoveryIntegrationTest extends CommerceIntegrationTestSupport {
 
         OrderRecord current = orderRepository.findByOrderNo(order.orderNo()).orElseThrow();
         assertThat(current.status()).isEqualTo(OrderStatus.FULFILLED);
-        assertThat(count("t_student_series", "user_id = ? AND series_id = ? AND status = 'ACTIVE'",
+        assertThat(count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'ACTIVE'",
                 fx.studentId(), fx.seriesId())).isEqualTo(1);
 
         // outbox 重试投递幂等完成（已履约，fulfill 返回 true）

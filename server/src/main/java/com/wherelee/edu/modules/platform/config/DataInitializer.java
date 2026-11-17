@@ -140,8 +140,9 @@ public class DataInitializer implements ApplicationRunner {
             return;
         }
         jdbc.update("""
-                INSERT IGNORE INTO t_student_series (user_id, series_id, sort)
-                VALUES (?, ?, ?)
+                INSERT IGNORE INTO t_entitlement
+                    (user_id, product_id, product_type, source, status, display_order, granted_at)
+                VALUES (?, ?, 'COURSE_SERIES', 'ADMIN', 'ACTIVE', ?, CURRENT_TIMESTAMP(3))
                 """, studentId, seriesId, sort);
     }
 

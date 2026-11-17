@@ -26,8 +26,8 @@
                u.role,
                u.status,
                u.must_change_password AS mustChangePassword,
-               (SELECT COUNT(*) FROM t_student_series ss
-                WHERE ss.user_id = u.id AND ss.status = 'ACTIVE') AS seriesCount,
+               (SELECT COUNT(*) FROM t_entitlement e
+                WHERE e.user_id = u.id AND e.product_type = 'COURSE_SERIES' AND e.status = 'ACTIVE') AS seriesCount,
                u.created_at AS createdAt
         FROM t_user u
         <include refid="userFilters"/>

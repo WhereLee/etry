@@ -16,7 +16,7 @@ class OrderConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
         assertThat(results).allSatisfy(result -> assertThat(result.error()).isNull());
         assertThat(results.stream().map(result -> result.value().orderNo()).distinct().toList()).hasSize(1);
         assertThat(count("t_order", null)).isEqualTo(1);
-        assertThat(count("t_student_series", null)).isZero();
+        assertThat(count("t_entitlement", null)).isZero();
     }
 
     @Test
