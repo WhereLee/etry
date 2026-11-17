@@ -1,5 +1,8 @@
 package com.wherelee.edu.modules.operations.admin;
 
+import com.wherelee.edu.modules.entitlement.api.EntitlementCommand;
+import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
+import com.wherelee.edu.modules.entitlement.api.ProductTypes;
 import com.wherelee.edu.modules.identity.api.UserAccount;
 import com.wherelee.edu.modules.identity.api.UserAccountOperations;
 import com.wherelee.edu.modules.operations.admin.dto.AdminUserVO;
@@ -23,10 +26,15 @@ public class AdminUserService {
 
     private final AdminUserMapper mapper;
     private final UserAccountOperations userAccounts;
+    private final EntitlementCommand entitlementCommand;
+    private final EntitlementQuery entitlementQuery;
 
-    public AdminUserService(AdminUserMapper mapper, UserAccountOperations userAccounts) {
+    public AdminUserService(AdminUserMapper mapper, UserAccountOperations userAccounts,
+                            EntitlementCommand entitlementCommand, EntitlementQuery entitlementQuery) {
         this.mapper = mapper;
         this.userAccounts = userAccounts;
+        this.entitlementCommand = entitlementCommand;
+        this.entitlementQuery = entitlementQuery;
     }
 
     public PageResult<AdminUserVO> page(String keyword, String role, String status, int page, int size) {
@@ -73,16 +81,12 @@ public class AdminUserService {
         if (!validIds.containsAll(seriesIds)) {
             throw BizException.badRequest("包含不存在的系列");
         }
-        mapper.deleteUserSeries(userId);
-        int sort = 1;
-        for (Long seriesId : seriesIds) {
-            mapper.insertUserSeries(userId, seriesId, sort++);
-        }
+        entitlementCommand.replaceManual(userId, ProductTypes.COURSE_SERIES, seriesIds);
     }
 
     public List<Long> seriesIds(Long userId) {
         userAccounts.require(userId);
-        return mapper.findSeriesIds(userId);
+        return entitlementQuery.listManualProductIds(userId, ProductTypes.COURSE_SERIES);
     }
 
     public List<SeriesOptionVO> seriesOptions() {

@@ -8,6 +8,7 @@ import {
   listAdminOrderExceptions,
   listAdminOrders,
   queryAdminOrder,
+  refundDuplicateAdminOrder,
   refundAdminOrder
 } from '@/features/commerce/api/order'
 import PageHeader from '@/components/PageHeader.vue'
@@ -26,6 +27,7 @@ const detail = ref(null)
 const actionBusy = ref('')
 const refundOpen = ref(false)
 const refundBusy = ref(false)
+const refundAttemptNo = ref(null)
 const refundForm = reactive({ reason: '', simulateFailure: false })
 
 const statusOptions = [
@@ -125,7 +127,8 @@ async function runAction(action) {
   }
 }
 
-function openRefund() {
+function openRefund(attemptNo = null) {
+  refundAttemptNo.value = attemptNo
   Object.assign(refundForm, { reason: '', simulateFailure: false })
   refundOpen.value = true
 }
@@ -138,12 +141,18 @@ async function submitRefund() {
   refundBusy.value = true
   error.value = ''
   try {
-    detail.value = await refundAdminOrder(detail.value.order.orderNo, {
+    const body = {
       reason: refundForm.reason.trim(),
       simulateFailure: refundForm.simulateFailure
-    })
+    }
+    detail.value = refundAttemptNo.value
+      ? await refundDuplicateAdminOrder(detail.value.order.orderNo, refundAttemptNo.value, body)
+      : await refundAdminOrder(detail.value.order.orderNo, body)
     refundOpen.value = false
-    notice.value = detail.value.refund?.status === 'SUCCEEDED' ? '退款成功，订单权益已回收' : '退款失败，请查看订单详情'
+    const latestRefund = (detail.value.refunds || []).at(-1)
+    notice.value = latestRefund?.status === 'SUCCEEDED'
+      ? (refundAttemptNo.value ? '重复付款已退款，订单权益保持不变' : '退款成功，订单权益已回收')
+      : '退款失败，请查看订单详情'
     await load()
   } catch (e) {
     error.value = e.message
@@ -263,7 +272,7 @@ function timelineType(type) {
           <el-button :loading="actionBusy === 'query'" @click="runAction('query')">主动查单</el-button>
           <el-button v-if="detail.order.status === 'PAID'" type="primary" :loading="actionBusy === 'fulfill'" @click="runAction('fulfill')">补履约</el-button>
           <el-button v-if="['CREATED', 'PAY_FAILED'].includes(detail.order.status)" :loading="actionBusy === 'close'" @click="runAction('close')">关闭订单</el-button>
-          <el-button v-if="['PAID', 'FULFILLED', 'REFUND_FAILED'].includes(detail.order.status)" type="danger" plain @click="openRefund">发起退款</el-button>
+          <el-button v-if="['PAID', 'FULFILLED', 'REFUND_FAILED'].includes(detail.order.status)" type="danger" plain @click="openRefund()">发起退款</el-button>
         </div>
 
         <el-tabs class="detail-tabs">
@@ -282,42 +291,60 @@ function timelineType(type) {
               <el-table-column prop="attemptNo" label="次数" width="60" />
               <el-table-column prop="status" label="状态" width="100" />
               <el-table-column prop="providerStatus" label="平台状态" width="100" />
-              <el-table-column prop="providerTradeNo" label="平台交易号" min-width="230" />
+              <el-table-column prop="providerTradeNo" label="商户单号" min-width="190" />
+              <el-table-column prop="channelTradeNo" label="渠道交易号" min-width="210" />
               <el-table-column prop="mockScenario" label="Mock 场景" min-width="140" />
               <el-table-column label="创建时间" width="155"><template #default="{ row }">{{ formatDate(row.createdAt) }}</template></el-table-column>
+              <el-table-column label="操作" width="130" fixed="right">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.status === 'SUCCESS' && row.channelTradeNo && row.channelTradeNo !== detail.order.providerTradeNo"
+                    type="danger"
+                    link
+                    @click="openRefund(row.attemptNo)"
+                  >退重复款</el-button>
+                </template>
+              </el-table-column>
             </el-table>
           </el-tab-pane>
           <el-tab-pane label="支付事件">
             <el-table :data="detail.events || []" size="small" empty-text="暂无支付事件">
               <el-table-column prop="eventType" label="事件" width="130" />
+              <el-table-column prop="attemptId" label="Attempt" width="90" />
               <el-table-column prop="processStatus" label="处理" width="90" />
               <el-table-column label="金额" width="100"><template #default="{ row }">{{ priceText(row.amountCents, detail.order.currency) }}</template></el-table-column>
+              <el-table-column prop="channelTradeNo" label="渠道交易号" min-width="200" />
+              <el-table-column prop="providerNotifyId" label="通知 ID" min-width="170" />
               <el-table-column prop="eventKey" label="事件键" min-width="220" />
               <el-table-column prop="errorMessage" label="错误" min-width="150" />
               <el-table-column label="时间" width="155"><template #default="{ row }">{{ formatDate(row.receivedAt) }}</template></el-table-column>
             </el-table>
           </el-tab-pane>
           <el-tab-pane label="退款">
-            <el-empty v-if="!detail.refund" description="暂无退款记录" :image-size="64" />
-            <el-descriptions v-else :column="2" border>
-              <el-descriptions-item label="退款单号" :span="2">{{ detail.refund.refundNo }}</el-descriptions-item>
-              <el-descriptions-item label="金额">{{ priceText(detail.refund.amountCents, detail.order.currency) }}</el-descriptions-item>
-              <el-descriptions-item label="状态">{{ detail.refund.status }}</el-descriptions-item>
-              <el-descriptions-item label="尝试次数">{{ detail.refund.attemptCount }}</el-descriptions-item>
-              <el-descriptions-item label="下次重试">{{ formatDate(detail.refund.nextRetryAt) }}</el-descriptions-item>
-              <el-descriptions-item label="原因" :span="2">{{ detail.refund.reason }}</el-descriptions-item>
-              <el-descriptions-item label="申请时间">{{ formatDate(detail.refund.requestedAt) }}</el-descriptions-item>
-              <el-descriptions-item label="成功时间">{{ formatDate(detail.refund.succeededAt) }}</el-descriptions-item>
-              <el-descriptions-item v-if="detail.refund.errorMessage" label="错误" :span="2">{{ detail.refund.errorMessage }}</el-descriptions-item>
-            </el-descriptions>
+            <el-empty v-if="!(detail.refunds || []).length" description="暂无退款记录" :image-size="64" />
+            <el-table v-else :data="detail.refunds" size="small">
+              <el-table-column prop="refundNo" label="退款单号" min-width="190" />
+              <el-table-column prop="refundKind" label="类型" width="150" />
+              <el-table-column prop="attemptNo" label="Attempt" width="85" />
+              <el-table-column label="金额" width="100"><template #default="{ row }">{{ priceText(row.amountCents, detail.order.currency) }}</template></el-table-column>
+              <el-table-column prop="status" label="状态" width="100" />
+              <el-table-column prop="attemptCount" label="次数" width="70" />
+              <el-table-column prop="reason" label="原因" min-width="160" />
+              <el-table-column label="申请时间" width="155"><template #default="{ row }">{{ formatDate(row.requestedAt) }}</template></el-table-column>
+              <el-table-column prop="errorMessage" label="错误" min-width="170" />
+            </el-table>
           </el-tab-pane>
         </el-tabs>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="refundOpen" title="发起全额退款" width="480px" align-center>
-      <div class="dialog-kicker">FULL REFUND</div>
-      <p class="refund-hint">退款成功后只撤销订单来源权益，管理员分配的权益不受影响。</p>
+    <el-dialog v-model="refundOpen" :title="refundAttemptNo ? '退还重复付款' : '发起全额退款'" width="480px" align-center>
+      <div class="dialog-kicker">{{ refundAttemptNo ? 'DUPLICATE PAYMENT REFUND' : 'FULL REFUND' }}</div>
+      <p class="refund-hint">
+        {{ refundAttemptNo
+          ? `只退还第 ${refundAttemptNo} 次支付尝试的资金，不改变订单状态，也不回收课程权益。`
+          : '退款成功后只撤销订单来源权益，管理员分配的权益不受影响。' }}
+      </p>
       <el-form label-position="top">
         <el-form-item label="退款原因">
           <el-input v-model="refundForm.reason" type="textarea" :rows="3" maxlength="200" show-word-limit placeholder="填写退款原因" />

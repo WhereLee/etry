@@ -66,6 +66,11 @@ public class PaymentAlertJob {
             emit("PAYMENT_REFUND_RETRY_EXHAUSTED", "HIGH",
                     "退款重试耗尽订单 " + refundExhausted + " 笔");
         }
+        long duplicateUnrefunded = paymentRepository.countUnrefundedDuplicatePayments();
+        if (duplicateUnrefunded > 0) {
+            emit("PAYMENT_DUPLICATE_UNREFUNDED", "HIGH",
+                    "已识别但尚未退款的重复付款 " + duplicateUnrefunded + " 笔");
+        }
     }
 
     private void emit(String type, String severity, String message) {

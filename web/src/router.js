@@ -80,6 +80,12 @@ const routes = [
     meta: { auth: true, role: 'ADMIN' }
   },
   {
+    path: '/admin/reconciliation',
+    name: 'adminReconciliation',
+    component: () => import('@/features/operations/views/AdminReconciliation.vue'),
+    meta: { auth: true, role: 'ADMIN' }
+  },
+  {
     path: '/teacher/series',
     name: 'teacherSeries',
     component: () => import('@/features/course/views/TeacherSeries.vue'),

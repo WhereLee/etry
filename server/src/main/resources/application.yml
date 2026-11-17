@@ -5,6 +5,10 @@ server:
 spring:
   application:
     name: btry-learning-space
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
   datasource:
     url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/btry_edu?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
     username: ${DB_USER:root}

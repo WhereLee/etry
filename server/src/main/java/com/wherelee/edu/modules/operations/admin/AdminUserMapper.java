@@ -20,13 +20,5 @@ public interface AdminUserMapper {
                     @Param("role") String role,
                     @Param("status") String status);
 
-    List<Long> findSeriesIds(@Param("userId") Long userId);
-
-    void deleteUserSeries(@Param("userId") Long userId);
-
-    void insertUserSeries(@Param("userId") Long userId,
-                          @Param("seriesId") Long seriesId,
-                          @Param("sort") int sort);
-
     List<SeriesOptionVO> findAllSeries();
 }

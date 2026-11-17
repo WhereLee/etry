@@ -1,42 +1,64 @@
 package com.wherelee.edu.modules.course.series;
 
 import com.wherelee.edu.modules.course.series.dto.SeriesDtos;
+import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
+import com.wherelee.edu.modules.entitlement.api.ProductTypes;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
 public class SeriesRepository {
 
     private final JdbcTemplate jdbc;
+    private final EntitlementQuery entitlementQuery;
 
-    public SeriesRepository(JdbcTemplate jdbc) {
+    public SeriesRepository(JdbcTemplate jdbc, EntitlementQuery entitlementQuery) {
         this.jdbc = jdbc;
+        this.entitlementQuery = entitlementQuery;
     }
 
     public List<SeriesDtos.SeriesSummary> findForStudent(Long userId) {
-        return jdbc.query("""
+        List<EntitlementQuery.ActiveProduct> active =
+                entitlementQuery.listActive(userId, ProductTypes.COURSE_SERIES);
+        if (active.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Integer> displayOrder = new HashMap<>();
+        List<Long> ids = new ArrayList<>();
+        for (EntitlementQuery.ActiveProduct product : active) {
+            displayOrder.put(product.productId(), product.displayOrder());
+            ids.add(product.productId());
+        }
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        Object[] args = new Object[ids.size() + 1];
+        args[0] = userId;
+        for (int i = 0; i < ids.size(); i++) {
+            args[i + 1] = ids.get(i);
+        }
+        List<SeriesDtos.SeriesSummary> rows = jdbc.query("""
                 SELECT s.id,
                        s.title,
                        s.summary,
                        u.nickname AS teacher_name,
                        COUNT(DISTINCT c.id) AS chapter_count,
                        COUNT(DISTINCT v.id) AS video_count,
-                       COUNT(DISTINCT CASE WHEN p.completed = 1 THEN v.id END) AS completed_video_count,
-                       MIN(ss.sort) AS student_sort
-                FROM t_student_series ss
-                JOIN t_series s ON s.id = ss.series_id
+                       COUNT(DISTINCT CASE WHEN p.completed = 1 THEN v.id END) AS completed_video_count
+                FROM t_series s
                 JOIN t_user u ON u.id = s.teacher_id
                 LEFT JOIN t_series_chapter c ON c.series_id = s.id
                 LEFT JOIN t_series_video v ON v.chapter_id = c.id
-                LEFT JOIN t_learning_progress p ON p.user_id = ss.user_id AND p.video_id = v.id
-                WHERE ss.user_id = ? AND ss.status = 'ACTIVE'
-                  AND (ss.valid_to IS NULL OR ss.valid_to > CURRENT_TIMESTAMP(3))
+                LEFT JOIN t_learning_progress p ON p.user_id = ? AND p.video_id = v.id
+                WHERE s.id IN (%s)
                 GROUP BY s.id, s.title, s.summary, u.nickname
-                ORDER BY student_sort, s.id
-                """, (rs, rowNum) -> new SeriesDtos.SeriesSummary(
+                """.formatted(placeholders), (rs, rowNum) -> new SeriesDtos.SeriesSummary(
                 rs.getLong("id"),
                 rs.getString("title"),
                 rs.getString("summary"),
@@ -44,23 +66,29 @@ public class SeriesRepository {
                 rs.getLong("chapter_count"),
                 rs.getLong("video_count"),
                 rs.getLong("completed_video_count")
-        ), userId);
+        ), args);
+        return rows.stream()
+                .sorted(Comparator.comparing(
+                                (SeriesDtos.SeriesSummary row) -> displayOrder.getOrDefault(row.id(), Integer.MAX_VALUE))
+                        .thenComparing(SeriesDtos.SeriesSummary::id))
+                .toList();
     }
 
     public Optional<SeriesHeader> findAssignedSeries(Long userId, Long seriesId) {
+        if (!entitlementQuery.hasActive(userId, seriesId, ProductTypes.COURSE_SERIES)) {
+            return Optional.empty();
+        }
         List<SeriesHeader> rows = jdbc.query("""
                 SELECT s.id, s.title, s.summary, u.nickname AS teacher_name
                 FROM t_series s
-                JOIN t_student_series ss ON ss.series_id = s.id AND ss.user_id = ?
                 JOIN t_user u ON u.id = s.teacher_id
-                WHERE s.id = ? AND ss.status = 'ACTIVE'
-                  AND (ss.valid_to IS NULL OR ss.valid_to > CURRENT_TIMESTAMP(3))
+                WHERE s.id = ?
                 """, (rs, rowNum) -> new SeriesHeader(
                 rs.getLong("id"),
                 rs.getString("title"),
                 rs.getString("summary"),
                 rs.getString("teacher_name")
-        ), userId, seriesId);
+        ), seriesId);
         return rows.stream().findFirst();
     }
 
@@ -98,17 +126,15 @@ public class SeriesRepository {
                 SELECT v.id, c.series_id, v.title, v.video_key
                 FROM t_series_video v
                 JOIN t_series_chapter c ON c.id = v.chapter_id
-                JOIN t_student_series ss ON ss.series_id = c.series_id AND ss.user_id = ?
-                JOIN t_series s ON s.id = c.series_id
-                WHERE v.id = ? AND ss.status = 'ACTIVE'
-                  AND (ss.valid_to IS NULL OR ss.valid_to > CURRENT_TIMESTAMP(3))
+                WHERE v.id = ?
                 """, (rs, rowNum) -> new SeriesDtos.PlayableVideo(
                 rs.getLong("id"),
                 rs.getLong("series_id"),
                 rs.getString("title"),
                 rs.getString("video_key")
-        ), userId, videoId);
-        return rows.stream().findFirst();
+        ), videoId);
+        return rows.stream().findFirst()
+                .filter(video -> entitlementQuery.hasActive(userId, video.seriesId(), ProductTypes.COURSE_SERIES));
     }
 
     public record SeriesHeader(Long id, String title, String summary, String teacherName) {

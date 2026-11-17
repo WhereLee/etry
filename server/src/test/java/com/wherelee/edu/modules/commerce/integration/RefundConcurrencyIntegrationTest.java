@@ -44,8 +44,11 @@ class RefundConcurrencyIntegrationTest extends CommerceIntegrationTestSupport {
                 SET status = 'PAID', paid_at = CURRENT_TIMESTAMP(3), provider_trade_no = ?
                 WHERE id = ?
                 """, attempt.providerTradeNo(), orderId);
-        jdbc.update("UPDATE t_payment_attempt SET status = 'SUCCESS', finished_at = CURRENT_TIMESTAMP(3) WHERE id = ?",
-                attempt.id());
+        jdbc.update("""
+                UPDATE t_payment_attempt
+                SET status = 'SUCCESS', channel_trade_no = ?, finished_at = CURRENT_TIMESTAMP(3)
+                WHERE id = ?
+                """, attempt.providerTradeNo(), attempt.id());
 
         AtomicInteger action = new AtomicInteger();
         List<CallResult<Object>> results = runConcurrently(2, () -> {

@@ -42,7 +42,8 @@ public class MockPaymentGateway implements PaymentGateway {
     }
 
     @Override
-    public RefundResult refund(OrderRecord order, RefundRecord refund, boolean simulateFailure) {
+    public RefundResult refund(OrderRecord order, PaymentAttemptRecord attempt,
+                               RefundRecord refund, boolean simulateFailure) {
         if (simulateFailure) {
             return new RefundResult(false, null, "Mock 退款失败：模拟网关异常");
         }

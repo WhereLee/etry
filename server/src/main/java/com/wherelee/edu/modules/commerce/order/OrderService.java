@@ -2,8 +2,10 @@ package com.wherelee.edu.modules.commerce.order;
 
 import com.wherelee.edu.modules.platform.common.BizException;
 import com.wherelee.edu.modules.platform.common.PageResult;
+import com.wherelee.edu.modules.commerce.api.SellableCatalog;
 import com.wherelee.edu.modules.commerce.entitlement.EntitlementRepository;
 import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
+import com.wherelee.edu.modules.entitlement.api.ProductTypes;
 import com.wherelee.edu.modules.commerce.payment.PaymentAttemptRecord;
 import com.wherelee.edu.modules.commerce.payment.PaymentEventRecord;
 import com.wherelee.edu.modules.commerce.payment.PaymentProperties;
@@ -22,7 +24,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -36,23 +41,35 @@ public class OrderService {
     private final EntitlementRepository entitlementRepository;
     private final PaymentProperties paymentProperties;
     private final PaymentMetrics paymentMetrics;
+    private final Map<String, SellableCatalog> catalogs;
 
     public OrderService(CatalogRepository catalogRepository,
                         OrderRepository orderRepository,
                         PaymentRepository paymentRepository,
                         EntitlementRepository entitlementRepository,
                         PaymentProperties paymentProperties,
-                        PaymentMetrics paymentMetrics) {
+                        PaymentMetrics paymentMetrics,
+                        List<SellableCatalog> catalogList) {
         this.catalogRepository = catalogRepository;
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.entitlementRepository = entitlementRepository;
         this.paymentProperties = paymentProperties;
         this.paymentMetrics = paymentMetrics;
+        this.catalogs = catalogList.stream()
+                .collect(Collectors.toMap(SellableCatalog::productType, Function.identity()));
     }
 
     public List<CatalogItem> catalog(Long userId) {
         return catalogRepository.findOnSale(userId);
+    }
+
+    private SellableCatalog catalog(String productType) {
+        SellableCatalog catalog = catalogs.get(productType);
+        if (catalog == null) {
+            throw new IllegalStateException("缺少可售商品目录适配器：" + productType);
+        }
+        return catalog;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -75,14 +92,15 @@ public class OrderService {
             }
         }
 
-        SaleSeries series = catalogRepository.findPurchasable(request.seriesId())
+        SellableCatalog.SellableProduct product = catalog(ProductTypes.COURSE_SERIES)
+                .findPurchasable(request.seriesId())
                 .orElseThrow(() -> BizException.badRequest("课程未发布、未开售或价格无效"));
         String orderNo = generateOrderNo();
-        String activeKey = userId + ":" + series.id();
+        String activeKey = userId + ":" + product.productId();
         LocalDateTime expireAt = LocalDateTime.now().plusMinutes(Math.max(5, paymentProperties.orderExpireMinutes()));
         try {
-            orderRepository.insert(orderNo, userId, series.id(), series.title(),
-                    series.priceCents(), series.currency(), request.clientRequestId(),
+            orderRepository.insert(orderNo, userId, product.productId(), product.title(),
+                    product.priceCents(), product.currency(), request.clientRequestId(),
                     activeKey, expireAt);
             paymentMetrics.orderCreated();
         } catch (DuplicateKeyException e) {
@@ -185,12 +203,12 @@ public class OrderService {
         if (order.closedAt() != null) {
             items.add(new OrderDtos.TimelineItem("CLOSED", "订单已关闭", order.closedAt()));
         }
-        paymentRepository.findRefundByOrder(order.id()).ifPresent(refund -> {
+        for (RefundRecord refund : paymentRepository.findRefundsByOrder(order.id())) {
             items.add(new OrderDtos.TimelineItem("REFUND", "发起退款", refund.requestedAt()));
             if (refund.succeededAt() != null) {
                 items.add(new OrderDtos.TimelineItem("REFUNDED", "退款成功", refund.succeededAt()));
             }
-        });
+        }
         return items.stream()
                 .sorted(Comparator.comparing(OrderDtos.TimelineItem::time,
                         Comparator.nullsLast(Comparator.naturalOrder())))

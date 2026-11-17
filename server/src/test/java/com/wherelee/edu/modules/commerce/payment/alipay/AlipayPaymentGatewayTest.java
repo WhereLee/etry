@@ -19,6 +19,7 @@ import com.wherelee.edu.modules.commerce.order.OrderStatus;
 import com.wherelee.edu.modules.commerce.payment.PaymentAttemptRecord;
 import com.wherelee.edu.modules.commerce.payment.PaymentGateway;
 import com.wherelee.edu.modules.commerce.payment.RefundRecord;
+import com.wherelee.edu.modules.commerce.payment.RefundKind;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -123,6 +124,21 @@ class AlipayPaymentGatewayTest {
     }
 
     @Test
+    void queryPaidWithoutAmountOrTradeNoIsUnknown() throws Exception {
+        AlipayTradeQueryResponse response = new AlipayTradeQueryResponse();
+        response.setCode("10000");
+        response.setTradeStatus("TRADE_SUCCESS");
+        response.setTradeNo("2026110522001400001");
+        when(client.execute(any(AlipayTradeQueryRequest.class))).thenReturn(response);
+
+        assertThat(gateway.query(order(), attempt()).status()).isEqualTo("UNKNOWN");
+
+        response.setTotalAmount("0.01");
+        response.setTradeNo(null);
+        assertThat(gateway.query(order(), attempt()).status()).isEqualTo("UNKNOWN");
+    }
+
+    @Test
     void queryTradeNotExistIsExplicitNotFound() throws Exception {
         AlipayTradeQueryResponse response = new AlipayTradeQueryResponse();
         response.setCode("40004");
@@ -195,10 +211,10 @@ class AlipayPaymentGatewayTest {
         response.setTradeNo("2026110522001400001");
         when(client.execute(any(AlipayTradeRefundRequest.class))).thenReturn(response);
 
-        PaymentGateway.RefundResult result = gateway.refund(paidOrder(), refund(), false);
+        PaymentGateway.RefundResult result = gateway.refund(paidOrder(), attempt(), refund(), false);
 
         assertThat(result.success()).isTrue();
-        assertThat(result.providerRefundNo()).isEqualTo("2026110522001400001");
+        assertThat(result.providerRefundNo()).isEqualTo("REF1");
     }
 
     @Test
@@ -214,7 +230,7 @@ class AlipayPaymentGatewayTest {
         queryResponse.setOutRequestNo("REF1");
         when(client.execute(any(AlipayTradeFastpayRefundQueryRequest.class))).thenReturn(queryResponse);
 
-        PaymentGateway.RefundResult result = gateway.refund(paidOrder(), refund(), false);
+        PaymentGateway.RefundResult result = gateway.refund(paidOrder(), attempt(), refund(), false);
 
         assertThat(result.success()).isTrue();
         assertThat(result.providerRefundNo()).isEqualTo("REF1");
@@ -222,14 +238,14 @@ class AlipayPaymentGatewayTest {
 
     @Test
     void simulateFailureNeverCallsAlipay() {
-        PaymentGateway.RefundResult result = gateway.refund(paidOrder(), refund(), true);
+        PaymentGateway.RefundResult result = gateway.refund(paidOrder(), attempt(), refund(), true);
         assertThat(result.success()).isFalse();
         verifyNoInteractions(client);
     }
 
     @Test
     void refundWithoutProviderTradeNoFails() {
-        PaymentGateway.RefundResult result = gateway.refund(order(), refund(), false);
+        PaymentGateway.RefundResult result = gateway.refund(order(), attempt(), refund(), false);
         assertThat(result.success()).isFalse();
         verifyNoInteractions(client);
     }
@@ -248,11 +264,11 @@ class AlipayPaymentGatewayTest {
 
     private PaymentAttemptRecord attempt() {
         return new PaymentAttemptRecord(1L, 1L, 1, "ALIPAY", "PROCESSING", "ORD1_1",
-                "CREATED", 1L, "digest", null, null, null, now, null);
+                null, "CREATED", 1L, "digest", null, null, null, now, null);
     }
 
     private RefundRecord refund() {
-        return new RefundRecord(1L, "REF1", 1L, 1L, "PROCESSING", 0, null, null,
+        return new RefundRecord(1L, "REF1", 1L, 1L, RefundKind.ORDER, 1L, "PROCESSING", 0, null, null,
                 "用户申请退款", 9L, now, null, null);
     }
 }

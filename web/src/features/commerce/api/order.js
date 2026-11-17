@@ -60,6 +60,10 @@ export function refundAdminOrder(orderNo, body) {
   return post(`/admin/orders/${orderNo}/refund`, body)
 }
 
+export function refundDuplicateAdminOrder(orderNo, attemptNo, body) {
+  return post(`/admin/orders/${orderNo}/attempts/${attemptNo}/refund`, body)
+}
+
 export function updateSeriesSale(seriesId, saleStatus, priceCents) {
   return put(`/admin/content/series/${seriesId}/sale`, { saleStatus, priceCents })
 }

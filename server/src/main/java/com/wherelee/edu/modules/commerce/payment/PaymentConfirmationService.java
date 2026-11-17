@@ -69,6 +69,18 @@ public class PaymentConfirmationService {
         }
 
         boolean successEvent = "PAYMENT_SUCCESS".equals(notification.eventType());
+        if (successEvent && (notification.tradeNo() == null || notification.tradeNo().isBlank())) {
+            return reject(notification, order, "PAYMENT_SUCCESS_MISSING_TRADE_NO",
+                    "支付成功事件缺少渠道交易号 orderNo=" + order.orderNo()
+                            + " attemptId=" + attempt.id());
+        }
+        if (successEvent && (notification.providerTradeNo() == null
+                || !notification.providerTradeNo().equals(attempt.providerTradeNo()))) {
+            return reject(notification, order, "PAYMENT_MERCHANT_TRADE_MISMATCH",
+                    "支付成功事件的商户交易号与尝试不匹配 orderNo=" + order.orderNo()
+                            + " attemptId=" + attempt.id()
+                            + " merchantTradeNo=" + notification.providerTradeNo());
+        }
         if (successEvent && notification.amountCents() != order.priceCents()) {
             metrics.amountMismatch();
             insertFailedEvent(notification, order,
@@ -86,7 +98,7 @@ public class PaymentConfirmationService {
         boolean inserted = paymentRepository.insertEvent(
                 notification.provider(), notification.eventKey(), attempt.id(),
                 order.id(), order.orderNo(), notification.eventType(), notification.amountCents(),
-                notification.providerTradeNo(), notification.providerNotifyId(), notification.payloadDigest());
+                notification.tradeNo(), notification.providerNotifyId(), notification.payloadDigest());
         PaymentEventRecord event = paymentRepository
                 .findEvent(notification.provider(), notification.eventKey())
                 .orElseThrow(() -> new IllegalStateException("支付事件写入后不可读取"));
@@ -111,13 +123,13 @@ public class PaymentConfirmationService {
                                             PaymentEventRecord event) {
         OrderStatus status = order.status();
         if (status == OrderStatus.PAID || status == OrderStatus.FULFILLED) {
+            paymentRepository.markAttemptSuccess(attempt.id(), notification.tradeNo());
             boolean sameTrade = notification.tradeNo() != null
                     && notification.tradeNo().equals(order.providerTradeNo());
             if (sameTrade) {
                 paymentRepository.markEventProcessed(event.id());
                 return new ConfirmationResult(true, true, "重复支付事件已忽略", order);
             }
-            paymentRepository.markAttemptSuccess(attempt.id());
             alert("PAYMENT_DUPLICATE_SUCCESS",
                     "同一订单收到第二笔成功付款 orderNo=" + order.orderNo()
                             + " attemptId=" + attempt.id() + " attemptNo=" + attempt.attemptNo()
@@ -128,9 +140,9 @@ public class PaymentConfirmationService {
             return new ConfirmationResult(false, false, "重复付款已记录并告警，不重复发放权益", order);
         }
         if (status == OrderStatus.CLOSED || status == OrderStatus.REFUNDING
-                || status == OrderStatus.REFUNDED || status == OrderStatus.REFUND_FAILED
-                || status == OrderStatus.PAY_FAILED) {
-            paymentRepository.markEventFailed(event.id(), "订单状态需人工核对：" + status);
+                || status == OrderStatus.REFUNDED || status == OrderStatus.REFUND_FAILED) {
+            paymentRepository.markAttemptSuccess(attempt.id(), notification.tradeNo());
+            paymentRepository.markEventManualReview(event.id(), "订单状态需人工核对：" + status);
             alert("PAYMENT_MANUAL_REVIEW",
                     "非可支付状态订单收到成功通知，需人工核对资金 orderNo=" + order.orderNo()
                             + " status=" + status + " attemptId=" + attempt.id()
@@ -138,12 +150,20 @@ public class PaymentConfirmationService {
                             + " amountCents=" + notification.amountCents());
             return new ConfirmationResult(false, false, "订单状态需人工核对，未自动改单", order);
         }
-        if (status != OrderStatus.PAYING) {
+        if (status == OrderStatus.PAY_FAILED && !currentAttempt) {
+            paymentRepository.markAttemptSuccess(attempt.id(), notification.tradeNo());
+            paymentRepository.markEventManualReview(event.id(), "非当前尝试成功但订单为 PAY_FAILED");
+            alert("PAYMENT_MANUAL_REVIEW",
+                    "非当前支付尝试成功，需人工核对资金 orderNo=" + order.orderNo()
+                            + " attemptId=" + attempt.id() + " tradeNo=" + notification.tradeNo());
+            return new ConfirmationResult(false, false, "订单状态需人工核对，未自动改单", order);
+        }
+        if (status != OrderStatus.PAYING && status != OrderStatus.PAY_FAILED) {
             paymentRepository.markEventFailed(event.id(), "订单状态不允许支付确认：" + status);
             return new ConfirmationResult(false, false, "订单状态不允许支付确认", order);
         }
 
-        paymentRepository.markAttemptSuccess(attempt.id());
+        paymentRepository.markAttemptSuccess(attempt.id(), notification.tradeNo());
         if (!currentAttempt) {
             alert("PAYMENT_LATE_SUCCESS",
                     "旧支付尝试迟到成功，资金事实优先 orderNo=" + order.orderNo()
@@ -192,7 +212,7 @@ public class PaymentConfirmationService {
         boolean inserted = paymentRepository.insertEvent(
                 notification.provider(), notification.eventKey(), notification.attemptId(),
                 order.id(), order.orderNo(), notification.eventType(), notification.amountCents(),
-                notification.providerTradeNo(), notification.providerNotifyId(), notification.payloadDigest());
+                notification.tradeNo(), notification.providerNotifyId(), notification.payloadDigest());
         if (inserted) {
             paymentRepository.findEvent(notification.provider(), notification.eventKey())
                     .ifPresent(event -> paymentRepository.markEventFailed(event.id(), reason));

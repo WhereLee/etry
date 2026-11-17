@@ -1,5 +1,7 @@
 package com.wherelee.edu.architecture;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
@@ -85,4 +87,41 @@ class ModuleBoundaryTest {
                             "..modules.course.teacher..",
                             "..modules.course.series.."
                     );
+
+    @ArchTest
+    static final ArchRule entitlement_should_only_depend_on_platform =
+            noClasses().that().resideInAPackage("..modules.entitlement..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "..modules.identity..",
+                            "..modules.course..",
+                            "..modules.learning..",
+                            "..modules.commerce..",
+                            "..modules.operations.."
+                    );
+
+    @ArchTest
+    static final ArchRule business_should_use_entitlement_api_not_internal =
+            noClasses().that().resideInAnyPackage(
+                            "..modules.identity..",
+                            "..modules.course..",
+                            "..modules.learning..",
+                            "..modules.commerce..",
+                            "..modules.operations..")
+                    .should().dependOnClassesThat(entitlementInternal());
+
+    @ArchTest
+    static final ArchRule course_learning_should_use_commerce_api_not_internal =
+            noClasses().that().resideInAnyPackage("..modules.course..", "..modules.learning..")
+                    .should().dependOnClassesThat(commerceInternal());
+
+    private static DescribedPredicate<JavaClass> entitlementInternal() {
+        return DescribedPredicate.describe("entitlement 内部实现（非 api）",
+                javaClass -> javaClass.getPackageName().equals("com.wherelee.edu.modules.entitlement"));
+    }
+
+    private static DescribedPredicate<JavaClass> commerceInternal() {
+        return DescribedPredicate.describe("commerce 内部实现（非 api）",
+                javaClass -> javaClass.getPackageName().startsWith("com.wherelee.edu.modules.commerce")
+                        && !javaClass.getPackageName().startsWith("com.wherelee.edu.modules.commerce.api"));
+    }
 }

@@ -1,5 +1,7 @@
 package com.wherelee.edu.modules.learning.playback;
 
+import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
+import com.wherelee.edu.modules.entitlement.api.ProductTypes;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -12,9 +14,11 @@ import java.util.Optional;
 public class PlaybackLogRepository {
 
     private final JdbcTemplate jdbc;
+    private final EntitlementQuery entitlementQuery;
 
-    public PlaybackLogRepository(JdbcTemplate jdbc) {
+    public PlaybackLogRepository(JdbcTemplate jdbc, EntitlementQuery entitlementQuery) {
         this.jdbc = jdbc;
+        this.entitlementQuery = entitlementQuery;
     }
 
     public void insert(Long userId, Long videoId, Long seriesId, String source, String eventType,
@@ -38,14 +42,13 @@ public class PlaybackLogRepository {
                 SELECT v.id AS video_id, c.series_id
                 FROM t_series_video v
                 JOIN t_series_chapter c ON c.id = v.chapter_id
-                JOIN t_student_series ss ON ss.series_id = c.series_id AND ss.user_id = ?
-                 AND ss.status = 'ACTIVE'
                 WHERE v.id = ?
                 """, (rs, rowNum) -> new VideoOwnership(
                 rs.getLong("video_id"),
                 rs.getLong("series_id")
-        ), userId, videoId);
-        return rows.stream().findFirst();
+        ), videoId);
+        return rows.stream().findFirst()
+                .filter(video -> entitlementQuery.hasActive(userId, video.seriesId(), ProductTypes.COURSE_SERIES));
     }
 
     public record VideoOwnership(Long videoId, Long seriesId) {

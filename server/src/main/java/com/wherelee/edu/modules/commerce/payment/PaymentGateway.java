@@ -21,7 +21,8 @@ public interface PaymentGateway {
      */
     CloseResult close(OrderRecord order, PaymentAttemptRecord attempt);
 
-    RefundResult refund(OrderRecord order, RefundRecord refund, boolean simulateFailure);
+    RefundResult refund(OrderRecord order, PaymentAttemptRecord attempt,
+                        RefundRecord refund, boolean simulateFailure);
 
     record PaymentAction(String cashierUrl) {
     }

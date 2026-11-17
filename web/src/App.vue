@@ -23,6 +23,7 @@ const consoleNav = computed(() => {
       { to: '/admin/teacher-invitations', label: '教师邀请', icon: 'Link' },
       { to: '/admin/series', label: '内容管理', icon: 'Collection' },
       { to: '/admin/orders', label: '订单管理', icon: 'Tickets' },
+      { to: '/admin/reconciliation', label: '资金对账', icon: 'DataLine' },
       { to: '/password', label: '修改密码', icon: 'Lock' }
     ]
   }

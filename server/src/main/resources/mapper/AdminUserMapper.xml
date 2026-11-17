@@ -41,22 +41,6 @@
         <include refid="userFilters"/>
     </select>
 
-    <select id="findSeriesIds" resultType="long">
-        SELECT series_id FROM t_student_series
-        WHERE user_id = #{userId} AND source = 'ADMIN' AND status = 'ACTIVE'
-        ORDER BY sort, id
-    </select>
-
-    <delete id="deleteUserSeries">
-        DELETE FROM t_student_series WHERE user_id = #{userId} AND source = 'ADMIN'
-    </delete>
-
-    <insert id="insertUserSeries">
-        INSERT INTO t_student_series
-            (user_id, series_id, sort, source, status, granted_at)
-        VALUES (#{userId}, #{seriesId}, #{sort}, 'ADMIN', 'ACTIVE', CURRENT_TIMESTAMP(3))
-    </insert>
-
     <select id="findAllSeries" resultType="com.wherelee.edu.modules.operations.admin.dto.SeriesOptionVO">
         SELECT id, title FROM t_series WHERE status = 'PUBLISHED' ORDER BY sort, id
     </select>

@@ -1,32 +1,35 @@
 package com.wherelee.edu.modules.learning.learning;
 
+import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
+import com.wherelee.edu.modules.entitlement.api.ProductTypes;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public class LearningProgressRepository {
 
     private final JdbcTemplate jdbc;
+    private final EntitlementQuery entitlementQuery;
 
-    public LearningProgressRepository(JdbcTemplate jdbc) {
+    public LearningProgressRepository(JdbcTemplate jdbc, EntitlementQuery entitlementQuery) {
         this.jdbc = jdbc;
+        this.entitlementQuery = entitlementQuery;
     }
 
     public Optional<AccessibleVideo> findAccessibleVideo(Long userId, Long videoId) {
-        return jdbc.query("""
+        List<AccessibleVideo> rows = jdbc.query("""
                 SELECT v.id AS video_id, c.series_id, v.duration_seconds
                 FROM t_series_video v
                 JOIN t_series_chapter c ON c.id = v.chapter_id
-                JOIN t_series s ON s.id = c.series_id
-                JOIN t_student_series ss ON ss.series_id = s.id AND ss.user_id = ?
-                WHERE v.id = ? AND ss.status = 'ACTIVE'
-                  AND (ss.valid_to IS NULL OR ss.valid_to > CURRENT_TIMESTAMP(3))
+                WHERE v.id = ?
                 """, (rs, rowNum) -> new AccessibleVideo(
                 rs.getLong("video_id"), rs.getLong("series_id"),
-                rs.getInt("duration_seconds")), userId, videoId)
-                .stream().findFirst();
+                rs.getInt("duration_seconds")), videoId);
+        return rows.stream().findFirst()
+                .filter(video -> entitlementQuery.hasActive(userId, video.seriesId(), ProductTypes.COURSE_SERIES));
     }
 
     public void upsert(Long userId, Long seriesId, Long videoId,

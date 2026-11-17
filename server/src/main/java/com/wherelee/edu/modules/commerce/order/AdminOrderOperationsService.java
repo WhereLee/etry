@@ -47,19 +47,21 @@ public class AdminOrderOperationsService implements AdminOrderOperations {
         OrderRecord order = orderService.require(orderNo);
         List<PaymentDtos.AttemptView> attempts = paymentRepository.findAttempts(order.id()).stream()
                 .map(attempt -> new PaymentDtos.AttemptView(
-                        attempt.attemptNo(), attempt.status(), attempt.providerTradeNo(),
-                        attempt.providerStatus(), attempt.mockScenario(),
+                        attempt.id(), attempt.attemptNo(), attempt.status(), attempt.providerTradeNo(),
+                        attempt.channelTradeNo(), attempt.providerStatus(), attempt.mockScenario(),
                         attempt.createdAt(), attempt.finishedAt()))
                 .toList();
         List<PaymentDtos.EventView> events = paymentRepository.findEvents(order.id()).stream()
                 .map(event -> new PaymentDtos.EventView(
-                        event.eventKey(), event.eventType(), event.amountCents(),
+                        event.eventKey(), event.attemptId(), event.eventType(), event.amountCents(),
+                        event.providerTradeNo(), event.providerNotifyId(),
                         event.processStatus(), event.errorMessage(),
                         event.receivedAt(), event.processedAt()))
                 .toList();
-        PaymentDtos.RefundView refund = paymentRepository.findRefundByOrder(order.id())
-                .map(this::refundView).orElse(null);
-        return new Snapshot(detail, attempts, events, refund);
+        List<PaymentDtos.RefundView> refunds = paymentRepository.findRefundsByOrder(order.id()).stream()
+                .map(refund -> refundView(refund, order, attempts))
+                .toList();
+        return new Snapshot(detail, attempts, events, refunds);
     }
 
     @Override
@@ -86,9 +88,21 @@ public class AdminOrderOperationsService implements AdminOrderOperations {
         refundService.refund(orderNo, operatorId, reason, simulateFailure);
     }
 
-    private PaymentDtos.RefundView refundView(RefundRecord refund) {
+    @Override
+    public void refundDuplicate(String orderNo, int attemptNo, Long operatorId,
+                                String reason, boolean simulateFailure) {
+        refundService.refundDuplicatePayment(orderNo, attemptNo, operatorId, reason, simulateFailure);
+    }
+
+    private PaymentDtos.RefundView refundView(RefundRecord refund, OrderRecord order,
+                                              List<PaymentDtos.AttemptView> attempts) {
+        Integer attemptNo = attempts.stream()
+                .filter(attempt -> attempt.attemptId().equals(refund.attemptId()))
+                .map(PaymentDtos.AttemptView::attemptNo)
+                .findFirst().orElse(null);
         return new PaymentDtos.RefundView(
-                refund.refundNo(), refund.amountCents(), refund.status(),
+                refund.refundNo(), refund.attemptId(), attemptNo, refund.refundKind().name(),
+                refund.amountCents(), refund.status(),
                 refund.attemptCount(), refund.nextRetryAt(), refund.reason(),
                 refund.requestedAt(), refund.succeededAt(), refund.errorMessage());
     }

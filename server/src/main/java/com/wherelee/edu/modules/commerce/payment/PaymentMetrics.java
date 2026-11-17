@@ -19,6 +19,7 @@ public class PaymentMetrics {
     public void callbackCollision() { inc("payment.callback.collision"); }
     public void callbackInvalid() { inc("payment.callback.invalid"); }
     public void amountMismatch() { inc("payment.callback.amount_mismatch"); }
+    public void queryUnknown() { inc("payment.query.unknown"); }
     public void fulfillmentFailed() { inc("payment.fulfillment.failed"); }
     public void fulfillmentSucceeded() { inc("payment.order.fulfilled"); }
     public void refundSucceeded() { inc("payment.refund.succeeded"); }

@@ -5,6 +5,8 @@ import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
 import com.wherelee.edu.modules.commerce.payment.PaymentAttemptRecord;
 import com.wherelee.edu.modules.commerce.payment.PaymentConfirmationService;
 import com.wherelee.edu.modules.commerce.payment.PaymentNotification;
+import com.wherelee.edu.modules.commerce.payment.RefundKind;
+import com.wherelee.edu.modules.commerce.payment.RefundRecord;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -197,6 +199,66 @@ class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSuppor
         assertThat(paymentRepository.findAttemptById(attemptB.id()).orElseThrow().status())
                 .isEqualTo("PROCESSING");
         assertThat(activeEntitlements()).isEqualTo(1);
+    }
+
+    @Test
+    void reconcileFindsPaidSupersededAttemptWhenCallbackIsLost() {
+        OrderDtos.OrderView order = createOrder(nextRequestId());
+        PaymentAttemptRecord attempt1 = failedFirstAttempt(order.orderNo());
+        pay(order.orderNo());
+        PaymentAttemptRecord attempt2 = latestAttempt(order.orderNo());
+        paymentService.acceptVerified(successNotification(order.orderNo(), attempt1));
+        assertThat(paymentRepository.findAttemptById(attempt2.id()).orElseThrow().status())
+                .isEqualTo("SUPERSEDED");
+
+        jdbc.update("""
+                UPDATE t_payment_attempt
+                SET provider_status = 'PAID', provider_amount_cents = ?
+                WHERE id = ?
+                """, order.priceCents(), attempt2.id());
+
+        paymentService.reconcile();
+
+        assertThat(paymentRepository.findAttemptById(attempt2.id()).orElseThrow().status())
+                .isEqualTo("SUCCESS");
+        assertThat(orderRepository.findByOrderNo(order.orderNo()).orElseThrow().status())
+                .isEqualTo(OrderStatus.FULFILLED);
+        assertThat(activeEntitlements()).isEqualTo(1);
+        assertThat(count("t_alert_log", "alert_type = 'PAYMENT_DUPLICATE_SUCCESS'")).isEqualTo(1);
+        assertThat(count("t_payment_event", "attempt_id = ? AND process_status = 'PROCESSED'",
+                attempt2.id())).isEqualTo(1);
+    }
+
+    @Test
+    void duplicatePaymentRefundDoesNotRevokeEntitlementAndOrderRefundStillWorks() {
+        OrderDtos.OrderView order = createOrder(nextRequestId());
+        PaymentAttemptRecord attempt1 = failedFirstAttempt(order.orderNo());
+        pay(order.orderNo());
+        PaymentAttemptRecord attempt2 = latestAttempt(order.orderNo());
+        paymentService.acceptVerified(successNotification(order.orderNo(), attempt1));
+        paymentService.acceptVerified(successNotification(order.orderNo(), attempt2));
+        assertThat(paymentRepository.countUnrefundedDuplicatePayments()).isEqualTo(1);
+
+        RefundRecord duplicateRefund = refundService.refundDuplicatePayment(
+                order.orderNo(), attempt2.attemptNo(), fx.adminId(), "退还重复付款", false);
+
+        assertThat(duplicateRefund.refundKind()).isEqualTo(RefundKind.DUPLICATE_PAYMENT);
+        assertThat(duplicateRefund.status()).isEqualTo("SUCCEEDED");
+        assertThat(orderRepository.findByOrderNo(order.orderNo()).orElseThrow().status())
+                .isEqualTo(OrderStatus.FULFILLED);
+        assertThat(activeEntitlements()).isEqualTo(1);
+        assertThat(paymentRepository.countUnrefundedDuplicatePayments()).isZero();
+
+        RefundRecord orderRefund = refundService.refund(
+                order.orderNo(), fx.adminId(), "退还主支付", false);
+
+        assertThat(orderRefund.refundKind()).isEqualTo(RefundKind.ORDER);
+        assertThat(orderRefund.status()).isEqualTo("SUCCEEDED");
+        assertThat(orderRepository.findByOrderNo(order.orderNo()).orElseThrow().status())
+                .isEqualTo(OrderStatus.REFUNDED);
+        assertThat(activeEntitlements()).isZero();
+        assertThat(count("t_refund", "order_id = ?", orderRepository.findByOrderNo(order.orderNo())
+                .orElseThrow().id())).isEqualTo(2);
     }
 
     private PaymentAttemptRecord failedFirstAttempt(String orderNo) {

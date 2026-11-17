@@ -89,4 +89,16 @@ public class AdminOrderController {
                                         @Valid @RequestBody PaymentDtos.RefundRequest request) {
         return service.refund(orderNo, operatorId, request);
     }
+
+    @PostMapping("/{orderNo}/attempts/{attemptNo}/refund")
+    @RequireRole("ADMIN")
+    @Idempotent(key = "admin:duplicateRefund", windowSeconds = 5)
+    @Measured("admin.order.refund.duplicate")
+    @AdminAudit(action = "ORDER_DUPLICATE_REFUND", targetType = "ORDER")
+    public AdminOrderDtos.Detail refundDuplicate(@RequestAttribute("userId") Long operatorId,
+                                                 @PathVariable String orderNo,
+                                                 @PathVariable int attemptNo,
+                                                 @Valid @RequestBody PaymentDtos.RefundRequest request) {
+        return service.refundDuplicate(orderNo, attemptNo, operatorId, request);
+    }
 }

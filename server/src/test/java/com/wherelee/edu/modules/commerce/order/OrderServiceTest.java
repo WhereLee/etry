@@ -1,8 +1,10 @@
 package com.wherelee.edu.modules.commerce.order;
 
 import com.wherelee.edu.modules.platform.common.BizException;
+import com.wherelee.edu.modules.commerce.api.SellableCatalog;
 import com.wherelee.edu.modules.commerce.entitlement.EntitlementRepository;
 import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
+import com.wherelee.edu.modules.entitlement.api.ProductTypes;
 import com.wherelee.edu.modules.commerce.payment.PaymentProperties;
 import com.wherelee.edu.modules.commerce.payment.PaymentRepository;
 import com.wherelee.edu.modules.commerce.payment.PaymentMetrics;
@@ -13,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,14 +31,16 @@ class OrderServiceTest {
     @Mock private PaymentRepository paymentRepository;
     @Mock private EntitlementRepository entitlementRepository;
     @Mock private PaymentMetrics paymentMetrics;
+    @Mock private SellableCatalog sellableCatalog;
 
     private OrderService service;
 
     @BeforeEach
     void setUp() {
+        when(sellableCatalog.productType()).thenReturn(ProductTypes.COURSE_SERIES);
         service = new OrderService(catalogRepository, orderRepository, paymentRepository,
                 entitlementRepository, new PaymentProperties("mock", true, "secret", 15, 15, 20, 15000, 10000, 5, 30),
-                paymentMetrics);
+                paymentMetrics, List.of(sellableCatalog));
     }
 
     @Test
@@ -82,7 +87,8 @@ class OrderServiceTest {
         when(orderRepository.findByClientRequest(1L, "req-4")).thenReturn(Optional.empty());
         when(entitlementRepository.hasActive(1L, 1L)).thenReturn(false);
         when(orderRepository.findActive(1L, 1L)).thenReturn(Optional.empty());
-        when(catalogRepository.findPurchasable(1L)).thenReturn(Optional.of(new SaleSeries(1L, "物理必修一", 25900L, "CNY")));
+        when(sellableCatalog.findPurchasable(1L)).thenReturn(Optional.of(
+                new SellableCatalog.SellableProduct(1L, ProductTypes.COURSE_SERIES, "物理必修一", 25900L, "CNY")));
         when(orderRepository.findByOrderNo(anyString())).thenReturn(Optional.of(order(OrderStatus.CREATED, 25900L)));
 
         service.create(1L, new OrderDtos.CreateOrderRequest(1L, "req-4"));

@@ -55,7 +55,7 @@ public class AdminOrderService {
                 snapshot.orderDetail(),
                 snapshot.attempts(),
                 snapshot.events(),
-                snapshot.refund()
+                snapshot.refunds()
         );
     }
 
@@ -77,6 +77,13 @@ public class AdminOrderService {
     public AdminOrderDtos.Detail refund(String orderNo, Long operatorId,
                                         PaymentDtos.RefundRequest request) {
         orderOperations.refund(orderNo, operatorId, request.reason(), request.simulateFailure());
+        return detail(orderNo);
+    }
+
+    public AdminOrderDtos.Detail refundDuplicate(String orderNo, int attemptNo, Long operatorId,
+                                                 PaymentDtos.RefundRequest request) {
+        orderOperations.refundDuplicate(orderNo, attemptNo, operatorId,
+                request.reason(), request.simulateFailure());
         return detail(orderNo);
     }
 

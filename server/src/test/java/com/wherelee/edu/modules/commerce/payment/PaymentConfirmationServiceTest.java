@@ -47,7 +47,7 @@ class PaymentConfirmationServiceTest {
 
         assertThat(result.success()).isTrue();
         assertThat(result.order().status()).isEqualTo(OrderStatus.PAID);
-        verify(paymentRepository).markAttemptSuccess(10L);
+        verify(paymentRepository).markAttemptSuccess(10L, "TRADE-1");
         verify(paymentRepository).markOtherProcessingSuperseded(1L, 10L);
         verify(paymentRepository).markEventProcessed(1L);
     }
@@ -78,10 +78,58 @@ class PaymentConfirmationServiceTest {
 
         assertThat(result.success()).isFalse();
         verify(orderRepository, never()).markPaid(anyString(), anyString(), anyString());
-        verify(paymentRepository, never()).markAttemptSuccess(anyLong());
+        verify(paymentRepository, never()).markAttemptSuccess(anyLong(), anyString());
         verify(paymentRepository).markEventFailed(eq(1L), contains("金额不一致"));
         verify(alertPublisher).publish(eq("PAYMENT_AMOUNT_MISMATCH"), eq("ERROR"),
                 anyString(), eq(false), anyString());
+    }
+
+    @Test
+    void successWithoutChannelTradeNoIsRejected() {
+        stubLockedOrder(OrderStatus.PAYING);
+        stubAttempt(attempt(10L, 1, "PROCESSING"));
+        stubInsertEvent(true);
+
+        PaymentConfirmationService.ConfirmationResult result =
+                service.confirm(notification("PAYMENT_SUCCESS", 19900L, 10L, null));
+
+        assertThat(result.success()).isFalse();
+        verify(paymentRepository, never()).markAttemptSuccess(anyLong(), anyString());
+        verify(paymentRepository).markEventFailed(eq(1L), contains("缺少渠道交易号"));
+    }
+
+    @Test
+    void successWithWrongMerchantTradeNoIsRejected() {
+        stubLockedOrder(OrderStatus.PAYING);
+        stubAttempt(attempt(10L, 1, "PROCESSING"));
+        stubInsertEvent(true);
+        PaymentNotification notification = new PaymentNotification(
+                "MOCK", "event-1", 10L, "ORD-1", "PAYMENT_SUCCESS", 19900L,
+                "TRADE-1", "MOCK-ORD-1-9", "NOTIFY-1", "digest", "signature");
+
+        PaymentConfirmationService.ConfirmationResult result = service.confirm(notification);
+
+        assertThat(result.success()).isFalse();
+        verify(paymentRepository, never()).markAttemptSuccess(anyLong(), anyString());
+        verify(paymentRepository).markEventFailed(eq(1L), contains("商户交易号"));
+    }
+
+    @Test
+    void payFailedOrderRecoversToPaidOnVerifiedCurrentAttemptSuccess() {
+        stubLockedOrder(OrderStatus.PAY_FAILED);
+        stubAttempt(attempt(10L, 1, "FAILED"));
+        when(paymentRepository.findLatestAttempt(1L)).thenReturn(Optional.of(attempt(10L, 1, "FAILED")));
+        stubInsertEvent(true);
+        when(orderRepository.markPaid("ORD-1", "TRADE-1", "MOCK")).thenReturn(1);
+        when(orderRepository.findByOrderNo("ORD-1")).thenReturn(Optional.of(order(OrderStatus.PAID, "TRADE-1")));
+
+        PaymentConfirmationService.ConfirmationResult result =
+                service.confirm(notification("PAYMENT_SUCCESS", 19900L, 10L, "TRADE-1"));
+
+        assertThat(result.success()).isTrue();
+        verify(paymentRepository).markAttemptSuccess(10L, "TRADE-1");
+        verify(orderRepository).markPaid("ORD-1", "TRADE-1", "MOCK");
+        verify(paymentRepository).markEventProcessed(1L);
     }
 
     @Test
@@ -115,7 +163,7 @@ class PaymentConfirmationServiceTest {
                 service.confirm(notification("PAYMENT_SUCCESS", 19900L, 10L, "TRADE-1"));
 
         assertThat(result.success()).isTrue();
-        verify(paymentRepository).markAttemptSuccess(10L);
+        verify(paymentRepository).markAttemptSuccess(10L, "TRADE-1");
         verify(paymentRepository).markOtherProcessingSuperseded(1L, 10L);
         verify(alertPublisher).publish(eq("PAYMENT_LATE_SUCCESS"), eq("ERROR"),
                 anyString(), eq(false), anyString());
@@ -135,7 +183,7 @@ class PaymentConfirmationServiceTest {
         assertThat(result.success()).isFalse();
         verify(alertPublisher).publish(eq("PAYMENT_DUPLICATE_SUCCESS"), eq("ERROR"),
                 anyString(), eq(false), anyString());
-        verify(paymentRepository).markAttemptSuccess(20L);
+        verify(paymentRepository).markAttemptSuccess(20L, "TRADE-2");
         verify(orderRepository, never()).markPaid(anyString(), anyString(), anyString());
         verify(paymentRepository).markEventProcessed(1L);
     }
@@ -170,8 +218,8 @@ class PaymentConfirmationServiceTest {
         verify(alertPublisher).publish(eq("PAYMENT_MANUAL_REVIEW"), eq("ERROR"),
                 anyString(), eq(false), anyString());
         verify(orderRepository, never()).markPaid(anyString(), anyString(), anyString());
-        verify(paymentRepository, never()).markAttemptSuccess(anyLong());
-        verify(paymentRepository).markEventFailed(eq(1L), contains("人工核对"));
+        verify(paymentRepository).markAttemptSuccess(10L, "TRADE-1");
+        verify(paymentRepository).markEventManualReview(eq(1L), contains("人工核对"));
     }
 
     @Test
@@ -187,7 +235,7 @@ class PaymentConfirmationServiceTest {
         verify(alertPublisher).publish(eq("PAYMENT_UNKNOWN_ATTEMPT"), eq("ERROR"),
                 anyString(), eq(false), anyString());
         verify(orderRepository, never()).markPaid(anyString(), anyString(), anyString());
-        verify(paymentRepository, never()).markAttemptSuccess(anyLong());
+        verify(paymentRepository, never()).markAttemptSuccess(anyLong(), anyString());
         verify(paymentRepository).markEventFailed(eq(1L), contains("未知支付尝试"));
     }
 
@@ -195,7 +243,7 @@ class PaymentConfirmationServiceTest {
     void attemptFromAnotherOrderIsRejected() {
         stubLockedOrder(OrderStatus.PAYING);
         PaymentAttemptRecord foreign = new PaymentAttemptRecord(10L, 2L, 1, "MOCK", "PROCESSING",
-                "MOCK-ORD-2-1", "CREATED", 19900L, "digest", null, null, null, now, null);
+                "MOCK-ORD-2-1", null, "CREATED", 19900L, "digest", null, null, null, now, null);
         stubAttempt(foreign);
         stubInsertEvent(true);
 
@@ -206,14 +254,14 @@ class PaymentConfirmationServiceTest {
         verify(alertPublisher).publish(eq("PAYMENT_ATTEMPT_ORDER_MISMATCH"), eq("ERROR"),
                 anyString(), eq(false), anyString());
         verify(orderRepository, never()).markPaid(anyString(), anyString(), anyString());
-        verify(paymentRepository, never()).markAttemptSuccess(anyLong());
+        verify(paymentRepository, never()).markAttemptSuccess(anyLong(), anyString());
     }
 
     @Test
     void channelMismatchIsRejected() {
         stubLockedOrder(OrderStatus.PAYING);
         PaymentAttemptRecord alipayAttempt = new PaymentAttemptRecord(10L, 1L, 1, "ALIPAY", "PROCESSING",
-                "ORD-1_1", "CREATED", 19900L, "digest", null, null, null, now, null);
+                "ORD-1_1", null, "CREATED", 19900L, "digest", null, null, null, now, null);
         stubAttempt(alipayAttempt);
         stubInsertEvent(true);
 
@@ -263,7 +311,7 @@ class PaymentConfirmationServiceTest {
     void collisionWithProcessedEventDoesNotOverwriteIt() {
         stubLockedOrder(OrderStatus.PAYING);
         PaymentAttemptRecord foreign = new PaymentAttemptRecord(10L, 2L, 1, "MOCK", "PROCESSING",
-                "MOCK-ORD-2-1", "CREATED", 19900L, "digest", null, null, null, now, null);
+                "MOCK-ORD-2-1", null, "CREATED", 19900L, "digest", null, null, null, now, null);
         stubAttempt(foreign);
         when(paymentRepository.insertEvent(anyString(), anyString(), anyLong(), anyLong(), anyString(),
                 anyString(), anyLong(), any(), any(), any())).thenReturn(false);
@@ -276,7 +324,7 @@ class PaymentConfirmationServiceTest {
         verify(paymentRepository, never()).markEventProcessed(anyLong());
         verify(metrics).callbackCollision();
         verify(orderRepository, never()).markPaid(anyString(), anyString(), anyString());
-        verify(paymentRepository, never()).markAttemptSuccess(anyLong());
+        verify(paymentRepository, never()).markAttemptSuccess(anyLong(), anyString());
     }
 
     private void stubLockedOrder(OrderStatus status) {
@@ -299,13 +347,14 @@ class PaymentConfirmationServiceTest {
     }
 
     private PaymentNotification notification(String eventType, long amount, Long attemptId, String tradeNo) {
+        String merchantTradeNo = Long.valueOf(20L).equals(attemptId) ? "MOCK-ORD-1-2" : "MOCK-ORD-1-1";
         return new PaymentNotification("MOCK", "event-1", attemptId, "ORD-1", eventType,
-                amount, tradeNo, "MOCK-ORD-1-1", "NOTIFY-1", "digest", "signature");
+                amount, tradeNo, merchantTradeNo, "NOTIFY-1", "digest", "signature");
     }
 
     private PaymentAttemptRecord attempt(Long id, int attemptNo, String status) {
         return new PaymentAttemptRecord(id, 1L, attemptNo, "MOCK", status,
-                "MOCK-ORD-1-" + attemptNo, "CREATED", 19900L, "digest", null, null, null, now, null);
+                "MOCK-ORD-1-" + attemptNo, null, "CREATED", 19900L, "digest", null, null, null, now, null);
     }
 
     private PaymentEventRecord event(String status) {

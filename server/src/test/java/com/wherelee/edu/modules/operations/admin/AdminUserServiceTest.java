@@ -1,5 +1,7 @@
 package com.wherelee.edu.modules.operations.admin;
 
+import com.wherelee.edu.modules.entitlement.api.EntitlementCommand;
+import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
 import com.wherelee.edu.modules.identity.api.UserAccount;
 import com.wherelee.edu.modules.identity.api.UserAccountOperations;
 import com.wherelee.edu.modules.operations.admin.dto.AssignSeriesRequest;
@@ -15,8 +17,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -29,12 +32,16 @@ class AdminUserServiceTest {
     private AdminUserMapper mapper;
     @Mock
     private UserAccountOperations userAccounts;
+    @Mock
+    private EntitlementCommand entitlementCommand;
+    @Mock
+    private EntitlementQuery entitlementQuery;
 
     private AdminUserService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminUserService(mapper, userAccounts);
+        service = new AdminUserService(mapper, userAccounts, entitlementCommand, entitlementQuery);
     }
 
     @Test
@@ -45,8 +52,7 @@ class AdminUserServiceTest {
                 .isInstanceOf(BizException.class)
                 .hasMessage("只有学员可以分配系列");
 
-        verify(mapper, never()).deleteUserSeries(anyLong());
-        verify(mapper, never()).insertUserSeries(anyLong(), anyLong(), anyInt());
+        verify(entitlementCommand, never()).replaceManual(anyLong(), anyString(), any());
     }
 
     @Test
@@ -58,7 +64,7 @@ class AdminUserServiceTest {
                 .isInstanceOf(BizException.class)
                 .hasMessage("包含不存在的系列");
 
-        verify(mapper, never()).deleteUserSeries(anyLong());
+        verify(entitlementCommand, never()).replaceManual(anyLong(), anyString(), any());
     }
 
     @Test

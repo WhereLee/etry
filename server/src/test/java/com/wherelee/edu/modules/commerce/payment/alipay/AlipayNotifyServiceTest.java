@@ -93,7 +93,8 @@ class AlipayNotifyServiceTest {
         assertThat(notification.providerTradeNo()).isEqualTo("ORD1_1");
         assertThat(notification.providerNotifyId()).isEqualTo("NOTIFY-1");
         assertThat(notification.payloadDigest()).isNotBlank().hasSize(64);
-        verify(paymentRepository).updateProviderState(eq(1L), eq("TRADE_SUCCESS"), eq(1L), any());
+        verify(paymentRepository).updateProviderState(
+                eq(1L), eq("TRADE_SUCCESS"), eq(1L), any(), eq("2026110522001400001"));
     }
 
     @Test
@@ -234,7 +235,7 @@ class AlipayNotifyServiceTest {
 
     private PaymentAttemptRecord attempt() {
         return new PaymentAttemptRecord(1L, 1L, 1, "ALIPAY", "PROCESSING", "ORD1_1",
-                "CREATED", 1L, "digest", null, null, null, now, null);
+                null, "CREATED", 1L, "digest", null, null, null, now, null);
     }
 
     private OrderRecord order(OrderStatus status) {

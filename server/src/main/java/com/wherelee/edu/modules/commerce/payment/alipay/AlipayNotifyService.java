@@ -129,10 +129,9 @@ public class AlipayNotifyService {
             return "failure";
         }
 
-        paymentRepository.updateProviderState(attempt.id(), tradeStatus, amountCents, null);
-
         // 业务幂等键：支付尝试对应的交易号 + 交易状态。notify_id 只用于追踪投递，不作业务主键。
         String tradeNo = params.get("trade_no");
+        paymentRepository.updateProviderState(attempt.id(), tradeStatus, amountCents, null, tradeNo);
         String keyTradeNo = tradeNo == null || tradeNo.isBlank() ? outTradeNo : tradeNo;
         String eventKey = CHANNEL + ":" + keyTradeNo + ":" + tradeStatus;
         String notifyId = params.get("notify_id");

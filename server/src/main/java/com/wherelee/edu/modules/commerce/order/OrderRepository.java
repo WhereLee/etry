@@ -159,6 +159,17 @@ public class OrderRepository {
                 """.formatted(COLUMNS), MAPPER, limit);
     }
 
+    public List<OrderRecord> findExpiredPayingWithoutAttempt(int limit) {
+        return jdbc.query("""
+                SELECT %s FROM t_order o
+                WHERE o.status = 'PAYING'
+                  AND o.expire_at <= CURRENT_TIMESTAMP(3)
+                  AND NOT EXISTS (SELECT 1 FROM t_payment_attempt a WHERE a.order_id = o.id)
+                ORDER BY o.expire_at, o.id
+                LIMIT ?
+                """.formatted(COLUMNS), MAPPER, limit);
+    }
+
     public List<OrderRecord> findRefunding(int olderThanSeconds, int limit) {
         return jdbc.query("""
                 SELECT %s FROM t_order
@@ -198,7 +209,7 @@ public class OrderRepository {
                 SET status = 'PAID', provider_trade_no = ?, pay_channel = ?,
                     paid_at = CURRENT_TIMESTAMP(3), last_error = NULL,
                     version = version + 1
-                WHERE order_no = ? AND status = 'PAYING'
+                WHERE order_no = ? AND status IN ('PAYING', 'PAY_FAILED')
                 """, providerTradeNo, channel, orderNo);
     }
 

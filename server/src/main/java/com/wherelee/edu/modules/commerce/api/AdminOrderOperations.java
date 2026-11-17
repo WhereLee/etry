@@ -23,11 +23,14 @@ public interface AdminOrderOperations {
 
     void refund(String orderNo, Long operatorId, String reason, boolean simulateFailure);
 
+    void refundDuplicate(String orderNo, int attemptNo, Long operatorId,
+                         String reason, boolean simulateFailure);
+
     record Snapshot(
             OrderDtos.OrderDetail orderDetail,
             List<PaymentDtos.AttemptView> attempts,
             List<PaymentDtos.EventView> events,
-            PaymentDtos.RefundView refund
+            List<PaymentDtos.RefundView> refunds
     ) {
     }
 }

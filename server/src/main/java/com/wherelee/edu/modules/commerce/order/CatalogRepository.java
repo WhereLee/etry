@@ -4,7 +4,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public class CatalogRepository {
@@ -59,19 +58,5 @@ public class CatalogRepository {
                 rs.getString("active_order_no"),
                 rs.getString("active_order_status")
         ), userId, userId, userId);
-    }
-
-    public Optional<SaleSeries> findPurchasable(Long seriesId) {
-        return jdbc.query("""
-                SELECT id, title, price_cents, currency
-                FROM t_series
-                WHERE id = ? AND status = 'PUBLISHED'
-                  AND sale_status = 'ON_SALE' AND price_cents > 0
-                """, (rs, rowNum) -> new SaleSeries(
-                rs.getLong("id"),
-                rs.getString("title"),
-                rs.getLong("price_cents"),
-                rs.getString("currency")
-        ), seriesId).stream().findFirst();
     }
 }

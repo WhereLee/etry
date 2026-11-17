@@ -15,7 +15,7 @@ public final class AdminOrderDtos {
             OrderDtos.OrderDetail orderDetail,
             List<PaymentDtos.AttemptView> attempts,
             List<PaymentDtos.EventView> events,
-            PaymentDtos.RefundView refund
+            List<PaymentDtos.RefundView> refunds
     ) {
     }
 }

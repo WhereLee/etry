@@ -19,6 +19,7 @@ import com.wherelee.edu.modules.commerce.order.OrderRecord;
 import com.wherelee.edu.modules.commerce.payment.PaymentAttemptRecord;
 import com.wherelee.edu.modules.commerce.payment.PaymentGateway;
 import com.wherelee.edu.modules.commerce.payment.RefundRecord;
+import com.wherelee.edu.modules.commerce.payment.RefundKind;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
@@ -112,10 +113,20 @@ public class AlipayPaymentGateway implements PaymentGateway {
                 return new PaymentQueryResult("PENDING", order.priceCents(), attempt.providerTradeNo(),
                         message(response.getSubCode(), response.getSubMsg()));
             }
-            long amount = response.getTotalAmount() == null
-                    ? order.priceCents()
+            String mappedStatus = mapTradeStatus(response.getTradeStatus());
+            if ("PAID".equals(mappedStatus)) {
+                if (response.getTotalAmount() == null || response.getTotalAmount().isBlank()
+                        || response.getTradeNo() == null || response.getTradeNo().isBlank()) {
+                    log.error("支付宝查单成功但缺少金额或渠道交易号 orderNo={} status={} totalAmount={} tradeNo={}",
+                            order.orderNo(), response.getTradeStatus(),
+                            response.getTotalAmount(), response.getTradeNo());
+                    return new PaymentQueryResult("UNKNOWN", 0, response.getTradeNo(), "查单结果缺少金额或交易号");
+                }
+            }
+            long amount = response.getTotalAmount() == null || response.getTotalAmount().isBlank()
+                    ? 0
                     : AlipayAmounts.toCents(response.getTotalAmount());
-            return new PaymentQueryResult(mapTradeStatus(response.getTradeStatus()), amount,
+            return new PaymentQueryResult(mappedStatus, amount,
                     response.getTradeNo(), response.getTradeStatus());
         } catch (AlipayApiException e) {
             log.warn("支付宝查单异常 orderNo={} errCode={}", order.orderNo(), e.getErrCode(), e);
@@ -151,16 +162,21 @@ public class AlipayPaymentGateway implements PaymentGateway {
     }
 
     @Override
-    public RefundResult refund(OrderRecord order, RefundRecord refund, boolean simulateFailure) {
+    public RefundResult refund(OrderRecord order, PaymentAttemptRecord attempt,
+                               RefundRecord refund, boolean simulateFailure) {
         if (simulateFailure) {
             return new RefundResult(false, null, "支付宝渠道不支持模拟退款失败");
         }
-        if (order.providerTradeNo() == null || order.providerTradeNo().isBlank()) {
+        String tradeNo = attempt == null ? null : attempt.channelTradeNo();
+        if ((tradeNo == null || tradeNo.isBlank()) && refund.refundKind() == RefundKind.ORDER) {
+            tradeNo = order.providerTradeNo();
+        }
+        if (tradeNo == null || tradeNo.isBlank()) {
             return new RefundResult(false, null, "缺少支付宝交易号，无法退款");
         }
         AlipayTradeRefundRequest request = new AlipayTradeRefundRequest();
         Map<String, Object> biz = new LinkedHashMap<>();
-        biz.put("trade_no", order.providerTradeNo());
+        biz.put("trade_no", tradeNo);
         biz.put("refund_amount", AlipayAmounts.toYuan(refund.amountCents()));
         biz.put("out_request_no", refund.refundNo());
         if (refund.reason() != null && !refund.reason().isBlank()) {
@@ -175,20 +191,20 @@ public class AlipayPaymentGateway implements PaymentGateway {
                 return new RefundResult(false, null, message(response.getSubCode(), response.getSubMsg()));
             }
             if ("Y".equals(response.getFundChange())) {
-                return new RefundResult(true, response.getTradeNo(), null);
+                return new RefundResult(true, refund.refundNo(), null);
             }
             // 受理成功但资金未变动，必须查退款单确认，不能直接当成功
-            return confirmRefund(order, refund);
+            return confirmRefund(tradeNo, refund);
         } catch (AlipayApiException e) {
             log.error("支付宝退款异常 orderNo={} refundNo={}", order.orderNo(), refund.refundNo(), e);
             return new RefundResult(false, null, "支付宝退款异常：" + e.getErrCode());
         }
     }
 
-    private RefundResult confirmRefund(OrderRecord order, RefundRecord refund) throws AlipayApiException {
+    private RefundResult confirmRefund(String tradeNo, RefundRecord refund) throws AlipayApiException {
         AlipayTradeFastpayRefundQueryRequest request = new AlipayTradeFastpayRefundQueryRequest();
         request.setBizContent(toJson(Map.of(
-                "trade_no", order.providerTradeNo(),
+                "trade_no", tradeNo,
                 "out_request_no", refund.refundNo())));
         AlipayTradeFastpayRefundQueryResponse response = client.execute(request);
         if (response.isSuccess() && "REFUND_SUCCESS".equals(response.getRefundStatus())) {

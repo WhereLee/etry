@@ -154,9 +154,11 @@ public abstract class CommerceIntegrationTestSupport {
     private void truncateAll() {
         jdbc.execute("SET FOREIGN_KEY_CHECKS=0");
         for (String table : List.of(
+                "t_recon_action", "t_recon_break", "t_recon_match", "t_recon_run",
+                "t_recon_statement_item", "t_recon_statement_file",
                 "t_playback_log", "t_admin_audit_log", "t_alert_log",
                 "t_refund", "t_payment_event", "t_payment_attempt", "t_order",
-                "t_student_series", "t_learning_progress",
+                "t_entitlement", "t_student_series", "t_learning_progress",
                 "t_series_video", "t_series_chapter", "t_series",
                 "t_teacher_invitation", "t_user")) {
             jdbc.execute("TRUNCATE TABLE " + table);

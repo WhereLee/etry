@@ -51,7 +51,8 @@ class PaymentServiceTest {
         OrderRecord order = order();
         PaymentAttemptRecord attempt = attempt();
         when(orderService.require("ORD-1")).thenReturn(order);
-        when(paymentRepository.findLatestAttempt(1L)).thenReturn(Optional.of(attempt));
+        when(paymentRepository.findAttempts(1L)).thenReturn(List.of(attempt));
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
         when(paymentGateway.query(order, attempt)).thenReturn(
                 new PaymentGateway.PaymentQueryResult("NOT_FOUND", order.priceCents(),
                         attempt.providerTradeNo(), "ACQ.TRADE_NOT_EXIST"));
@@ -66,7 +67,7 @@ class PaymentServiceTest {
         OrderRecord order = order();
         PaymentAttemptRecord attempt = new PaymentAttemptRecord(
                 1L, 1L, 1, "ALIPAY", "FAILED", "ORD-1_1",
-                "CREATED", 1L, "digest", "PROVIDER_FAILED", "failed", null,
+                null, "CREATED", 1L, "digest", "PROVIDER_FAILED", "failed", null,
                 LocalDateTime.now(), LocalDateTime.now());
         when(orderService.requireOwned(1L, "ORD-1")).thenReturn(order);
         when(paymentRepository.findLatestAttempt(1L)).thenReturn(Optional.of(attempt));
@@ -79,8 +80,11 @@ class PaymentServiceTest {
     void reconcileClosesSupersededAttemptWhenGatewayConfirmsClosed() {
         stubEmptyReconcileQueues();
         PaymentAttemptRecord superseded = supersededAttempt();
-        when(paymentRepository.findSupersededAttempts(anyInt())).thenReturn(List.of(superseded));
+        when(paymentRepository.findAttemptsForReconcile(anyInt())).thenReturn(List.of(superseded));
+        when(paymentRepository.claimAttemptReconcile(org.mockito.ArgumentMatchers.eq(1L), anyInt())).thenReturn(1);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order()));
+        when(paymentGateway.query(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new PaymentGateway.PaymentQueryResult("PENDING", 1L, null, "等待支付"));
         when(paymentGateway.close(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new PaymentGateway.CloseResult("CLOSED", null));
 
@@ -93,10 +97,11 @@ class PaymentServiceTest {
     void reconcileClosesSupersededAttemptWhenTradeNotFound() {
         stubEmptyReconcileQueues();
         PaymentAttemptRecord superseded = supersededAttempt();
-        when(paymentRepository.findSupersededAttempts(anyInt())).thenReturn(List.of(superseded));
+        when(paymentRepository.findAttemptsForReconcile(anyInt())).thenReturn(List.of(superseded));
+        when(paymentRepository.claimAttemptReconcile(org.mockito.ArgumentMatchers.eq(1L), anyInt())).thenReturn(1);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order()));
-        when(paymentGateway.close(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new PaymentGateway.CloseResult("NOT_FOUND", "ACQ.TRADE_NOT_EXIST"));
+        when(paymentGateway.query(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new PaymentGateway.PaymentQueryResult("NOT_FOUND", 0L, null, "ACQ.TRADE_NOT_EXIST"));
 
         service.reconcile();
 
@@ -107,8 +112,11 @@ class PaymentServiceTest {
     void reconcileKeepsSupersededAttemptWhenClosePending() {
         stubEmptyReconcileQueues();
         PaymentAttemptRecord superseded = supersededAttempt();
-        when(paymentRepository.findSupersededAttempts(anyInt())).thenReturn(List.of(superseded));
+        when(paymentRepository.findAttemptsForReconcile(anyInt())).thenReturn(List.of(superseded));
+        when(paymentRepository.claimAttemptReconcile(org.mockito.ArgumentMatchers.eq(1L), anyInt())).thenReturn(1);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order()));
+        when(paymentGateway.query(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new PaymentGateway.PaymentQueryResult("PENDING", 1L, null, "等待支付"));
         when(paymentGateway.close(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new PaymentGateway.CloseResult("PENDING", "网络异常"));
 
@@ -118,15 +126,15 @@ class PaymentServiceTest {
     }
 
     private void stubEmptyReconcileQueues() {
-        when(orderRepository.findPendingQuery(anyInt(), anyInt())).thenReturn(List.of());
         when(orderRepository.findExpired(anyInt())).thenReturn(List.of());
+        when(orderRepository.findExpiredPayingWithoutAttempt(anyInt())).thenReturn(List.of());
         when(orderRepository.findPaidUnfulfilled(anyInt())).thenReturn(List.of());
     }
 
     private PaymentAttemptRecord supersededAttempt() {
         LocalDateTime now = LocalDateTime.now();
         return new PaymentAttemptRecord(1L, 1L, 1, "ALIPAY", "SUPERSEDED", "ORD-1_1",
-                "CREATED", 1L, "digest", null, null, null, now, now);
+                null, "CREATED", 1L, "digest", null, null, null, now, now);
     }
 
     private OrderRecord order() {
@@ -139,6 +147,6 @@ class PaymentServiceTest {
     private PaymentAttemptRecord attempt() {
         LocalDateTime now = LocalDateTime.now();
         return new PaymentAttemptRecord(1L, 1L, 1, "ALIPAY", "PROCESSING", "ORD-1_1",
-                "CREATED", 1L, "digest", null, null, null, now, null);
+                null, "CREATED", 1L, "digest", null, null, null, now, null);
     }
 }

@@ -36,9 +36,11 @@ public final class PaymentDtos {
     }
 
     public record AttemptView(
+            Long attemptId,
             int attemptNo,
             String status,
             String providerTradeNo,
+            String channelTradeNo,
             String providerStatus,
             String mockScenario,
             LocalDateTime createdAt,
@@ -48,8 +50,11 @@ public final class PaymentDtos {
 
     public record EventView(
             String eventKey,
+            Long attemptId,
             String eventType,
             long amountCents,
+            String channelTradeNo,
+            String providerNotifyId,
             String processStatus,
             String errorMessage,
             LocalDateTime receivedAt,
@@ -59,6 +64,9 @@ public final class PaymentDtos {
 
     public record RefundView(
             String refundNo,
+            Long attemptId,
+            Integer attemptNo,
+            String refundKind,
             long amountCents,
             String status,
             int attemptCount,

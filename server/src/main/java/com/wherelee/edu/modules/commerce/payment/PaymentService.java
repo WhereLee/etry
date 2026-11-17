@@ -252,16 +252,22 @@ public class PaymentService {
     }
 
     public void reconcile() {
-        for (OrderRecord order : orderRepository.findPendingQuery(
-                properties.queryAfterSeconds(), properties.reconcileBatchSize())) {
+        int leaseSeconds = Math.max(30, properties.queryAfterSeconds() * 2);
+        for (PaymentAttemptRecord attempt : paymentRepository.findAttemptsForReconcile(
+                properties.reconcileBatchSize())) {
             try {
-                reconcileOrder(order);
+                if (paymentRepository.claimAttemptReconcile(attempt.id(), leaseSeconds) == 1) {
+                    reconcileAttempt(attempt);
+                }
             } catch (Exception e) {
-                log.warn("订单主动查单失败 orderNo={}", order.orderNo(), e);
+                log.warn("支付尝试主动查单失败 attemptId={}", attempt.id(), e);
             }
         }
         for (OrderRecord order : orderRepository.findExpired(properties.reconcileBatchSize())) {
             orderRepository.close(order.orderNo(), false);
+        }
+        for (OrderRecord order : orderRepository.findExpiredPayingWithoutAttempt(properties.reconcileBatchSize())) {
+            orderRepository.closeAfterProviderNotFound(order.orderNo());
         }
         for (OrderRecord order : orderRepository.findPaidUnfulfilled(properties.reconcileBatchSize())) {
             try {
@@ -270,97 +276,106 @@ public class PaymentService {
                 log.warn("订单补履约失败 orderNo={}", order.orderNo(), e);
             }
         }
-        for (PaymentAttemptRecord attempt : paymentRepository.findSupersededAttempts(properties.reconcileBatchSize())) {
-            try {
-                closeSupersededAttempt(attempt);
-            } catch (Exception e) {
-                log.warn("关闭旧支付交易失败 attemptId={}", attempt.id(), e);
-            }
-        }
     }
 
     /**
-     * 提交后由补偿任务关闭被取代的旧收银台。只有渠道明确关闭成功或交易不存在才落 CLOSED；
-     * 网络异常、超时、未知返回保留 SUPERSEDED 下轮重试。关闭前已付款的迟到成功仍按重复付款告警。
+     * 以支付尝试而不是订单为对账单位。即使订单已经 PAID/FULFILLED，仍会查询被取代的旧尝试，
+     * 从而发现回调丢失的第二笔真实付款。
      */
-    private void closeSupersededAttempt(PaymentAttemptRecord attempt) {
+    private void reconcileAttempt(PaymentAttemptRecord attempt) {
         OrderRecord order = orderRepository.findById(attempt.orderId()).orElse(null);
         if (order == null) {
             return;
         }
-        PaymentGateway.CloseResult result = traceSpans.trace("payment.gateway.close", TraceSpans.tags(
-                "order.no", order.orderNo(),
-                "payment.channel", paymentGateway.channel()
-        ), () -> paymentGateway.close(order, attempt));
-        if ("CLOSED".equals(result.status()) || "NOT_FOUND".equals(result.status())) {
-            paymentRepository.markAttemptClosed(attempt.id());
-            log.info("payment_close_result orderNo={} attemptId={} status={} message={}",
-                    order.orderNo(), attempt.id(), result.status(), result.message());
-        } else {
-            log.info("payment_close_pending orderNo={} attemptId={} message={}",
-                    order.orderNo(), attempt.id(), result.message());
+        if (!"PROCESSING".equals(attempt.status()) && !"SUPERSEDED".equals(attempt.status())) {
+            return;
         }
-    }
 
-    public OrderRecord reconcileOrder(OrderRecord order) {
-        if (order.status() != OrderStatus.PAYING) {
-            return order;
-        }
-        PaymentAttemptRecord attempt = paymentRepository.findLatestAttempt(order.id()).orElse(null);
-        if (attempt == null) {
-            if (order.expired()) {
-                orderRepository.closeAfterProviderNotFound(order.orderNo());
-            }
-            return orderService.require(order.orderNo());
-        }
         PaymentGateway.PaymentQueryResult result = traceSpans.trace("payment.gateway.query", TraceSpans.tags(
                 "order.no", order.orderNo(),
                 "payment.channel", paymentGateway.channel()
         ), () -> paymentGateway.query(order, attempt));
-        if ("PENDING".equals(result.status())) {
-            log.debug("payment_query_result orderNo={} status={} providerTradeNo={} message={}",
-                    order.orderNo(), result.status(), attempt.providerTradeNo(), result.message());
-        } else {
-            log.info("payment_query_result orderNo={} status={} providerTradeNo={} tradeNo={} amountCents={} message={}",
-                    order.orderNo(), result.status(), attempt.providerTradeNo(),
-                    result.tradeNo(), result.amountCents(), result.message());
+
+        if ("PAID".equals(result.status())) {
+            acceptVerified(queryNotification(order, attempt, result, true));
+            return;
+        }
+        if ("FAILED".equals(result.status())) {
+            acceptVerified(queryNotification(order, attempt, result, false));
+            return;
         }
         if ("NOT_FOUND".equals(result.status())) {
-            if (order.expired()) {
+            if ("SUPERSEDED".equals(attempt.status())) {
+                paymentRepository.markAttemptClosed(attempt.id());
+            } else if (order.expired() && order.status() == OrderStatus.PAYING) {
                 orderRepository.closeAfterProviderNotFound(order.orderNo());
+                paymentRepository.markAttemptClosed(attempt.id());
             }
-        } else if ("PAID".equals(result.status())) {
-            PaymentNotification notification = new PaymentNotification(
-                    paymentGateway.channel(),
-                    paymentGateway.channel() + "_QUERY:" + order.orderNo() + ":" + result.tradeNo(),
-                    attempt.id(),
-                    order.orderNo(),
-                    "PAYMENT_SUCCESS",
-                    result.amountCents(),
-                    result.tradeNo(),
-                    attempt.providerTradeNo(),
-                    null,
-                    digest(order.orderNo() + "|" + attempt.id() + "|" + result.tradeNo() + "|" + result.amountCents()),
-                    null
-            );
-            acceptVerified(notification);
-        } else if ("FAILED".equals(result.status())) {
-            PaymentNotification notification = new PaymentNotification(
-                    paymentGateway.channel(),
-                    paymentGateway.channel() + "_QUERY_FAIL:" + order.orderNo() + ":" + result.tradeNo(),
-                    attempt.id(),
-                    order.orderNo(),
-                    "PAYMENT_FAILED",
-                    result.amountCents(),
-                    result.tradeNo(),
-                    attempt.providerTradeNo(),
-                    null,
-                    digest(order.orderNo() + "|" + attempt.id() + "|" + result.tradeNo() + "|FAILED"),
-                    null
-            );
-            acceptVerified(notification);
+            return;
+        }
+        if ("UNKNOWN".equals(result.status())) {
+            metrics.queryUnknown();
+            log.error("支付查单结果不确定，保留原状态等待人工核对 orderNo={} attemptId={} message={}",
+                    order.orderNo(), attempt.id(), result.message());
+            return;
+        }
+
+        if ("SUPERSEDED".equals(attempt.status())) {
+            closeSupersededAttempt(order, attempt);
+        } else {
+            log.debug("payment_query_pending orderNo={} attemptId={} message={}",
+                    order.orderNo(), attempt.id(), result.message());
+        }
+    }
+
+    private void closeSupersededAttempt(OrderRecord order, PaymentAttemptRecord attempt) {
+        PaymentGateway.CloseResult close = traceSpans.trace("payment.gateway.close", TraceSpans.tags(
+                "order.no", order.orderNo(),
+                "payment.channel", paymentGateway.channel()
+        ), () -> paymentGateway.close(order, attempt));
+        if ("CLOSED".equals(close.status()) || "NOT_FOUND".equals(close.status())) {
+            paymentRepository.markAttemptClosed(attempt.id());
+            log.info("payment_close_result orderNo={} attemptId={} status={} message={}",
+                    order.orderNo(), attempt.id(), close.status(), close.message());
+        } else {
+            log.info("payment_close_pending orderNo={} attemptId={} message={}",
+                    order.orderNo(), attempt.id(), close.message());
+        }
+    }
+
+    public OrderRecord reconcileOrder(OrderRecord order) {
+        var attempts = paymentRepository.findAttempts(order.id());
+        for (PaymentAttemptRecord attempt : attempts) {
+            if ("PROCESSING".equals(attempt.status()) || "SUPERSEDED".equals(attempt.status())) {
+                reconcileAttempt(attempt);
+            }
+        }
+        if (order.expired() && order.status() == OrderStatus.PAYING && attempts.isEmpty()) {
+            orderRepository.closeAfterProviderNotFound(order.orderNo());
         }
         return orderService.require(order.orderNo());
+    }
+
+    private PaymentNotification queryNotification(OrderRecord order, PaymentAttemptRecord attempt,
+                                                  PaymentGateway.PaymentQueryResult result, boolean success) {
+        String keyTradeNo = result.tradeNo() == null || result.tradeNo().isBlank()
+                ? attempt.providerTradeNo()
+                : result.tradeNo();
+        String status = success ? "PAID" : "FAILED";
+        return new PaymentNotification(
+                paymentGateway.channel(),
+                paymentGateway.channel() + "_QUERY:" + keyTradeNo + ":" + status,
+                attempt.id(),
+                order.orderNo(),
+                success ? "PAYMENT_SUCCESS" : "PAYMENT_FAILED",
+                result.amountCents(),
+                result.tradeNo(),
+                attempt.providerTradeNo(),
+                null,
+                digest(order.orderNo() + "|" + attempt.id() + "|" + keyTradeNo + "|" + status
+                        + "|" + result.amountCents()),
+                null
+        );
     }
 
     public OrderRecord queryNow(String orderNo) {
@@ -404,7 +419,7 @@ public class PaymentService {
     }
 
     private void markProvider(PaymentAttemptRecord attempt, String status, long amount, String scenario) {
-        paymentRepository.updateProviderState(attempt.id(), status, amount, scenario);
+        paymentRepository.updateProviderState(attempt.id(), status, amount, scenario, attempt.providerTradeNo());
     }
 
     private PaymentNotification successNotification(OrderRecord order, PaymentAttemptRecord attempt) {
