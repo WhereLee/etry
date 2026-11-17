@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/catalog/series")
+@RequestMapping("/api/catalog")
 public class CatalogController {
 
     private final OrderService orderService;
@@ -19,7 +19,7 @@ public class CatalogController {
         this.orderService = orderService;
     }
 
-    @GetMapping
+    @GetMapping({"/series", "/products"})
     @RequireRole("STUDENT")
     @Measured("catalog.series")
     public List<CatalogItem> list(@RequestAttribute("userId") Long userId) {

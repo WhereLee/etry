@@ -106,7 +106,7 @@ class RefundServiceTest {
 
     private OrderRecord order(OrderStatus status) {
         LocalDateTime now = LocalDateTime.now();
-        return new OrderRecord(1L, "ORD-1", 1L, 1L, "物理必修一", 19900L, "CNY",
+        return new OrderRecord(1L, "ORD-1", 1L, 1L, "COURSE_SERIES", "物理必修一", 19900L, "CNY",
                 status, "MOCK", "TRADE-1", "req", null,
                 now.plusMinutes(15), now, null, null, 0, null, now, now);
     }

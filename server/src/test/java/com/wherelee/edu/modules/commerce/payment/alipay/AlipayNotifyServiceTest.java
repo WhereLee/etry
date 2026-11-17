@@ -239,7 +239,7 @@ class AlipayNotifyServiceTest {
     }
 
     private OrderRecord order(OrderStatus status) {
-        return new OrderRecord(1L, "ORD1", 1L, 1L, "物理必修一", 1L, "CNY", status,
+        return new OrderRecord(1L, "ORD1", 1L, 1L, "COURSE_SERIES", "物理必修一", 1L, "CNY", status,
                 "ALIPAY", "2026110522001400001", "req", null, now.plusMinutes(15), null, null, null,
                 0, null, now, now);
     }

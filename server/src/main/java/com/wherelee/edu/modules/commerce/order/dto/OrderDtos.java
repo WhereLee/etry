@@ -1,7 +1,6 @@
 package com.wherelee.edu.modules.commerce.order.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
@@ -12,14 +11,35 @@ public final class OrderDtos {
     private OrderDtos() {
     }
 
+    /**
+     * 下单请求。productId/productType 为通用商品引用；seriesId 为 deprecated 别名。
+     * 二者至少提供一个，由服务端 resolvedProductId 解析。
+     */
     public record CreateOrderRequest(
-            @NotNull(message = "请选择课程") Long seriesId,
+            Long seriesId,
+            Long productId,
+            String productType,
             @NotBlank(message = "缺少请求标识") @Size(max = 64, message = "请求标识过长") String clientRequestId
     ) {
+        /** 兼容旧客户端：仅传 seriesId。 */
+        public CreateOrderRequest(Long seriesId, String clientRequestId) {
+            this(seriesId, null, null, clientRequestId);
+        }
+
+        public Long resolvedProductId() {
+            return productId != null ? productId : seriesId;
+        }
     }
 
+    /**
+     * 订单视图。productId/productType/productTitle 为通用字段；
+     * seriesId/seriesTitle 为 deprecated 别名，过渡期保留以兼容旧前端。
+     */
     public record OrderView(
             String orderNo,
+            Long productId,
+            String productType,
+            String productTitle,
             Long seriesId,
             String seriesTitle,
             long priceCents,

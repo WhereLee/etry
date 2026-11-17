@@ -139,7 +139,7 @@ class PaymentServiceTest {
 
     private OrderRecord order() {
         LocalDateTime now = LocalDateTime.now();
-        return new OrderRecord(1L, "ORD-1", 1L, 1L, "物理必修一", 1L, "CNY",
+        return new OrderRecord(1L, "ORD-1", 1L, 1L, "COURSE_SERIES", "物理必修一", 1L, "CNY",
                 OrderStatus.PAYING, "ALIPAY", null, "req", "1:1",
                 now.minusMinutes(1), null, null, null, 0, null, now.minusMinutes(20), now.minusMinutes(20));
     }

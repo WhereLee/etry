@@ -1,5 +1,6 @@
 package com.wherelee.edu.modules.commerce.order;
 
+import com.wherelee.edu.modules.entitlement.api.ProductTypes;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -17,7 +18,10 @@ import java.util.Optional;
 public class OrderRepository {
 
     private static final String COLUMNS = """
-            id, order_no, user_id, series_id, series_title_snapshot AS series_title,
+            id, order_no, user_id,
+            COALESCE(product_id, series_id) AS product_id,
+            COALESCE(product_type, 'COURSE_SERIES') AS product_type,
+            COALESCE(product_title_snapshot, series_title_snapshot) AS product_title,
             price_cents, currency, status, pay_channel, provider_trade_no,
             client_request_id, active_key, expire_at, paid_at, fulfilled_at,
             closed_at, fulfillment_attempts, last_error, created_at, updated_at
@@ -27,8 +31,9 @@ public class OrderRepository {
             rs.getLong("id"),
             rs.getString("order_no"),
             rs.getLong("user_id"),
-            rs.getLong("series_id"),
-            rs.getString("series_title"),
+            rs.getLong("product_id"),
+            rs.getString("product_type"),
+            rs.getString("product_title"),
             rs.getLong("price_cents"),
             rs.getString("currency"),
             OrderStatus.valueOf(rs.getString("status")),
@@ -52,26 +57,30 @@ public class OrderRepository {
         this.jdbc = jdbc;
     }
 
-    public Long insert(String orderNo, Long userId, Long seriesId, String seriesTitle,
+    public Long insert(String orderNo, Long userId, Long productId, String productTitle,
                        long priceCents, String currency, String clientRequestId,
                        String activeKey, LocalDateTime expireAt) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement statement = connection.prepareStatement("""
                     INSERT INTO t_order
-                        (order_no, user_id, series_id, series_title_snapshot, price_cents,
-                         currency, status, client_request_id, active_key, expire_at)
-                    VALUES (?, ?, ?, ?, ?, ?, 'CREATED', ?, ?, ?)
+                        (order_no, user_id, series_id, series_title_snapshot,
+                         product_id, product_type, product_title_snapshot,
+                         price_cents, currency, status, client_request_id, active_key, expire_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'CREATED', ?, ?, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             statement.setString(1, orderNo);
             statement.setLong(2, userId);
-            statement.setLong(3, seriesId);
-            statement.setString(4, seriesTitle);
-            statement.setLong(5, priceCents);
-            statement.setString(6, currency);
-            statement.setString(7, clientRequestId);
-            statement.setString(8, activeKey);
-            statement.setTimestamp(9, Timestamp.valueOf(expireAt));
+            statement.setLong(3, productId);
+            statement.setString(4, productTitle);
+            statement.setLong(5, productId);
+            statement.setString(6, ProductTypes.COURSE_SERIES);
+            statement.setString(7, productTitle);
+            statement.setLong(8, priceCents);
+            statement.setString(9, currency);
+            statement.setString(10, clientRequestId);
+            statement.setString(11, activeKey);
+            statement.setTimestamp(12, Timestamp.valueOf(expireAt));
             return statement;
         }, keyHolder);
         Number key = keyHolder.getKey();

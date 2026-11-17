@@ -1,6 +1,7 @@
 package com.wherelee.edu.modules.commerce.order;
 
 import com.wherelee.edu.modules.platform.common.BizException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wherelee.edu.modules.commerce.api.SellableCatalog;
 import com.wherelee.edu.modules.commerce.entitlement.EntitlementRepository;
 import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
@@ -106,9 +107,23 @@ class OrderServiceTest {
                 .hasMessage("支付中订单不能直接关闭，请先查询支付结果");
     }
 
+    @Test
+    void createOrderRequestResolvesSeriesAliasAndGenericProduct() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        OrderDtos.CreateOrderRequest alias = mapper.readValue(
+                "{\"seriesId\":1,\"clientRequestId\":\"r\"}", OrderDtos.CreateOrderRequest.class);
+        assertThat(alias.resolvedProductId()).isEqualTo(1L);
+
+        OrderDtos.CreateOrderRequest generic = mapper.readValue(
+                "{\"productId\":2,\"productType\":\"COURSE_SERIES\",\"clientRequestId\":\"r\"}",
+                OrderDtos.CreateOrderRequest.class);
+        assertThat(generic.resolvedProductId()).isEqualTo(2L);
+        assertThat(generic.productType()).isEqualTo("COURSE_SERIES");
+    }
+
     private OrderRecord order(OrderStatus status, long price) {
         LocalDateTime now = LocalDateTime.now();
-        return new OrderRecord(1L, "ORD-1", 1L, 1L, "物理必修一", price, "CNY", status,
+        return new OrderRecord(1L, "ORD-1", 1L, 1L, "COURSE_SERIES", "物理必修一", price, "CNY", status,
                 null, null, "req", null, now.plusMinutes(15), null, null, null,
                 0, null, now, now);
     }

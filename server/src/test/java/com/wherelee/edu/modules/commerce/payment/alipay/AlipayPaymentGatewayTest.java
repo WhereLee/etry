@@ -251,13 +251,13 @@ class AlipayPaymentGatewayTest {
     }
 
     private OrderRecord order() {
-        return new OrderRecord(1L, "ORD1", 1L, 1L, "物理必修一", 1L, "CNY", OrderStatus.PAYING,
+        return new OrderRecord(1L, "ORD1", 1L, 1L, "COURSE_SERIES", "物理必修一", 1L, "CNY", OrderStatus.PAYING,
                 "ALIPAY", null, "req", null, now.plusMinutes(15), null, null, null,
                 0, null, now, now);
     }
 
     private OrderRecord paidOrder() {
-        return new OrderRecord(1L, "ORD1", 1L, 1L, "物理必修一", 1L, "CNY", OrderStatus.PAID,
+        return new OrderRecord(1L, "ORD1", 1L, 1L, "COURSE_SERIES", "物理必修一", 1L, "CNY", OrderStatus.PAID,
                 "ALIPAY", "2026110522001400001", "req", null, now.plusMinutes(15), now, null, null,
                 0, null, now, now);
     }

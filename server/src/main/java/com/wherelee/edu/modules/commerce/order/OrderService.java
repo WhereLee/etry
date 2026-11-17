@@ -74,15 +74,19 @@ public class OrderService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderDtos.OrderView create(Long userId, OrderDtos.CreateOrderRequest request) {
+        Long productId = request.resolvedProductId();
+        if (productId == null) {
+            throw BizException.badRequest("请选择课程");
+        }
         var existingRequest = orderRepository.findByClientRequest(userId, request.clientRequestId());
         if (existingRequest.isPresent()) {
             return view(existingRequest.get(), userId);
         }
-        if (entitlementRepository.hasActive(userId, request.seriesId())) {
+        if (entitlementRepository.hasActive(userId, productId)) {
             throw new BizException(HttpStatus.CONFLICT, "你已经拥有这个课程");
         }
 
-        var existingOrder = orderRepository.findActive(userId, request.seriesId());
+        var existingOrder = orderRepository.findActive(userId, productId);
         if (existingOrder.isPresent()) {
             OrderRecord order = existingOrder.get();
             if (order.expired() && order.status() != OrderStatus.PAID) {
@@ -93,7 +97,7 @@ public class OrderService {
         }
 
         SellableCatalog.SellableProduct product = catalog(ProductTypes.COURSE_SERIES)
-                .findPurchasable(request.seriesId())
+                .findPurchasable(productId)
                 .orElseThrow(() -> BizException.badRequest("课程未发布、未开售或价格无效"));
         String orderNo = generateOrderNo();
         String activeKey = userId + ":" + product.productId();
@@ -105,7 +109,7 @@ public class OrderService {
             paymentMetrics.orderCreated();
         } catch (DuplicateKeyException e) {
             return orderRepository.findByClientRequest(userId, request.clientRequestId())
-                    .or(() -> orderRepository.findActive(userId, request.seriesId()))
+                    .or(() -> orderRepository.findActive(userId, productId))
                     .map(order -> view(order, userId))
                     .orElseThrow(() -> new BizException(HttpStatus.CONFLICT, "订单状态已变化，请刷新后重试"));
         }
@@ -160,8 +164,11 @@ public class OrderService {
     public OrderDtos.OrderView view(OrderRecord order, Long userId) {
         return new OrderDtos.OrderView(
                 order.orderNo(),
-                order.seriesId(),
-                order.seriesTitle(),
+                order.productId(),
+                order.productType(),
+                order.productTitle(),
+                order.productId(),
+                order.productTitle(),
                 order.priceCents(),
                 order.currency(),
                 order.status().name(),
@@ -171,7 +178,7 @@ public class OrderService {
                 order.paidAt(),
                 order.fulfilledAt(),
                 order.createdAt(),
-                entitlementRepository.hasActive(userId, order.seriesId())
+                entitlementRepository.hasActive(userId, order.productId())
         );
     }
 
