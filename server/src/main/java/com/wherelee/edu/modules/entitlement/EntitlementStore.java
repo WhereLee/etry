@@ -2,11 +2,17 @@ package com.wherelee.edu.modules.entitlement;
 
 import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 权益中心仓储。
@@ -102,6 +108,24 @@ public class EntitlementStore {
                 SELECT COUNT(*) FROM t_entitlement WHERE user_id = ? AND status = 'ACTIVE'
                 """, Long.class, userId);
         return count == null ? 0 : count;
+    }
+
+    public Map<Long, Long> countActiveByUsers(Collection<Long> userIds, String productType) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = userIds.stream().distinct().toList();
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        List<Object> args = new ArrayList<>(ids);
+        args.add(productType);
+        Map<Long, Long> counts = new HashMap<>();
+        RowCallbackHandler handler =
+                rs -> counts.put(rs.getLong("user_id"), rs.getLong("cnt"));
+        jdbc.query("SELECT user_id, COUNT(*) AS cnt FROM t_entitlement"
+                        + " WHERE user_id IN (" + placeholders + ") AND product_type = ? AND status = 'ACTIVE'"
+                        + " GROUP BY user_id",
+                handler, args.toArray());
+        return counts;
     }
 
     public long countActiveByProduct(Long productId) {

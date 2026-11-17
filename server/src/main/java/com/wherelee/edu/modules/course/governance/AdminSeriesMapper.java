@@ -20,6 +20,8 @@ public interface AdminSeriesMapper {
 
     AdminSeriesHeaderVO findHeader(@Param("id") Long id);
 
+    List<AdminSeriesOptionVO> findPublishedOptions();
+
     List<AdminSeriesChapterVO> findChapters(@Param("seriesId") Long seriesId);
 
     List<AdminSeriesVideoVO> findVideos(@Param("seriesId") Long seriesId);

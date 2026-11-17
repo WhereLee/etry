@@ -99,6 +99,13 @@ public class CourseGovernanceService implements CourseGovernance {
         mapper.updateSale(seriesId, saleStatus, priceCents);
     }
 
+    @Override
+    public List<SeriesOption> publishedOptions() {
+        return mapper.findPublishedOptions().stream()
+                .map(row -> new SeriesOption(row.getId(), row.getTitle()))
+                .toList();
+    }
+
     private SeriesSummary summary(AdminSeriesVO row) {
         return new SeriesSummary(
                 row.getId(), row.getTitle(), row.getSummary(), row.getStatus(),

@@ -18,6 +18,12 @@ public interface CourseGovernance {
 
     void updateSale(Long seriesId, String saleStatus, long priceCents);
 
+    /** 已发布系列选项（id/标题，按 sort/id 排序），供管理台分配下拉与校验。 */
+    List<SeriesOption> publishedOptions();
+
+    record SeriesOption(Long id, String title) {
+    }
+
     record SeriesSummary(
             Long id,
             String title,

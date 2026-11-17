@@ -5,7 +5,9 @@ import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 权益中心应用服务，实现写/读端口。写操作幂等并由唯一键与状态条件保证 grant-once/revoke-once。
@@ -66,6 +68,11 @@ public class EntitlementService implements EntitlementCommand, EntitlementQuery 
     @Override
     public long countActiveByUser(Long userId) {
         return repository.countActiveByUser(userId);
+    }
+
+    @Override
+    public Map<Long, Long> countActiveByUsers(Collection<Long> userIds, String productType) {
+        return repository.countActiveByUsers(userIds, productType);
     }
 
     @Override

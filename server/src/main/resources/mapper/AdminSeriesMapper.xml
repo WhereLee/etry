@@ -20,6 +20,10 @@
         </where>
     </sql>
 
+    <select id="findPublishedOptions" resultType="com.wherelee.edu.modules.course.governance.AdminSeriesOptionVO">
+        SELECT id, title FROM t_series WHERE status = 'PUBLISHED' ORDER BY sort, id
+    </select>
+
     <select id="findPage" resultType="com.wherelee.edu.modules.course.governance.AdminSeriesVO">
         SELECT s.id,
                s.title,

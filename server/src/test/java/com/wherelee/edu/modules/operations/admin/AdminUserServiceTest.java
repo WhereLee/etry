@@ -1,12 +1,13 @@
 package com.wherelee.edu.modules.operations.admin;
 
+import com.wherelee.edu.modules.course.api.CourseGovernance;
 import com.wherelee.edu.modules.entitlement.api.EntitlementCommand;
 import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
 import com.wherelee.edu.modules.identity.api.UserAccount;
 import com.wherelee.edu.modules.identity.api.UserAccountOperations;
+import com.wherelee.edu.modules.identity.api.UserAccountQuery;
 import com.wherelee.edu.modules.operations.admin.dto.AssignSeriesRequest;
 import com.wherelee.edu.modules.operations.admin.dto.CreateUserRequest;
-import com.wherelee.edu.modules.operations.admin.dto.SeriesOptionVO;
 import com.wherelee.edu.modules.platform.common.BizException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,19 +30,22 @@ import static org.mockito.Mockito.when;
 class AdminUserServiceTest {
 
     @Mock
-    private AdminUserMapper mapper;
+    private UserAccountQuery userAccountQuery;
     @Mock
     private UserAccountOperations userAccounts;
     @Mock
     private EntitlementCommand entitlementCommand;
     @Mock
     private EntitlementQuery entitlementQuery;
+    @Mock
+    private CourseGovernance courseGovernance;
 
     private AdminUserService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminUserService(mapper, userAccounts, entitlementCommand, entitlementQuery);
+        service = new AdminUserService(userAccountQuery, userAccounts,
+                entitlementCommand, entitlementQuery, courseGovernance);
     }
 
     @Test
@@ -58,7 +62,7 @@ class AdminUserServiceTest {
     @Test
     void rejectsUnknownSeriesBeforeReplacingExistingAssignments() {
         when(userAccounts.require(2L)).thenReturn(new UserAccount(2L, "student", "学生", "STUDENT", "ACTIVE"));
-        when(mapper.findAllSeries()).thenReturn(List.of(new SeriesOptionVO(1L, "物理必修一")));
+        when(courseGovernance.publishedOptions()).thenReturn(List.of(new CourseGovernance.SeriesOption(1L, "物理必修一")));
 
         assertThatThrownBy(() -> service.assignSeries(2L, new AssignSeriesRequest(List.of(1L, 99L))))
                 .isInstanceOf(BizException.class)
@@ -74,6 +78,6 @@ class AdminUserServiceTest {
                 .isInstanceOf(BizException.class)
                 .hasMessage("教师账号必须通过邀请注册");
 
-        verifyNoInteractions(mapper, userAccounts);
+        verifyNoInteractions(userAccountQuery, courseGovernance, userAccounts);
     }
 }

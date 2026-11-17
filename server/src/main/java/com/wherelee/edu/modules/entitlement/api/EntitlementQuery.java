@@ -1,6 +1,8 @@
 package com.wherelee.edu.modules.entitlement.api;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 权益读端口。hasActive 判定有效权益：status=ACTIVE 且 valid_from/valid_to 在有效期内
@@ -17,6 +19,9 @@ public interface EntitlementQuery {
     List<Long> listManualProductIds(Long userId, String productType);
 
     long countActiveByUser(Long userId);
+
+    /** 批量统计用户 ACTIVE 权益数（按商品类型，不含有效期过滤），供管理台列表叠加。 */
+    Map<Long, Long> countActiveByUsers(Collection<Long> userIds, String productType);
 
     long countActiveByProduct(Long productId, String productType);
 
