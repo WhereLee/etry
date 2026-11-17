@@ -1,7 +1,9 @@
 package com.wherelee.edu.modules.commerce.integration;
 
+import com.wherelee.edu.integration.IntegrationTestSupport;
+
 import com.wherelee.edu.modules.commerce.order.OrderStatus;
-import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
+import com.wherelee.edu.modules.commerce.api.OrderDtos;
 import com.wherelee.edu.modules.commerce.payment.PaymentAttemptRecord;
 import com.wherelee.edu.modules.commerce.payment.PaymentConfirmationService;
 import com.wherelee.edu.modules.commerce.payment.PaymentNotification;
@@ -14,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 支付尝试关联与迟到通知隔离：事件按自身 attemptId 落账，迟到老通知不得污染新尝试。
  */
-class PaymentAttemptLinkageIntegrationTest extends CommerceIntegrationTestSupport {
+class PaymentAttemptLinkageIntegrationTest extends IntegrationTestSupport {
 
     @Test
     void lateFailureAfterNewAttemptDoesNotTouchNewAttemptOrOrder() {

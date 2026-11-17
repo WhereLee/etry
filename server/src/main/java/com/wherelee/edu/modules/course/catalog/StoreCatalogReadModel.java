@@ -1,6 +1,7 @@
 package com.wherelee.edu.modules.course.catalog;
 
-import com.wherelee.edu.modules.commerce.api.CatalogDisplayQuery;
+import com.wherelee.edu.modules.commerce.api.OrderQuery;
+import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
 import com.wherelee.edu.modules.entitlement.api.ProductTypes;
 import com.wherelee.edu.modules.identity.api.UserDirectoryQuery;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,28 +11,30 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 课程目录展示读模型：商店展示拼装（系列 + 章节/视频计数）归属 course。
- * 讲师昵称经 identity.api.UserDirectoryQuery 批量取，不再 join t_user；
- * owned/activeOrder 由 commerce 叠加。
+ * 商店目录读模型门面（显式登记的跨模块读拼装）：
+ * 课程展示字段（系列/讲师/章节/视频数）归属 course，讲师昵称走 identity 端口，
+ * owned/activeOrder 交易事实走 entitlement/commerce 端口叠加。
+ * 本门面是商店目录唯一的跨模块拼装点，写路径不得引用。
  */
 @Component
-public class CourseCatalogDisplay implements CatalogDisplayQuery {
+public class StoreCatalogReadModel {
 
     private final JdbcTemplate jdbc;
     private final UserDirectoryQuery userDirectory;
+    private final EntitlementQuery entitlementQuery;
+    private final OrderQuery orderQuery;
 
-    public CourseCatalogDisplay(JdbcTemplate jdbc, UserDirectoryQuery userDirectory) {
+    public StoreCatalogReadModel(JdbcTemplate jdbc,
+                                 UserDirectoryQuery userDirectory,
+                                 EntitlementQuery entitlementQuery,
+                                 OrderQuery orderQuery) {
         this.jdbc = jdbc;
         this.userDirectory = userDirectory;
+        this.entitlementQuery = entitlementQuery;
+        this.orderQuery = orderQuery;
     }
 
-    @Override
-    public String productType() {
-        return ProductTypes.COURSE_SERIES;
-    }
-
-    @Override
-    public List<DisplayProduct> listOnSale() {
+    public List<CatalogItem> listForStudent(Long userId) {
         List<Row> rows = jdbc.query("""
                 SELECT s.id,
                        s.title,
@@ -58,10 +61,16 @@ public class CourseCatalogDisplay implements CatalogDisplayQuery {
                 rs.getLong("price_cents"),
                 rs.getString("currency")));
         Map<Long, String> nicknames = userDirectory.nicknamesById(rows.stream().map(Row::teacherId).toList());
-        return rows.stream().map(row -> new DisplayProduct(
-                row.id(), row.title(), row.summary(),
-                nicknames.get(row.teacherId()),
-                row.chapterCount(), row.videoCount(), row.priceCents(), row.currency())).toList();
+        return rows.stream().map(row -> {
+            boolean owned = entitlementQuery.hasActive(userId, row.id(), ProductTypes.COURSE_SERIES);
+            OrderQuery.ActiveOrderFact active = orderQuery
+                    .activeOrder(userId, row.id(), ProductTypes.COURSE_SERIES).orElse(null);
+            return new CatalogItem(row.id(), row.title(), row.summary(),
+                    nicknames.get(row.teacherId()), row.chapterCount(), row.videoCount(),
+                    row.priceCents(), row.currency(), owned,
+                    active == null ? null : active.orderNo(),
+                    active == null ? null : active.status());
+        }).toList();
     }
 
     private record Row(Long id, String title, String summary, Long teacherId,

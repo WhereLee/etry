@@ -1,15 +1,17 @@
 package com.wherelee.edu.modules.commerce.integration;
 
+import com.wherelee.edu.integration.IntegrationTestSupport;
+
 import com.wherelee.edu.modules.commerce.order.OrderRecord;
 import com.wherelee.edu.modules.commerce.order.OrderStatus;
-import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
-import com.wherelee.edu.modules.commerce.payment.PaymentDtos;
+import com.wherelee.edu.modules.commerce.api.OrderDtos;
+import com.wherelee.edu.modules.commerce.api.PaymentDtos;
 import com.wherelee.edu.modules.commerce.payment.RefundRecord;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class FailureRecoveryIntegrationTest extends CommerceIntegrationTestSupport {
+class FailureRecoveryIntegrationTest extends IntegrationTestSupport {
 
     @Test
     void fulfillmentFailureIsRecoveredByReconcile() {

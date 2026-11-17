@@ -1,7 +1,9 @@
 package com.wherelee.edu.modules.commerce.integration;
 
+import com.wherelee.edu.integration.IntegrationTestSupport;
+
 import com.wherelee.edu.modules.commerce.order.OrderStatus;
-import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
+import com.wherelee.edu.modules.commerce.api.OrderDtos;
 import com.wherelee.edu.modules.commerce.outbox.OutboxMessage;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 事务性发件箱集成测试：崩溃重放、重复投递幂等、relay 宕机租约重认领、
  * 重试耗尽 DEAD 转人工、退款撤销异步投递（最终一致窗口）。
  */
-class OutboxIntegrationTest extends CommerceIntegrationTestSupport {
+class OutboxIntegrationTest extends IntegrationTestSupport {
 
     @Test
     void crashBetweenCommitAndDeliveryIsRecoveredByRelay() {
@@ -94,8 +96,9 @@ class OutboxIntegrationTest extends CommerceIntegrationTestSupport {
         Long orderId = orderRepository.findByOrderNo(order.orderNo()).orElseThrow().id();
         paymentService.acceptVerified(successNotification(order.orderNo()));
 
-        // 订单进入不可履约态，履约永远失败；缩短重试上限快速耗尽
-        jdbc.update("UPDATE t_order SET status = 'CLOSED' WHERE id = ?", orderId);
+        // 订单进入非终态的不可履约态（REFUNDING），履约永远失败；缩短重试上限快速耗尽。
+        // 终态（FULFILLED/REFUNDED/CLOSED）已改为幂等跳过，不再构成毒消息。
+        jdbc.update("UPDATE t_order SET status = 'REFUNDING' WHERE id = ?", orderId);
         jdbc.update("UPDATE t_outbox_message SET max_retry = 2 WHERE order_id = ?", orderId);
         for (int i = 0; i < 3; i++) {
             jdbc.update("""

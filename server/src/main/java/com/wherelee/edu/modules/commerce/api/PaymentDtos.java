@@ -1,4 +1,4 @@
-package com.wherelee.edu.modules.commerce.payment;
+package com.wherelee.edu.modules.commerce.api;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -6,6 +6,10 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 支付共享 DTO（api 公开契约）。operations 等消费方只依赖 commerce.api，
+ * 不再触碰 commerce 内部 dto 包。
+ */
 public final class PaymentDtos {
 
     private PaymentDtos() {

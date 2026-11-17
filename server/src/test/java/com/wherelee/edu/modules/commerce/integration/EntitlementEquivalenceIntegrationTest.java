@@ -1,5 +1,7 @@
 package com.wherelee.edu.modules.commerce.integration;
 
+import com.wherelee.edu.integration.IntegrationTestSupport;
+
 import com.wherelee.edu.modules.entitlement.api.EntitlementCommand;
 import com.wherelee.edu.modules.entitlement.api.EntitlementQuery;
 import com.wherelee.edu.modules.entitlement.api.ProductTypes;
@@ -14,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 权益中心语义集成测试：Phase 3 权威翻转后 t_entitlement 为唯一事实源，
  * 履约/退款/管理员分配的 grant-once/revoke-once/有效期/排序语义钉死。
  */
-class EntitlementEquivalenceIntegrationTest extends CommerceIntegrationTestSupport {
+class EntitlementEquivalenceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired private EntitlementCommand entitlementCommand;
     @Autowired private EntitlementQuery entitlementQuery;

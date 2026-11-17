@@ -4,7 +4,7 @@ import com.wherelee.edu.modules.platform.common.BizException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wherelee.edu.modules.commerce.api.SellableCatalog;
 import com.wherelee.edu.modules.commerce.entitlement.EntitlementRepository;
-import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
+import com.wherelee.edu.modules.commerce.api.OrderDtos;
 import com.wherelee.edu.modules.entitlement.api.ProductTypes;
 import com.wherelee.edu.modules.commerce.payment.PaymentProperties;
 import com.wherelee.edu.modules.commerce.payment.PaymentRepository;
@@ -40,7 +40,7 @@ class OrderServiceTest {
         when(sellableCatalog.productType()).thenReturn(ProductTypes.COURSE_SERIES);
         service = new OrderService(orderRepository, paymentRepository,
                 entitlementRepository, new PaymentProperties("mock", true, "secret", 15, 15, 20, 15000, 10000, 5, 30),
-                paymentMetrics, List.of(sellableCatalog), List.of());
+                paymentMetrics, List.of(sellableCatalog));
     }
 
     @Test

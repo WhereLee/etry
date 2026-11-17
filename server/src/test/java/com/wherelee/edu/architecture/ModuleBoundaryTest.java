@@ -81,6 +81,11 @@ class ModuleBoundaryTest {
                     );
 
     @ArchTest
+    static final ArchRule operations_should_not_touch_commerce_internal_dtos =
+            noClasses().that().resideInAPackage("..modules.operations..")
+                    .should().dependOnClassesThat(commerceInternalDtos());
+
+    @ArchTest
     static final ArchRule operations_should_not_touch_identity_internals =
             noClasses().that().resideInAPackage("..modules.operations.admin..")
                     .should().dependOnClassesThat().resideInAnyPackage(
@@ -126,6 +131,12 @@ class ModuleBoundaryTest {
     private static DescribedPredicate<JavaClass> entitlementInternal() {
         return DescribedPredicate.describe("entitlement 内部实现（非 api）",
                 javaClass -> javaClass.getPackageName().equals("com.wherelee.edu.modules.entitlement"));
+    }
+
+    private static DescribedPredicate<JavaClass> commerceInternalDtos() {
+        return DescribedPredicate.describe("commerce 内部 DTO（非 api 契约）",
+                javaClass -> javaClass.getPackageName().equals("com.wherelee.edu.modules.commerce.order.dto")
+                        || javaClass.getName().startsWith("com.wherelee.edu.modules.commerce.payment.PaymentDtos"));
     }
 
     private static DescribedPredicate<JavaClass> commerceInternal() {

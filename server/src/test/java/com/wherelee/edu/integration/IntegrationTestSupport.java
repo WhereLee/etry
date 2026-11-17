@@ -1,8 +1,8 @@
-package com.wherelee.edu.modules.commerce.integration;
+package com.wherelee.edu.integration;
 
 import com.wherelee.edu.modules.commerce.entitlement.EntitlementRepository;
 import com.wherelee.edu.modules.commerce.order.OrderRepository;
-import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
+import com.wherelee.edu.modules.commerce.api.OrderDtos;
 import com.wherelee.edu.modules.commerce.outbox.OutboxRelay;
 import com.wherelee.edu.modules.commerce.outbox.OutboxRepository;
 import com.wherelee.edu.modules.commerce.payment.OrderFulfillmentService;
@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("integration")
 @EnabledIfEnvironmentVariable(named = "IT_DB_URL", matches = ".+")
-public abstract class CommerceIntegrationTestSupport {
+public abstract class IntegrationTestSupport {
 
     private static final AtomicInteger REQUEST_SEQ = new AtomicInteger();
 
@@ -62,11 +62,11 @@ public abstract class CommerceIntegrationTestSupport {
     }
 
     protected OrderDtos.OrderView createOrder(String clientRequestId) {
-        return orderService.create(fx.studentId, new OrderDtos.CreateOrderRequest(fx.seriesId, clientRequestId));
+        return orderService.create(fx.studentId(), new OrderDtos.CreateOrderRequest(fx.seriesId(), clientRequestId));
     }
 
     protected void pay(String orderNo) {
-        paymentService.pay(fx.studentId, orderNo);
+        paymentService.pay(fx.studentId(), orderNo);
     }
 
     protected PaymentNotification successNotification(String orderNo) {

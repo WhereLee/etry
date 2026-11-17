@@ -1,7 +1,9 @@
 package com.wherelee.edu.modules.commerce.integration;
 
+import com.wherelee.edu.integration.IntegrationTestSupport;
+
 import com.wherelee.edu.modules.commerce.api.AdminReconciliationOperations;
-import com.wherelee.edu.modules.commerce.order.dto.OrderDtos;
+import com.wherelee.edu.modules.commerce.api.OrderDtos;
 import com.wherelee.edu.modules.commerce.payment.PaymentAttemptRecord;
 import com.wherelee.edu.modules.commerce.payment.PaymentRepository;
 import com.wherelee.edu.modules.commerce.reconciliation.ReconciliationService;
@@ -15,7 +17,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ReconciliationIntegrationTest extends CommerceIntegrationTestSupport {
+class ReconciliationIntegrationTest extends IntegrationTestSupport {
 
     @Autowired private ReconciliationService reconciliationService;
     @Autowired private PaymentRepository paymentRepository;
