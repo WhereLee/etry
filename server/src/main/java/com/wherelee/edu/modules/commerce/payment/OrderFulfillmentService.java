@@ -48,7 +48,10 @@ public class OrderFulfillmentService {
 
     private boolean fulfillInternal(String orderNo) {
         OrderRecord order = orderRepository.findByOrderNo(orderNo).orElse(null);
-        if (order == null || order.status() == OrderStatus.FULFILLED) {
+        if (order == null || order.status() == OrderStatus.FULFILLED
+                || order.status() == OrderStatus.REFUNDED || order.status() == OrderStatus.CLOSED) {
+            // 终态（已履约/已退款/已关闭）履约意图已失效，幂等跳过，
+            // 避免发件箱对终态订单空转重试误报 OUTBOX_DEAD。
             return true;
         }
         if (!OrderTransitionPolicy.isFulfillable(order.status())) {
@@ -70,7 +73,8 @@ public class OrderFulfillmentService {
         try {
             Boolean fulfilled = transactionTemplate.execute(status -> {
                 OrderRecord locked = orderRepository.findByOrderNoForUpdate(orderNo).orElse(null);
-                if (locked == null || locked.status() == OrderStatus.FULFILLED) {
+                if (locked == null || locked.status() == OrderStatus.FULFILLED
+                        || locked.status() == OrderStatus.REFUNDED || locked.status() == OrderStatus.CLOSED) {
                     return true;
                 }
                 if (!OrderTransitionPolicy.isFulfillable(locked.status())) {

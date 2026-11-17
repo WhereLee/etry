@@ -53,6 +53,15 @@ class ModuleBoundaryTest {
                     .should().dependOnClassesThat().resideInAPackage("..modules.operations..");
 
     @ArchTest
+    static final ArchRule commerce_should_not_depend_on_content_or_identity =
+            noClasses().that().resideInAPackage("..modules.commerce..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "..modules.course..",
+                            "..modules.learning..",
+                            "..modules.identity.."
+                    );
+
+    @ArchTest
     static final ArchRule course_series_should_use_playback_contracts_not_implementations =
             noClasses().that().resideInAPackage("..modules.course.series..")
                     .should().dependOnClassesThat().resideInAnyPackage(

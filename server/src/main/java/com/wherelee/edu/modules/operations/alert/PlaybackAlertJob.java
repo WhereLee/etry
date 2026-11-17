@@ -1,6 +1,7 @@
 package com.wherelee.edu.modules.operations.alert;
 
 import com.wherelee.edu.modules.platform.alert.AlertLogRepository;
+import com.wherelee.edu.modules.learning.api.PlaybackStatsQuery;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -22,6 +23,7 @@ public class PlaybackAlertJob {
 
     private final AlertProperties properties;
     private final AlertLogRepository repository;
+    private final PlaybackStatsQuery playbackStats;
     private final AlertNotifier notifier;
     private final StringRedisTemplate redis;
     private final MeterRegistry meterRegistry;
@@ -34,6 +36,7 @@ public class PlaybackAlertJob {
 
     public PlaybackAlertJob(AlertProperties properties,
                             AlertLogRepository repository,
+                            PlaybackStatsQuery playbackStats,
                             AlertNotifier notifier,
                             StringRedisTemplate redis,
                             MeterRegistry meterRegistry,
@@ -42,6 +45,7 @@ public class PlaybackAlertJob {
                             RedisFallbackMetrics fallbackMetrics) {
         this.properties = properties;
         this.repository = repository;
+        this.playbackStats = playbackStats;
         this.notifier = notifier;
         this.redis = redis;
         this.meterRegistry = meterRegistry;
@@ -57,9 +61,9 @@ public class PlaybackAlertJob {
             return;
         }
         LocalDateTime since = LocalDateTime.now().minusMinutes(Math.max(1, properties.windowMinutes()));
-        long errors = repository.countEventSince("ERROR", since);
-        long stalls = repository.countEventSince("STALLED", since);
-        AlertLogRepository.CacheStats cache = repository.cacheStatsSince(since);
+        long errors = playbackStats.countEventSince("ERROR", since);
+        long stalls = playbackStats.countEventSince("STALLED", since);
+        PlaybackStatsQuery.CacheStats cache = playbackStats.cacheStatsSince(since);
 
         if (errors >= properties.errorThreshold()) {
             emit("PLAYBACK_ERRORS", "HIGH",

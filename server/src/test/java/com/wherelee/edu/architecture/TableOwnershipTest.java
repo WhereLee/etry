@@ -55,10 +55,8 @@ class TableOwnershipTest {
             "SeriesRepository", Set.of("t_user", "t_learning_progress"),
             "TeacherContentRepository", Set.of("t_user"),
             "AdminSeriesMapper", Set.of("t_user", "t_entitlement"),
-            "CourseCatalogDisplay", Set.of("t_user"),
             "AdminOrderMapper", Set.of("t_order", "t_user"),
-            "AdminUserMapper", Set.of("t_user", "t_entitlement", "t_series"),
-            "AlertLogRepository", Set.of("t_playback_log")
+            "AdminUserMapper", Set.of("t_user", "t_entitlement", "t_series")
     );
 
     private static final Pattern TABLE =
