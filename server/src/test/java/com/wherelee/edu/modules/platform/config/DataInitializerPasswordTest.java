@@ -1,6 +1,7 @@
 package com.wherelee.edu.modules.platform.config;
 
 import com.wherelee.edu.modules.platform.common.validation.StrongPasswordValidator;
+import com.wherelee.edu.modules.platform.seed.SeedPasswords;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -16,7 +17,7 @@ class DataInitializerPasswordTest {
     void generatedPasswordsSatisfyStrongPasswordRuleAndAreUnique() {
         Set<String> seen = new HashSet<>();
         for (int i = 0; i < 500; i++) {
-            String password = DataInitializer.generatePassword();
+            String password = SeedPasswords.generatePassword();
             assertThat(password).hasSize(16);
             assertThat(password).matches(".*[A-Za-z].*");
             assertThat(password).matches(".*[0-9].*");
@@ -29,7 +30,7 @@ class DataInitializerPasswordTest {
     @Test
     void generatedPasswordAvoidsAmbiguousCharacters() {
         for (int i = 0; i < 200; i++) {
-            assertThat(DataInitializer.generatePassword())
+            assertThat(SeedPasswords.generatePassword())
                     .doesNotContain("I", "O", "l", "o", "0", "1");
         }
     }
