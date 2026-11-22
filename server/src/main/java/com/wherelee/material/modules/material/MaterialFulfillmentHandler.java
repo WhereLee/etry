@@ -1,0 +1,38 @@
+package com.wherelee.material.modules.material;
+
+import com.wherelee.material.modules.commerce.api.FulfillmentHandler;
+import com.wherelee.material.modules.entitlement.api.EntitlementCommand;
+import com.wherelee.material.modules.entitlement.api.ProductTypes;
+import org.springframework.stereotype.Component;
+
+/**
+ * 学习资料履约适配器：把交易核心的发放/撤销事实翻译为权益中心的 ORDER 来源 grant/revoke。
+ */
+@Component
+public class MaterialFulfillmentHandler implements FulfillmentHandler {
+
+    private final EntitlementCommand entitlements;
+
+    public MaterialFulfillmentHandler(EntitlementCommand entitlements) {
+        this.entitlements = entitlements;
+    }
+
+    @Override
+    public String productType() {
+        return ProductTypes.MATERIAL;
+    }
+
+    @Override
+    public void fulfill(FulfillCommand command) {
+        entitlements.grant(new EntitlementCommand.GrantCommand(
+                command.userId(), command.productId(), ProductTypes.MATERIAL,
+                command.orderId(), null, null, 1));
+    }
+
+    @Override
+    public void revoke(FulfillCommand command) {
+        entitlements.revoke(new EntitlementCommand.RevokeCommand(
+                command.userId(), command.productId(), ProductTypes.MATERIAL,
+                command.orderId(), command.reason()));
+    }
+}

@@ -83,3 +83,33 @@
 - 原因: 构造器签名变更未同步测试
 - 解决: 测试补 @Mock RbacRepository，并新增 RBAC 权威/legacy 回退/公开目录/注册放行 4 个用例
 - 预防: 改构造器签名时全局 grep `new 类名(` 同步所有调用点
+
+## 2026-11-23 阶段4（交易闭环）
+
+### 问题: BizException 无 conflict() 工厂方法
+- 场景: CartCheckoutService 并发兜底分支抛 409
+- 现象: 编译失败「找不到符号 conflict(java.lang.String)」
+- 原因: 内核 409 一律用 `new BizException(HttpStatus.CONFLICT, msg)`，只有 badRequest/notFound 工厂
+- 解决: 改用构造器 + HttpStatus.CONFLICT
+- 预防: 抛错前先核对 BizException 已有工厂，不凭印象造方法
+
+### 问题: 冒烟脚本 python 输出中文被 GBK 化导致断言假失败
+- 场景: jget 用 python 打印订单标题与期望中文比对
+- 现象: actual 显示乱码，标题断言 FAIL，但接口返回本身正确
+- 原因: Windows 控制台默认 cp936，python stdout 编码随之 GBK；bash 期望串是 UTF-8
+- 解决: 脚本头部 `export PYTHONIOENCODING=utf-8`
+- 预防: Windows 下脚本调 python 输出中文一律显式指定 PYTHONIOENCODING
+
+### 问题: 管理员初始密码未改导致退款接口 428
+- 场景: 冒烟用种子 admin 直接调退款
+- 现象: 退款返回「请先修改初始密码」，订单停在 FULFILLED
+- 原因: 种子账号 must_change_password=true，安全拦截先于业务
+- 解决: 脚本先登录→PUT /auth/password 改密→重新登录再退款（兼容已改密的重跑）
+- 预防: 冒烟涉及种子管理账号时把首登改密纳入脚本流程
+
+### 问题: 退款轮询只等状态导致权益回收断言假失败
+- 场景: 整单退款后断言 owned=false
+- 现象: 状态已 REFUNDED 但 owned 仍 true、重新加购仍 400
+- 原因: 退款确认与权益撤销经发件箱异步解耦，REFUNDED 先到、revoke 后投递（约 1s）
+- 解决: 轮询条件改为 status=REFUNDED 且 owned=false 同时满足
+- 预防: 异步链路断言要等「最终业务事实」而非中间状态；与集成测试 drainOutbox 同理

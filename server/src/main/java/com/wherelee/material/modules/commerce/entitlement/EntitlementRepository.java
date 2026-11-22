@@ -31,21 +31,33 @@ public class EntitlementRepository {
     }
 
     public boolean hasActive(Long userId, Long seriesId) {
-        return entitlementQuery.hasActive(userId, seriesId, ProductTypes.COURSE_SERIES);
+        return hasActive(userId, seriesId, ProductTypes.COURSE_SERIES);
+    }
+
+    public boolean hasActive(Long userId, Long productId, String productType) {
+        return entitlementQuery.hasActive(userId, productId, productType);
     }
 
     public void grantOrder(Long userId, Long seriesId, Long orderId) {
-        handler().fulfill(new FulfillmentHandler.FulfillCommand(userId, seriesId, orderId, null));
+        grantOrder(userId, seriesId, ProductTypes.COURSE_SERIES, orderId);
+    }
+
+    public void grantOrder(Long userId, Long productId, String productType, Long orderId) {
+        handler(productType).fulfill(new FulfillmentHandler.FulfillCommand(userId, productId, orderId, null));
     }
 
     public void revokeOrder(Long userId, Long seriesId, Long orderId, String reason) {
-        handler().revoke(new FulfillmentHandler.FulfillCommand(userId, seriesId, orderId, reason));
+        revokeOrder(userId, seriesId, ProductTypes.COURSE_SERIES, orderId, reason);
     }
 
-    private FulfillmentHandler handler() {
-        FulfillmentHandler handler = handlers.get(ProductTypes.COURSE_SERIES);
+    public void revokeOrder(Long userId, Long productId, String productType, Long orderId, String reason) {
+        handler(productType).revoke(new FulfillmentHandler.FulfillCommand(userId, productId, orderId, reason));
+    }
+
+    private FulfillmentHandler handler(String productType) {
+        FulfillmentHandler handler = handlers.get(productType);
         if (handler == null) {
-            throw new IllegalStateException("缺少 COURSE_SERIES 履约适配器");
+            throw new IllegalStateException("缺少履约适配器：" + productType);
         }
         return handler;
     }

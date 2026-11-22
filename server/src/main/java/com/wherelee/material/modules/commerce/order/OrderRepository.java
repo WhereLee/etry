@@ -90,6 +90,65 @@ public class OrderRepository {
         return key.longValue();
     }
 
+    /**
+     * 购物车多商品订单头：商品行在 t_order_item，单商品列留空；
+     * active_key 为 NULL（多商品不做单商品占位），幂等由 uk_order_client_request 保证。
+     */
+    public Long insertCartOrder(String orderNo, Long userId, String productTitle,
+                                long priceCents, String currency, String clientRequestId,
+                                LocalDateTime expireAt) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbc.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement("""
+                    INSERT INTO t_order
+                        (order_no, user_id, product_type, product_title_snapshot,
+                         price_cents, currency, status, client_request_id, active_key, expire_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 'CREATED', ?, NULL, ?)
+                    """, Statement.RETURN_GENERATED_KEYS);
+            statement.setString(1, orderNo);
+            statement.setLong(2, userId);
+            statement.setString(3, ProductTypes.MATERIAL);
+            statement.setString(4, productTitle);
+            statement.setLong(5, priceCents);
+            statement.setString(6, currency);
+            statement.setString(7, clientRequestId);
+            statement.setTimestamp(8, Timestamp.valueOf(expireAt));
+            return statement;
+        }, keyHolder);
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new IllegalStateException("创建订单后未返回订单 ID");
+        }
+        return key.longValue();
+    }
+
+    /** 查找包含任一指定资料的进行中订单（购物车结算防重）。 */
+    public Optional<OrderRecord> findActiveByMaterialIds(Long userId, List<Long> materialIds) {
+        if (materialIds.isEmpty()) {
+            return Optional.empty();
+        }
+        String placeholders = String.join(",", materialIds.stream().map(i -> "?").toList());
+        Object[] args = new Object[materialIds.size() + 1];
+        args[0] = userId;
+        for (int i = 0; i < materialIds.size(); i++) {
+            args[i + 1] = materialIds.get(i);
+        }
+        return jdbc.query("""
+                SELECT o.id, o.order_no, o.user_id,
+                       COALESCE(o.product_id, o.series_id) AS product_id,
+                       COALESCE(o.product_type, 'COURSE_SERIES') AS product_type,
+                       COALESCE(o.product_title_snapshot, o.series_title_snapshot) AS product_title,
+                       o.price_cents, o.currency, o.status, o.pay_channel, o.provider_trade_no,
+                       o.client_request_id, o.active_key, o.expire_at, o.paid_at, o.fulfilled_at,
+                       o.closed_at, o.fulfillment_attempts, o.last_error, o.created_at, o.updated_at
+                FROM t_order o
+                JOIN t_order_item i ON i.order_id = o.id
+                WHERE o.user_id = ? AND i.material_id IN (%s)
+                  AND o.status IN ('CREATED', 'PAYING', 'PAY_FAILED', 'PAID')
+                ORDER BY o.id DESC LIMIT 1
+                """.formatted(placeholders), MAPPER, args).stream().findFirst();
+    }
+
     public Optional<OrderRecord> findByOrderNo(String orderNo) {
         return jdbc.query("SELECT " + COLUMNS + " FROM t_order WHERE order_no = ?", MAPPER, orderNo)
                 .stream().findFirst();

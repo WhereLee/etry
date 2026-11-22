@@ -1,18 +1,35 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { CATEGORY_LABELS, priceText } from '@/features/material/api/material'
+import { checkoutCart } from '@/features/commerce/api/cart'
 import { useCartStore } from '@/store/cart'
 import PageHeader from '@/components/PageHeader.vue'
 
+const router = useRouter()
 const cartStore = useCartStore()
 const loading = ref(true)
 const error = ref('')
 const removingId = ref(null)
+const checkingOut = ref(false)
+const selected = ref([])
+
+const selectableItems = computed(() => cartStore.items.filter((item) => !rowBlocked(item)))
+const selectedItems = computed(() =>
+  selectableItems.value.filter((item) => selected.value.includes(item.materialId))
+)
+const selectedTotal = computed(() =>
+  selectedItems.value.reduce((sum, item) => sum + (item.priceCents || 0), 0)
+)
+const allSelected = computed(() =>
+  selectableItems.value.length > 0 && selectedItems.value.length === selectableItems.value.length
+)
 
 onMounted(async () => {
   try {
     await cartStore.refresh()
+    selected.value = selectableItems.value.map((item) => item.materialId)
   } catch (e) {
     error.value = e.message
   } finally {
@@ -24,6 +41,7 @@ async function remove(item) {
   removingId.value = item.materialId
   try {
     await cartStore.remove(item.materialId)
+    selected.value = selected.value.filter((id) => id !== item.materialId)
     ElMessage.success('已移除')
   } catch (e) {
     ElMessage.error(e.message)
@@ -34,6 +52,43 @@ async function remove(item) {
 
 function rowBlocked(item) {
   return item.purchased || !item.onSale
+}
+
+function toggleRow(item, checked) {
+  if (checked) {
+    if (!selected.value.includes(item.materialId)) selected.value.push(item.materialId)
+  } else {
+    selected.value = selected.value.filter((id) => id !== item.materialId)
+  }
+}
+
+function toggleAll(checked) {
+  selected.value = checked ? selectableItems.value.map((item) => item.materialId) : []
+}
+
+async function checkout() {
+  if (!selectedItems.value.length || checkingOut.value) return
+  checkingOut.value = true
+  try {
+    const order = await checkoutCart(
+      selectedItems.value.map((item) => item.materialId),
+      crypto.randomUUID()
+    )
+    ElMessage.success('订单已创建，请在 15 分钟内完成支付')
+    await cartStore.refresh()
+    selected.value = selectableItems.value.map((item) => item.materialId)
+    router.push({ name: 'orderDetail', params: { orderNo: order.orderNo } })
+  } catch (e) {
+    ElMessage.error(e.message)
+    try {
+      await cartStore.refresh()
+      selected.value = selectableItems.value.map((item) => item.materialId)
+    } catch {
+      // 刷新失败保留原列表，错误提示已给出
+    }
+  } finally {
+    checkingOut.value = false
+  }
 }
 </script>
 
@@ -62,6 +117,12 @@ function rowBlocked(item) {
           class="cart-row"
           :class="{ blocked: rowBlocked(item) }"
         >
+          <el-checkbox
+            class="row-check"
+            :disabled="rowBlocked(item)"
+            :model-value="selected.includes(item.materialId)"
+            @change="(checked) => toggleRow(item, checked)"
+          />
           <div class="row-main">
             <RouterLink :to="{ name: 'materialDetail', params: { id: item.materialId } }" class="row-title">
               {{ item.title }}
@@ -87,8 +148,25 @@ function rowBlocked(item) {
       </section>
 
       <footer class="cart-foot">
-        <span class="foot-note">合计（{{ cartStore.items.filter((i) => !rowBlocked(i)).length }} 件可结算）</span>
-        <strong class="foot-total">{{ priceText(cartStore.totalCents) }}</strong>
+        <el-checkbox
+          :model-value="allSelected"
+          :indeterminate="selectedItems.length > 0 && !allSelected"
+          :disabled="!selectableItems.length"
+          @change="toggleAll"
+        >
+          全选
+        </el-checkbox>
+        <span class="foot-note">已选 {{ selectedItems.length }} 件</span>
+        <strong class="foot-total">{{ priceText(selectedTotal) }}</strong>
+        <el-button
+          type="primary"
+          size="large"
+          :disabled="!selectedItems.length"
+          :loading="checkingOut"
+          @click="checkout"
+        >
+          结算
+        </el-button>
       </footer>
     </template>
   </main>
@@ -121,6 +199,11 @@ function rowBlocked(item) {
 
 .cart-row.blocked {
   opacity: 0.62;
+}
+
+.row-check {
+  flex: none;
+  margin-right: 2px;
 }
 
 .row-main {

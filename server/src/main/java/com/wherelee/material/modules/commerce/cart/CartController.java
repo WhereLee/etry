@@ -1,5 +1,8 @@
 package com.wherelee.material.modules.commerce.cart;
 
+import com.wherelee.material.modules.commerce.api.OrderDtos;
+import com.wherelee.material.modules.platform.aop.Measured;
+import com.wherelee.material.modules.platform.aop.RateLimit;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,9 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class CartController {
 
     private final CartService cartService;
+    private final CartCheckoutService cartCheckoutService;
 
-    public CartController(CartService cartService) {
+    public CartController(CartService cartService, CartCheckoutService cartCheckoutService) {
         this.cartService = cartService;
+        this.cartCheckoutService = cartCheckoutService;
     }
 
     @GetMapping
@@ -29,6 +34,14 @@ public class CartController {
     public void add(@RequestAttribute("userId") Long userId,
                     @Valid @RequestBody CartDtos.AddRequest request) {
         cartService.add(userId, request.materialId());
+    }
+
+    @PostMapping("/checkout")
+    @RateLimit(key = "order:create", limit = 20, windowSeconds = 60)
+    @Measured("cart.checkout")
+    public OrderDtos.OrderView checkout(@RequestAttribute("userId") Long userId,
+                                        @Valid @RequestBody CartDtos.CheckoutRequest request) {
+        return cartCheckoutService.checkout(userId, request);
     }
 
     @DeleteMapping("/{materialId}")

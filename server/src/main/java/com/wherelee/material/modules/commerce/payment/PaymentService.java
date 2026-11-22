@@ -4,10 +4,13 @@ import com.wherelee.material.modules.platform.common.BizException;
 import com.wherelee.material.modules.commerce.api.OrderDtos;
 import com.wherelee.material.modules.commerce.api.PaymentDtos;
 import com.wherelee.material.modules.commerce.entitlement.EntitlementRepository;
+import com.wherelee.material.modules.commerce.order.OrderItemRecord;
+import com.wherelee.material.modules.commerce.order.OrderItemRepository;
 import com.wherelee.material.modules.commerce.order.OrderRecord;
 import com.wherelee.material.modules.commerce.order.OrderRepository;
 import com.wherelee.material.modules.commerce.order.OrderService;
 import com.wherelee.material.modules.commerce.order.OrderStatus;
+import com.wherelee.material.modules.entitlement.api.ProductTypes;
 import com.wherelee.material.modules.platform.tracing.TraceSpans;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +46,7 @@ public class PaymentService {
 
     private final OrderService orderService;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
     private final EntitlementRepository entitlementRepository;
     private final PaymentGateway paymentGateway;
@@ -60,6 +64,7 @@ public class PaymentService {
 
     public PaymentService(OrderService orderService,
                           OrderRepository orderRepository,
+                          OrderItemRepository orderItemRepository,
                           PaymentRepository paymentRepository,
                           EntitlementRepository entitlementRepository,
                           PaymentGateway paymentGateway,
@@ -71,6 +76,7 @@ public class PaymentService {
                           TraceSpans traceSpans) {
         this.orderService = orderService;
         this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
         this.entitlementRepository = entitlementRepository;
         this.paymentGateway = paymentGateway;
@@ -85,7 +91,13 @@ public class PaymentService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderDtos.PayResponse pay(Long userId, String orderNo) {
         OrderRecord order = orderService.requireOwned(userId, orderNo);
-        if (entitlementRepository.hasActive(userId, order.seriesId())) {
+        if (order.productId() == 0) {
+            for (OrderItemRecord item : orderItemRepository.findByOrderId(order.id())) {
+                if (entitlementRepository.hasActive(userId, item.materialId(), ProductTypes.MATERIAL)) {
+                    throw new BizException(HttpStatus.CONFLICT, "订单内资料已购买，请重新下单");
+                }
+            }
+        } else if (entitlementRepository.hasActive(userId, order.productId(), order.productType())) {
             throw new BizException(HttpStatus.CONFLICT, "你已经拥有这个课程");
         }
         if (order.status() == OrderStatus.PAYING) {
@@ -95,7 +107,8 @@ public class PaymentService {
                     paymentGateway.channel(), action.cashierUrl());
         }
         if (order.status() == OrderStatus.FULFILLED) {
-            throw new BizException(HttpStatus.CONFLICT, "课程权益已经发放");
+            throw new BizException(HttpStatus.CONFLICT,
+                    order.productId() == 0 ? "资料权益已经发放" : "课程权益已经发放");
         }
         if (order.expired()) {
             orderRepository.close(order.orderNo(), false);

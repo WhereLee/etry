@@ -184,4 +184,58 @@ class StorefrontApiIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.items[0].purchased").value(true))
                 .andExpect(jsonPath("$.totalCents").value(0));
     }
+
+    @Test
+    void checkoutRequiresLoginAndNonEmptySelection() throws Exception {
+        mockMvc.perform(post("/api/cart/checkout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"materialIds\":[1],\"clientRequestId\":\"r\"}"))
+                .andExpect(status().isUnauthorized());
+
+        String token = registerBuyer("it_buyer_checkout_empty");
+        mockMvc.perform(post("/api/cart/checkout").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"materialIds\":[],\"clientRequestId\":\"r\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void checkoutFlowCreatesMultiItemOrder() throws Exception {
+        String token = registerBuyer("it_buyer_checkout");
+        long m1 = insertMaterial("HTTP结算A", 990, MaterialRecord.ON_SALE);
+        long m2 = insertMaterial("HTTP结算B", 1590, MaterialRecord.ON_SALE);
+        for (long id : new long[]{m1, m2}) {
+            mockMvc.perform(post("/api/cart").header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"materialId\":" + id + "}"))
+                    .andExpect(status().isOk());
+        }
+
+        MvcResult result = mockMvc.perform(post("/api/cart/checkout").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"materialIds\":[" + m1 + "," + m2 + "],\"clientRequestId\":\"http-checkout-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.productType").value("MATERIAL"))
+                .andExpect(jsonPath("$.productTitle").value("资料订单 共2件"))
+                .andExpect(jsonPath("$.priceCents").value(2580))
+                .andExpect(jsonPath("$.status").value("CREATED"))
+                .andReturn();
+        String orderNo = objectMapper.readTree(result.getResponse().getContentAsString()).get("orderNo").asText();
+
+        mockMvc.perform(get("/api/orders/" + orderNo).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].title").value("HTTP结算A"))
+                .andExpect(jsonPath("$.order.productTitle").value("资料订单 共2件"));
+
+        mockMvc.perform(get("/api/cart").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+
+        mockMvc.perform(post("/api/cart/checkout").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"materialIds\":[" + m1 + "],\"clientRequestId\":\"http-checkout-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderNo").value(orderNo));
+    }
 }

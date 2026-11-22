@@ -11,3 +11,7 @@ export function addToCart(materialId) {
 export function removeFromCart(materialId) {
   return del(`/cart/${materialId}`)
 }
+
+export function checkoutCart(materialIds, clientRequestId) {
+  return post('/cart/checkout', { materialIds, clientRequestId })
+}

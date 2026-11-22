@@ -28,6 +28,7 @@ import static org.mockito.Mockito.*;
 class OrderServiceTest {
 
     @Mock private OrderRepository orderRepository;
+    @Mock private OrderItemRepository orderItemRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private EntitlementRepository entitlementRepository;
     @Mock private PaymentMetrics paymentMetrics;
@@ -38,7 +39,7 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         when(sellableCatalog.productType()).thenReturn(ProductTypes.COURSE_SERIES);
-        service = new OrderService(orderRepository, paymentRepository,
+        service = new OrderService(orderRepository, orderItemRepository, paymentRepository,
                 entitlementRepository, new PaymentProperties("mock", true, "secret", 15, 15, 20, 15000, 10000, 5, 30),
                 paymentMetrics, List.of(sellableCatalog));
     }

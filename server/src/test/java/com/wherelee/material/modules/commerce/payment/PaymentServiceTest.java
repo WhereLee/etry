@@ -27,6 +27,7 @@ class PaymentServiceTest {
 
     @Mock private OrderService orderService;
     @Mock private OrderRepository orderRepository;
+    @Mock private com.wherelee.material.modules.commerce.order.OrderItemRepository orderItemRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private com.wherelee.material.modules.commerce.entitlement.EntitlementRepository entitlementRepository;
     @Mock private PaymentGateway paymentGateway;
@@ -40,7 +41,7 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         service = new PaymentService(
-                orderService, orderRepository, paymentRepository, entitlementRepository,
+                orderService, orderRepository, orderItemRepository, paymentRepository, entitlementRepository,
                 paymentGateway, confirmationService, fulfillmentService, signatureService,
                 new PaymentProperties("alipay", false, null, 15, 60, 50, 60000, 30000, 5, 30),
                 metrics, TraceSpans.noop());

@@ -36,6 +36,7 @@ public class OrderService {
     private static final DateTimeFormatter ORDER_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
     private final EntitlementRepository entitlementRepository;
     private final PaymentProperties paymentProperties;
@@ -43,12 +44,14 @@ public class OrderService {
     private final Map<String, SellableCatalog> catalogs;
 
     public OrderService(OrderRepository orderRepository,
+                        OrderItemRepository orderItemRepository,
                         PaymentRepository paymentRepository,
                         EntitlementRepository entitlementRepository,
                         PaymentProperties paymentProperties,
                         PaymentMetrics paymentMetrics,
                         List<SellableCatalog> catalogList) {
         this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
         this.entitlementRepository = entitlementRepository;
         this.paymentProperties = paymentProperties;
@@ -127,12 +130,22 @@ public class OrderService {
     public OrderDtos.OrderDetail detail(Long userId, String orderNo) {
         OrderRecord order = requireOwned(userId, orderNo);
         List<OrderDtos.TimelineItem> timeline = timeline(order);
-        return new OrderDtos.OrderDetail(view(order, userId), timeline);
+        return new OrderDtos.OrderDetail(view(order, userId), timeline, items(order));
     }
 
     public OrderDtos.OrderDetail detailForAdmin(String orderNo) {
         OrderRecord order = require(orderNo);
-        return new OrderDtos.OrderDetail(view(order, order.userId()), timeline(order));
+        return new OrderDtos.OrderDetail(view(order, order.userId()), timeline(order), items(order));
+    }
+
+    /** 购物车多商品订单（单商品列为空）读明细快照；单商品订单返回空列表。 */
+    private List<OrderDtos.OrderItemView> items(OrderRecord order) {
+        if (order.productId() != 0) {
+            return List.of();
+        }
+        return orderItemRepository.findByOrderId(order.id()).stream()
+                .map(item -> new OrderDtos.OrderItemView(item.materialId(), item.titleSnapshot(), item.priceCents()))
+                .toList();
     }
 
     @Transactional
@@ -171,8 +184,17 @@ public class OrderService {
                 order.paidAt(),
                 order.fulfilledAt(),
                 order.createdAt(),
-                entitlementRepository.hasActive(userId, order.productId())
+                owned(order, userId)
         );
+    }
+
+    private boolean owned(OrderRecord order, Long userId) {
+        if (order.productId() == 0) {
+            List<OrderItemRecord> items = orderItemRepository.findByOrderId(order.id());
+            return !items.isEmpty() && items.stream().allMatch(item ->
+                    entitlementRepository.hasActive(userId, item.materialId(), ProductTypes.MATERIAL));
+        }
+        return entitlementRepository.hasActive(userId, order.productId());
     }
 
     private List<OrderDtos.TimelineItem> timeline(OrderRecord order) {
@@ -198,7 +220,8 @@ public class OrderService {
             items.add(new OrderDtos.TimelineItem("PAID", "支付已确认", order.paidAt()));
         }
         if (order.fulfilledAt() != null) {
-            items.add(new OrderDtos.TimelineItem("FULFILLED", "课程权益已发放", order.fulfilledAt()));
+            String label = order.productId() == 0 ? "资料权益已发放" : "课程权益已发放";
+            items.add(new OrderDtos.TimelineItem("FULFILLED", label, order.fulfilledAt()));
         }
         if (order.closedAt() != null) {
             items.add(new OrderDtos.TimelineItem("CLOSED", "订单已关闭", order.closedAt()));

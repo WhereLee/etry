@@ -16,6 +16,7 @@ let pollTimer = null
 let pollCount = 0
 
 const order = computed(() => detail.value?.order || null)
+const isMaterial = computed(() => order.value?.productType === 'MATERIAL')
 const shouldPoll = computed(() => order.value && ['PAYING', 'PAID'].includes(order.value.status))
 
 onMounted(load)
@@ -127,7 +128,7 @@ function timelineType(type) {
       <header class="detail-hero">
         <div>
           <div class="eyebrow">ORDER DETAIL</div>
-          <h1>{{ order.seriesTitle }}</h1>
+          <h1>{{ order.productTitle || order.seriesTitle }}</h1>
           <code>{{ order.orderNo }}</code>
         </div>
         <StatusTag :status="order.status" :label="order.statusLabel" />
@@ -135,9 +136,22 @@ function timelineType(type) {
 
       <el-alert v-if="error" type="error" show-icon :closable="false" :title="error" class="feedback" />
 
+      <section v-if="detail.items?.length" class="items-card">
+        <div class="items-head">
+          <strong>订单明细</strong>
+          <span>共 {{ detail.items.length }} 件 · 下单时价格快照</span>
+        </div>
+        <div v-for="item in detail.items" :key="item.materialId" class="item-row">
+          <RouterLink :to="{ name: 'materialDetail', params: { id: item.materialId } }" class="item-title">
+            {{ item.title }}
+          </RouterLink>
+          <strong class="item-price">{{ priceText(item.priceCents, order.currency) }}</strong>
+        </div>
+      </section>
+
       <div class="detail-grid">
         <section class="summary-card">
-          <div class="summary-row"><span>课程金额</span><strong class="price">{{ priceText(order.priceCents, order.currency) }}</strong></div>
+          <div class="summary-row"><span>{{ isMaterial ? '订单金额' : '课程金额' }}</span><strong class="price">{{ priceText(order.priceCents, order.currency) }}</strong></div>
           <div class="summary-row"><span>创建时间</span><span>{{ formatDate(order.createdAt) }}</span></div>
           <div class="summary-row"><span>支付截止</span><span>{{ formatDate(order.expireAt) }}</span></div>
           <div class="summary-row"><span>支付时间</span><span>{{ formatDate(order.paidAt) }}</span></div>
@@ -151,15 +165,21 @@ function timelineType(type) {
               <el-button v-if="order.status !== 'PAYING'" :loading="busy === 'close'" @click="close">关闭订单</el-button>
             </template>
             <template v-else-if="order.status === 'FULFILLED'">
-              <el-button type="primary" size="large" @click="router.push({ name: 'series', params: { id: order.seriesId } })">开始学习</el-button>
-              <el-button @click="router.push({ name: 'courseStore' })">返回课程商店</el-button>
+              <template v-if="isMaterial">
+                <el-button type="primary" size="large" @click="router.push({ name: 'learning' })">前往我的学习空间</el-button>
+                <el-button @click="router.push({ name: 'materialStore' })">返回资料商城</el-button>
+              </template>
+              <template v-else>
+                <el-button type="primary" size="large" @click="router.push({ name: 'series', params: { id: order.seriesId } })">开始学习</el-button>
+                <el-button @click="router.push({ name: 'courseStore' })">返回课程商店</el-button>
+              </template>
             </template>
             <template v-else-if="order.status === 'PAID'">
-              <el-alert type="warning" :closable="false" show-icon title="支付已确认，系统正在发放课程权益。" />
+              <el-alert type="warning" :closable="false" show-icon :title="isMaterial ? '支付已确认，系统正在发放资料权益。' : '支付已确认，系统正在发放课程权益。'" />
               <el-button @click="load()">立即查询</el-button>
             </template>
             <template v-else-if="order.status === 'CLOSED'">
-              <el-button type="primary" size="large" @click="router.push({ name: 'courseStore' })">重新购买</el-button>
+              <el-button type="primary" size="large" @click="router.push(isMaterial ? { name: 'materialStore' } : { name: 'courseStore' })">重新购买</el-button>
             </template>
             <template v-else-if="['REFUNDED', 'REFUNDING', 'REFUND_FAILED'].includes(order.status)">
               <el-alert type="info" :closable="false" show-icon :title="order.statusLabel">
@@ -235,6 +255,65 @@ function timelineType(type) {
 
 .feedback {
   margin-top: 16px;
+}
+
+.items-card {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.items-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.items-head strong {
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+
+.items-head span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.item-row:last-child {
+  border-bottom: none;
+}
+
+.item-title {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-title:hover {
+  color: var(--pine);
+}
+
+.item-price {
+  flex: none;
+  color: var(--clay);
+  font-family: var(--font-display);
+  font-size: 15px;
 }
 
 .detail-grid {

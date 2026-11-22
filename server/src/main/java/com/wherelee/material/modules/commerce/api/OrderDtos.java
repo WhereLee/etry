@@ -65,6 +65,10 @@ public final class OrderDtos {
     public record TimelineItem(String type, String title, LocalDateTime time) {
     }
 
-    public record OrderDetail(OrderView order, List<TimelineItem> timeline) {
+    /** 多商品订单明细行（下单快照）。单商品订单 items 为空列表。 */
+    public record OrderItemView(Long materialId, String title, long priceCents) {
+    }
+
+    public record OrderDetail(OrderView order, List<TimelineItem> timeline, List<OrderItemView> items) {
     }
 }

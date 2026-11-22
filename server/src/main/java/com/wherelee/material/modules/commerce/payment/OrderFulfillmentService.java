@@ -2,10 +2,13 @@ package com.wherelee.material.modules.commerce.payment;
 
 import com.wherelee.material.modules.platform.alert.AlertPublisher;
 import com.wherelee.material.modules.commerce.entitlement.EntitlementRepository;
+import com.wherelee.material.modules.commerce.order.OrderItemRecord;
+import com.wherelee.material.modules.commerce.order.OrderItemRepository;
 import com.wherelee.material.modules.commerce.order.OrderRecord;
 import com.wherelee.material.modules.commerce.order.OrderTransitionPolicy;
 import com.wherelee.material.modules.commerce.order.OrderRepository;
 import com.wherelee.material.modules.commerce.order.OrderStatus;
+import com.wherelee.material.modules.entitlement.api.ProductTypes;
 import com.wherelee.material.modules.platform.tracing.TraceSpans;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,7 @@ import java.util.Map;
 public class OrderFulfillmentService {
 
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
     private final EntitlementRepository entitlementRepository;
     private final TransactionTemplate transactionTemplate;
@@ -27,6 +31,7 @@ public class OrderFulfillmentService {
     private final TraceSpans traceSpans;
 
     public OrderFulfillmentService(OrderRepository orderRepository,
+                                   OrderItemRepository orderItemRepository,
                                    PaymentRepository paymentRepository,
                                    EntitlementRepository entitlementRepository,
                                    PlatformTransactionManager transactionManager,
@@ -34,6 +39,7 @@ public class OrderFulfillmentService {
                                    AlertPublisher alertPublisher,
                                    TraceSpans traceSpans) {
         this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
         this.entitlementRepository = entitlementRepository;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -81,7 +87,7 @@ public class OrderFulfillmentService {
                     log.warn("订单已进入不可履约状态，跳过履约 orderNo={} status={}", orderNo, locked.status());
                     return false;
                 }
-                entitlementRepository.grantOrder(locked.userId(), locked.seriesId(), locked.id());
+                grantEntitlements(locked);
                 int changed = orderRepository.markFulfilled(orderNo);
                 if (changed == 0) {
                     OrderRecord current = orderRepository.findByOrderNo(orderNo).orElse(locked);
@@ -123,14 +129,38 @@ public class OrderFulfillmentService {
             return true;
         }
         try {
-            transactionTemplate.executeWithoutResult(status ->
-                    entitlementRepository.revokeOrder(order.userId(), order.seriesId(), order.id(), reason));
+            transactionTemplate.executeWithoutResult(status -> revokeEntitlements(order, reason));
             log.info("order_entitlement_revoked orderNo={} userId={} seriesId={}",
                     orderNo, order.userId(), order.seriesId());
             return true;
         } catch (Exception e) {
             log.error("订单权益撤销失败 orderNo={}", orderNo, e);
             return false;
+        }
+    }
+
+    // productId==0 是购物车多商品订单标记（单商品列 NULL），逐明细行按 MATERIAL 发放/撤销
+    private void grantEntitlements(OrderRecord order) {
+        if (order.productId() == 0) {
+            for (OrderItemRecord item : orderItemRepository.findByOrderId(order.id())) {
+                entitlementRepository.grantOrder(order.userId(), item.materialId(),
+                        ProductTypes.MATERIAL, order.id());
+            }
+        } else {
+            entitlementRepository.grantOrder(order.userId(), order.productId(),
+                    order.productType(), order.id());
+        }
+    }
+
+    private void revokeEntitlements(OrderRecord order, String reason) {
+        if (order.productId() == 0) {
+            for (OrderItemRecord item : orderItemRepository.findByOrderId(order.id())) {
+                entitlementRepository.revokeOrder(order.userId(), item.materialId(),
+                        ProductTypes.MATERIAL, order.id(), reason);
+            }
+        } else {
+            entitlementRepository.revokeOrder(order.userId(), order.productId(),
+                    order.productType(), order.id(), reason);
         }
     }
 

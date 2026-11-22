@@ -77,7 +77,7 @@ async function run(scenario) {
         </div>
 
         <div class="order-summary">
-          <div class="summary-row"><span>课程</span><strong>{{ cashier.seriesTitle }}</strong></div>
+          <div class="summary-row"><span>商品</span><strong>{{ cashier.seriesTitle }}</strong></div>
           <div class="summary-row"><span>订单号</span><code>{{ cashier.orderNo }}</code></div>
           <div class="summary-row"><span>订单状态</span><el-tag effect="plain">{{ cashier.status }}</el-tag></div>
           <div class="amount-row"><span>应付金额</span><strong>{{ priceText(cashier.priceCents, cashier.currency) }}</strong></div>
