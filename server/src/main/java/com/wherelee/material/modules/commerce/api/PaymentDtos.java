@@ -1,0 +1,84 @@
+package com.wherelee.material.modules.commerce.api;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * 支付共享 DTO（api 公开契约）。operations 等消费方只依赖 commerce.api，
+ * 不再触碰 commerce 内部 dto 包。
+ */
+public final class PaymentDtos {
+
+    private PaymentDtos() {
+    }
+
+    public record MockCashierView(
+            String orderNo,
+            String seriesTitle,
+            long priceCents,
+            String currency,
+            String status,
+            List<String> scenarios
+    ) {
+    }
+
+    public record MockEventRequest(
+            @NotBlank(message = "请选择模拟场景") @Size(max = 40, message = "模拟场景过长") String scenario
+    ) {
+    }
+
+    public record MockEventResponse(String orderNo, String orderStatus, String message) {
+    }
+
+    public record RefundRequest(
+            @NotBlank(message = "请填写退款原因") @Size(max = 200, message = "退款原因过长") String reason,
+            boolean simulateFailure
+    ) {
+    }
+
+    public record AttemptView(
+            Long attemptId,
+            int attemptNo,
+            String status,
+            String providerTradeNo,
+            String channelTradeNo,
+            String providerStatus,
+            String mockScenario,
+            LocalDateTime createdAt,
+            LocalDateTime finishedAt
+    ) {
+    }
+
+    public record EventView(
+            String eventKey,
+            Long attemptId,
+            String eventType,
+            long amountCents,
+            String channelTradeNo,
+            String providerNotifyId,
+            String processStatus,
+            String errorMessage,
+            LocalDateTime receivedAt,
+            LocalDateTime processedAt
+    ) {
+    }
+
+    public record RefundView(
+            String refundNo,
+            Long attemptId,
+            Integer attemptNo,
+            String refundKind,
+            long amountCents,
+            String status,
+            int attemptCount,
+            LocalDateTime nextRetryAt,
+            String reason,
+            LocalDateTime requestedAt,
+            LocalDateTime succeededAt,
+            String errorMessage
+    ) {
+    }
+}

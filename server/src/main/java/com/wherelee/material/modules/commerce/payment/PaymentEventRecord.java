@@ -1,0 +1,21 @@
+package com.wherelee.material.modules.commerce.payment;
+
+import java.time.LocalDateTime;
+
+public record PaymentEventRecord(
+        Long id,
+        String provider,
+        String eventKey,
+        Long attemptId,
+        Long orderId,
+        String orderNo,
+        String eventType,
+        long amountCents,
+        String providerTradeNo,
+        String providerNotifyId,
+        String processStatus,
+        String errorMessage,
+        LocalDateTime receivedAt,
+        LocalDateTime processedAt
+) {
+}

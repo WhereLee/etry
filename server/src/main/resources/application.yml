@@ -191,4 +191,4 @@ logging:
   pattern:
     level: "%5p [traceId=%X{traceId:-}]"
   level:
-    com.wherelee.edu: info
+    com.wherelee.material: info

@@ -56,4 +56,4 @@ app:
 logging:
   level:
     root: warn
-    com.wherelee.edu: warn
+    com.wherelee.material: warn
