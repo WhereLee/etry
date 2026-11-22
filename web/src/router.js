@@ -2,11 +2,32 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { hasRole, homePath, isLoggedIn, session } from '@/store/session'
 
 const routes = [
-  { path: '/', redirect: '/learning' },
+  { path: '/', redirect: '/materials' },
   {
     path: '/login',
     name: 'login',
     component: () => import('@/features/identity/views/Login.vue')
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/features/identity/views/Register.vue')
+  },
+  {
+    path: '/materials',
+    name: 'materialStore',
+    component: () => import('@/features/material/views/MaterialStore.vue')
+  },
+  {
+    path: '/materials/:id',
+    name: 'materialDetail',
+    component: () => import('@/features/material/views/MaterialDetail.vue')
+  },
+  {
+    path: '/cart',
+    name: 'cart',
+    component: () => import('@/features/commerce/views/Cart.vue'),
+    meta: { auth: true }
   },
   {
     path: '/invite/:token',
@@ -109,7 +130,7 @@ const routes = [
     component: () => import('@/features/course/views/TeacherSeriesEditor.vue'),
     meta: { auth: true, role: 'TEACHER' }
   },
-  { path: '/:pathMatch(.*)*', redirect: '/learning' }
+  { path: '/:pathMatch(.*)*', redirect: '/materials' }
 ]
 
 const router = createRouter({
@@ -128,6 +149,9 @@ router.beforeEach((to) => {
     return homePath()
   }
   if (to.name === 'login' && isLoggedIn()) {
+    return homePath()
+  }
+  if (to.name === 'register' && isLoggedIn()) {
     return homePath()
   }
   return true

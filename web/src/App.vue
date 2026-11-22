@@ -1,11 +1,13 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { clearSession, hasRole, homePath, isLoggedIn, session } from '@/store/session'
+import { useCartStore } from '@/store/cart'
 
 const router = useRouter()
 const route = useRoute()
+const cartStore = useCartStore()
 const loggedIn = computed(() => isLoggedIn())
 const isAdmin = computed(() => hasRole('ADMIN'))
 const isTeacher = computed(() => hasRole('TEACHER'))
@@ -34,14 +36,25 @@ const consoleNav = computed(() => {
 })
 
 const studentNav = [
+  { to: '/materials', label: '资料商城', icon: 'Document' },
+  { to: '/cart', label: '购物车', icon: 'ShoppingCart' },
   { to: '/learning', label: '我的学习空间', icon: 'House' },
   { to: '/store', label: '课程商店', icon: 'Collection' },
   { to: '/orders', label: '我的订单', icon: 'Tickets' },
   { to: '/password', label: '修改密码', icon: 'Lock' }
 ]
 
+watch(loggedIn, (value) => {
+  if (value) {
+    cartStore.refresh().catch(() => {})
+  } else {
+    cartStore.reset()
+  }
+}, { immediate: true })
+
 function logout() {
   clearSession()
+  cartStore.reset()
   router.push({ name: 'login' })
 }
 </script>
@@ -112,6 +125,12 @@ function logout() {
             <RouterLink v-for="item in studentNav" :key="item.to" :to="item.to">
               <el-icon><component :is="item.icon" /></el-icon>
               {{ item.label }}
+              <el-badge
+                v-if="item.to === '/cart' && cartStore.count > 0"
+                :value="cartStore.count"
+                type="danger"
+                class="cart-badge"
+              />
             </RouterLink>
           </nav>
           <span class="spacer" />
@@ -366,6 +385,11 @@ function logout() {
   background: var(--pine-soft);
   color: var(--pine);
   font-weight: 700;
+}
+
+.cart-badge {
+  margin-left: 2px;
+  line-height: 1;
 }
 
 .student-account {

@@ -1,8 +1,10 @@
 package com.wherelee.material.modules.identity.security;
 
+import com.wherelee.material.modules.identity.rbac.RbacRepository;
 import com.wherelee.material.modules.identity.user.User;
 import com.wherelee.material.modules.identity.user.UserRepository;
 import jakarta.servlet.FilterChain;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,7 +12,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,13 +30,20 @@ class JwtAuthFilterTest {
     @Mock
     private UserRepository userRepository;
     @Mock
+    private RbacRepository rbacRepository;
+    @Mock
     private FilterChain chain;
 
     private JwtAuthFilter filter;
 
     @BeforeEach
     void setUp() {
-        filter = new JwtAuthFilter(jwtService, userRepository);
+        filter = new JwtAuthFilter(jwtService, userRepository, rbacRepository);
+    }
+
+    @AfterEach
+    void clearContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -113,6 +124,63 @@ class JwtAuthFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(200);
         verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void allowsPublicCatalogWithoutLogin() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/materials/5");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void allowsRegisterWithoutLogin() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/register");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void setsRbacAuthoritiesWhenRolesGranted() throws Exception {
+        MockHttpServletRequest request = request("GET", "/api/cart");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        when(jwtService.parse("token")).thenReturn(new JwtService.TokenPayload(2L, 0));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user("ACTIVE", false, 0)));
+        when(rbacRepository.findRoleCodesByUser(2L)).thenReturn(List.of("BUYER"));
+        when(rbacRepository.findPermissionCodesByUser(2L)).thenReturn(List.of("order:read"));
+
+        filter.doFilter(request, response, chain);
+
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(authentication).isNotNull();
+        assertThat(authentication.getPrincipal()).isEqualTo(2L);
+        assertThat(authentication.getAuthorities())
+                .extracting(Object::toString)
+                .containsExactlyInAnyOrder("ROLE_BUYER", "order:read");
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void fallsBackToLegacyRoleWithoutRbacRows() throws Exception {
+        MockHttpServletRequest request = request("GET", "/api/cart");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        when(jwtService.parse("token")).thenReturn(new JwtService.TokenPayload(2L, 0));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user("ACTIVE", false, 0)));
+        when(rbacRepository.findRoleCodesByUser(2L)).thenReturn(List.of());
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+                .extracting(Object::toString)
+                .containsExactly("ROLE_STUDENT");
     }
 
     private MockHttpServletRequest request(String method, String path) {

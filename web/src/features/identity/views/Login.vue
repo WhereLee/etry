@@ -32,7 +32,7 @@ async function submit() {
       router.push({ name: 'teacherSeries' })
       return
     }
-    router.push(route.query.redirect || '/learning')
+    router.push(route.query.redirect || '/materials')
   } catch (e) {
     error.value = e.message
   } finally {
@@ -117,9 +117,14 @@ async function submit() {
           </el-button>
         </el-form>
 
+        <div class="register-hint">
+          还没有账号？
+          <RouterLink :to="{ name: 'register', query: route.query }">注册一个新账号</RouterLink>
+        </div>
+
         <div class="demo-box">
           <div class="demo-title">账号说明</div>
-          <p>账号由管理员创建，教师通过一次性邀请激活。请向管理员获取登录凭据，初始密码首次登录后会被要求修改。</p>
+          <p>买家可自助注册；管理员与教师账号由管理员创建，教师通过一次性邀请激活，初始密码首次登录后会被要求修改。</p>
         </div>
       </div>
     </section>
@@ -309,6 +314,18 @@ async function submit() {
 .login-button {
   width: 100%;
   margin-top: 4px;
+}
+
+.register-hint {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.register-hint a {
+  color: var(--pine);
+  font-weight: 700;
 }
 
 .demo-box {

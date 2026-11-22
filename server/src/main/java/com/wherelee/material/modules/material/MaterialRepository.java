@@ -77,6 +77,19 @@ public class MaterialRepository {
                 """, MAPPER, keyword, limit);
     }
 
+    public long countOnSale(String category) {
+        Long count;
+        if (category == null || category.isBlank()) {
+            count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM t_material WHERE sale_status = 'ON_SALE'", Long.class);
+        } else {
+            count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM t_material WHERE sale_status = 'ON_SALE' AND category = ?",
+                    Long.class, category);
+        }
+        return count == null ? 0 : count;
+    }
+
     public long insert(MaterialRecord material) {
         GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {

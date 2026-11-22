@@ -54,3 +54,32 @@
 - 原因: 既有集成测试均在顶层 integration 包或本模块包内，避开跨模块规则
 - 解决: 移到 com.wherelee.material.integration 顶层包
 - 预防: 跨模块集成测试统一放顶层 integration 包
+## 2026-11-23 阶段3（身份与目录接口）
+
+### 问题: Mockito any() 匹配原生 long 参数导致拆箱 NPE
+- 场景: AuthServiceRegisterTest 验证 grantRole 从未被调用
+- 现象: `verify(rbacRepository, never()).grantRole(any(), any(), any())` 抛 NullPointerException（Long.longValue() on null），并污染后续测试类（UnfinishedVerificationException 连锁报错）
+- 原因: RbacRepository.grantRole 首参是原生 long，any() 返回 null 拆箱失败
+- 解决: 原生参数改用 anyLong()/anyBoolean()
+- 预防: 写 matcher 前先核对方法签名，原生类型一律用对应原生 matcher
+
+### 问题: Git Bash 向原生 curl.exe 传中文参数被转成 GBK
+- 场景: 冒烟脚本用 curl -d 内联含中文昵称的 JSON
+- 现象: 服务端 JSON parse error: Invalid UTF-8 middle byte 0xcc，注册接口 500；脚本文件本身确认是 UTF-8
+- 原因: MSYS2 向非 MSYS 原生 Windows 程序（curl.exe）传 argv 时按系统 ANSI 代码页（GBK）转码，内联中文参数字节被改写
+- 解决: JSON 体写入文件，用 `curl --data @file` 传参（文件字节不经过 argv 转码）；中文断言用 grep 匹配 UTF-8 响应体不受影响
+- 预防: Windows Git Bash 下含中文的请求体一律走文件，不内联进原生命令参数
+
+### 问题: bash UID 为只读变量
+- 场景: 冒烟脚本用 UID 存买家 id
+- 现象: `UID: readonly variable`，赋值失败导致后续 SQL 拼接错误
+- 原因: UID 是 bash 内建只读变量（当前用户 id）
+- 解决: 改名 BUYER_ID
+- 预防: 脚本变量避开 UID/EUID/PPID 等内建名
+
+### 问题: JwtAuthFilter 构造器变更后旧单测编译失败
+- 场景: JwtAuthFilter 增加 RbacRepository 依赖
+- 现象: JwtAuthFilterTest 仍用两参构造器，testCompile 失败
+- 原因: 构造器签名变更未同步测试
+- 解决: 测试补 @Mock RbacRepository，并新增 RBAC 权威/legacy 回退/公开目录/注册放行 4 个用例
+- 预防: 改构造器签名时全局 grep `new 类名(` 同步所有调用点

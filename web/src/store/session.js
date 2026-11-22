@@ -45,9 +45,9 @@ export function hasRole(role) {
 }
 
 export function homePath() {
-  if (!isLoggedIn()) return '/login'
+  if (!isLoggedIn()) return '/materials'
   if (session.mustChangePassword) return '/password'
   if (hasRole('ADMIN')) return '/admin/users'
   if (hasRole('TEACHER')) return '/teacher/series'
-  return '/learning'
+  return '/materials'
 }

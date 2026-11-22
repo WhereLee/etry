@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,6 +22,7 @@ import {
   Reading,
   Refresh,
   Search,
+  ShoppingCart,
   SwitchButton,
   Tickets,
   UploadFilled,
@@ -58,6 +60,7 @@ const icons = {
   Reading,
   Refresh,
   Search,
+  ShoppingCart,
   SwitchButton,
   Tickets,
   UploadFilled,
@@ -70,5 +73,6 @@ const icons = {
 
 const app = createApp(App)
 Object.entries(icons).forEach(([name, component]) => app.component(name, component))
+app.use(createPinia())
 app.use(router)
 app.mount('#app')

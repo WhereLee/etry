@@ -24,45 +24,45 @@ public class EntitlementService implements EntitlementCommand, EntitlementQuery 
     @Override
     @Transactional
     public void grant(GrantCommand command) {
-        repository.grantOrder(command.userId(), command.productId(), command.sourceOrderId());
+        repository.grantOrder(command.userId(), command.productId(), command.productType(), command.sourceOrderId());
     }
 
     @Override
     @Transactional
     public void grantManual(GrantCommand command) {
-        repository.insertManual(command.userId(), command.productId(), command.displayOrder());
+        repository.insertManual(command.userId(), command.productId(), command.productType(), command.displayOrder());
     }
 
     @Override
     @Transactional
     public void revoke(RevokeCommand command) {
-        repository.revokeOrder(command.userId(), command.productId(),
+        repository.revokeOrder(command.userId(), command.productId(), command.productType(),
                 command.sourceOrderId(), command.reason());
     }
 
     @Override
     @Transactional
     public void replaceManual(Long userId, String productType, List<Long> productIds) {
-        repository.deleteManual(userId);
+        repository.deleteManual(userId, productType);
         int order = 1;
         for (Long productId : productIds) {
-            repository.insertManual(userId, productId, order++);
+            repository.insertManual(userId, productId, productType, order++);
         }
     }
 
     @Override
     public boolean hasActive(Long userId, Long productId, String productType) {
-        return repository.hasActive(userId, productId);
+        return repository.hasActive(userId, productId, productType);
     }
 
     @Override
     public List<ActiveProduct> listActive(Long userId, String productType) {
-        return repository.listActive(userId);
+        return repository.listActive(userId, productType);
     }
 
     @Override
     public List<Long> listManualProductIds(Long userId, String productType) {
-        return repository.listManualProductIds(userId);
+        return repository.listManualProductIds(userId, productType);
     }
 
     @Override
@@ -77,6 +77,6 @@ public class EntitlementService implements EntitlementCommand, EntitlementQuery 
 
     @Override
     public long countActiveByProduct(Long productId, String productType) {
-        return repository.countActiveByProduct(productId);
+        return repository.countActiveByProduct(productId, productType);
     }
 }

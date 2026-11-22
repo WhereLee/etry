@@ -17,14 +17,12 @@ import java.util.Map;
 /**
  * 权益中心仓储。
  *
- * <p>Phase 3 权威翻转：t_entitlement 为唯一读写源，t_student_series 退役（表/列保留到回滚窗口过，
- * 不再读写）。grant/revoke 语义一比一继承：唯一键 grant-once、revoke 只撤 ACTIVE 且 source/order 匹配。
- * 商品类型暂固定 COURSE_SERIES，商品标识通用化后由端口传入。</p>
+ * <p>t_entitlement 为唯一读写源，t_student_series 退役（表/列保留到回滚窗口过，不再读写）。
+ * grant/revoke 语义：唯一键 grant-once、revoke 只撤 ACTIVE 且 source/order 匹配。
+ * 商品类型由端口传入（COURSE_SERIES / MATERIAL），仓储不做业务假设。</p>
  */
 @Repository
 public class EntitlementStore {
-
-    private static final String COURSE = "COURSE_SERIES";
 
     private final JdbcTemplate jdbc;
 
@@ -32,7 +30,7 @@ public class EntitlementStore {
         this.jdbc = jdbc;
     }
 
-    public void grantOrder(Long userId, Long productId, Long orderId) {
+    public void grantOrder(Long userId, Long productId, String productType, Long orderId) {
         jdbc.update("""
                 INSERT INTO t_entitlement
                     (user_id, product_id, product_type, source, source_order_id, status,
@@ -45,45 +43,45 @@ public class EntitlementStore {
                     granted_at = CURRENT_TIMESTAMP(3),
                     revoked_at = NULL,
                     revoke_reason = NULL
-                """, userId, productId, COURSE, orderId);
+                """, userId, productId, productType, orderId);
     }
 
-    public void revokeOrder(Long userId, Long productId, Long orderId, String reason) {
+    public void revokeOrder(Long userId, Long productId, String productType, Long orderId, String reason) {
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         jdbc.update("""
                 UPDATE t_entitlement
                 SET status = 'REVOKED', revoked_at = ?, revoke_reason = ?
                 WHERE user_id = ? AND product_id = ? AND product_type = ?
                   AND source_order_id = ? AND source = 'ORDER' AND status = 'ACTIVE'
-                """, now, reason, userId, productId, COURSE, orderId);
+                """, now, reason, userId, productId, productType, orderId);
     }
 
-    public void insertManual(Long userId, Long productId, int displayOrder) {
+    public void insertManual(Long userId, Long productId, String productType, int displayOrder) {
         jdbc.update("""
                 INSERT INTO t_entitlement
                     (user_id, product_id, product_type, source, status, display_order, granted_at)
                 VALUES (?, ?, ?, 'ADMIN', 'ACTIVE', ?, CURRENT_TIMESTAMP(3))
-                """, userId, productId, COURSE, displayOrder);
+                """, userId, productId, productType, displayOrder);
     }
 
-    public void deleteManual(Long userId) {
+    public void deleteManual(Long userId, String productType) {
         jdbc.update("""
                 DELETE FROM t_entitlement WHERE user_id = ? AND product_type = ? AND source = 'ADMIN'
-                """, userId, COURSE);
+                """, userId, productType);
     }
 
-    public boolean hasActive(Long userId, Long productId) {
+    public boolean hasActive(Long userId, Long productId, String productType) {
         Integer count = jdbc.queryForObject("""
                 SELECT COUNT(*)
                 FROM t_entitlement
                 WHERE user_id = ? AND product_id = ? AND product_type = ? AND status = 'ACTIVE'
                   AND (valid_from IS NULL OR valid_from <= CURRENT_TIMESTAMP(3))
                   AND (valid_to IS NULL OR valid_to > CURRENT_TIMESTAMP(3))
-                """, Integer.class, userId, productId, COURSE);
+                """, Integer.class, userId, productId, productType);
         return count != null && count > 0;
     }
 
-    public List<EntitlementQuery.ActiveProduct> listActive(Long userId) {
+    public List<EntitlementQuery.ActiveProduct> listActive(Long userId, String productType) {
         return jdbc.query("""
                 SELECT product_id, MIN(display_order) AS display_order
                 FROM t_entitlement
@@ -92,15 +90,15 @@ public class EntitlementStore {
                 GROUP BY product_id
                 ORDER BY display_order, product_id
                 """, (rs, rowNum) -> new EntitlementQuery.ActiveProduct(
-                rs.getLong("product_id"), COURSE, rs.getInt("display_order")), userId, COURSE);
+                rs.getLong("product_id"), productType, rs.getInt("display_order")), userId, productType);
     }
 
-    public List<Long> listManualProductIds(Long userId) {
+    public List<Long> listManualProductIds(Long userId, String productType) {
         return jdbc.query("""
                 SELECT product_id FROM t_entitlement
                 WHERE user_id = ? AND product_type = ? AND source = 'ADMIN' AND status = 'ACTIVE'
                 ORDER BY display_order, id
-                """, (rs, rowNum) -> rs.getLong("product_id"), userId, COURSE);
+                """, (rs, rowNum) -> rs.getLong("product_id"), userId, productType);
     }
 
     public long countActiveByUser(Long userId) {
@@ -128,11 +126,11 @@ public class EntitlementStore {
         return counts;
     }
 
-    public long countActiveByProduct(Long productId) {
+    public long countActiveByProduct(Long productId, String productType) {
         Long count = jdbc.queryForObject("""
                 SELECT COUNT(DISTINCT user_id) FROM t_entitlement
                 WHERE product_id = ? AND product_type = ? AND status = 'ACTIVE'
-                """, Long.class, productId, COURSE);
+                """, Long.class, productId, productType);
         return count == null ? 0 : count;
     }
 }

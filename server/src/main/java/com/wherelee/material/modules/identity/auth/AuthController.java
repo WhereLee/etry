@@ -3,6 +3,7 @@ package com.wherelee.material.modules.identity.auth;
 import com.wherelee.material.modules.identity.auth.dto.ChangePasswordRequest;
 import com.wherelee.material.modules.identity.auth.dto.LoginRequest;
 import com.wherelee.material.modules.identity.auth.dto.LoginResponse;
+import com.wherelee.material.modules.identity.auth.dto.RegisterRequest;
 import com.wherelee.material.modules.identity.auth.dto.UserInfo;
 import com.wherelee.material.modules.identity.security.ClientIpResolver;
 import com.wherelee.material.modules.identity.security.LoginThrottleService;
@@ -47,6 +48,12 @@ public class AuthController {
         }
         loginThrottleService.clear(request.username(), clientIp);
         return response;
+    }
+
+    @PostMapping("/register")
+    @Measured("auth.register")
+    public LoginResponse register(@Valid @RequestBody RegisterRequest request) {
+        return authService.register(request);
     }
 
     @GetMapping("/me")
