@@ -26,6 +26,8 @@ management:
 app:
   security:
     login-protection-enabled: false
+  material-storage:
+    root: ./target/it-materials
   cos:
     bucket: ci-test-bucket
     region: ap-guangzhou

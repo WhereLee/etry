@@ -113,3 +113,54 @@
 - 原因: 退款确认与权益撤销经发件箱异步解耦，REFUNDED 先到、revoke 后投递（约 1s）
 - 解决: 轮询条件改为 status=REFUNDED 且 owned=false 同时满足
 - 预防: 异步链路断言要等「最终业务事实」而非中间状态；与集成测试 drainOutbox 同理
+
+## 2026-11-23 阶段5（权益与交付）
+
+### 问题: 旋转水印被 PDFTextStripper 逐字拆行导致断言假失败
+- 场景: MaterialPdfFactoryTest 断言每页含「已购 · 张三 · ID7」
+- 现象: 提取文本为「已\n购\n \n·\n \n张\n三…」，contains 失败
+- 原因: 45° 旋转文本的字符坐标不共线，PDFTextStripper 按位置拆行
+- 解决: 断言前 `replaceAll("\s","")` 去空白再比对
+- 预防: PDF 文本断言只比对去空白后的语义串，不依赖排版空白
+
+### 问题: ArchUnit 把 identity.api 读端口也挡在 material 模块外
+- 场景: MaterialDeliveryService 注入 UserDirectoryQuery 取买家昵称
+- 现象: material_should_only_depend_on_platform_and_apis 报 6 处违例
+- 原因: 规则用整包 `..modules.identity..` 禁依赖，与规则名「允许 api」的本意不符；course 模块早已消费 identity.api
+- 解决: 新增 identityInternal() 谓词（禁内部实现、放行 api），与 commerceInternal() 同构
+- 预防: 模块边界规则一律「禁内部实现、放行 api 端口」，新增跨模块读端口时同步谓词
+
+### 问题: Windows 并发懒生成 PDF 时 ATOMIC_MOVE 抛 AccessDeniedException
+- 场景: 6 并发下载同一缺失文件，3 个请求 500
+- 现象: AccessDeniedException: gen-xxx.tmp -> 目标.pdf；集成测试偶发红
+- 原因: Windows 的 ATOMIC_MOVE 不支持覆盖已存在目标，抛的是 AccessDeniedException 而非 FileAlreadyExistsException，原回退捕获漏了它
+- 解决: 捕获加 AccessDeniedException；移动失败且目标已存在说明并发线程已落盘，直接读已有文件
+- 预防: 跨平台原子落盘的回退分支要覆盖 Windows 异常语义；并发文件生成必须有真并发集成测试
+
+### 问题: 冒烟脚本放在 target/ 被 mvn clean 清除
+- 场景: 阶段5 想重跑阶段4 冒烟脚本
+- 现象: target/smoke-stage4.sh 不存在
+- 原因: clean 生命周期删除 target 全目录，脚本属资产不应放构建产物目录
+- 解决: 冒烟脚本迁至 tools/smoke/ 持久目录（smoke-stage5.sh）
+- 预防: 可复用验证脚本一律放 tools/，target 只放构建产物
+
+### 问题: 集成测试 completePayment 固定用 fixture 学生导致他人订单 404
+- 场景: 注册用户下单后调 completePayment(orderNo)
+- 现象: pay 内 requireOwned 抛「订单不存在」
+- 原因: 支撑类 pay() 绑定 fx.studentId()，与订单归属不一致
+- 解决: 该用例显式 paymentService.pay(userId, orderNo) + acceptVerified + drainOutbox
+- 预防: 复用测试支撑方法前核对隐含的身份参数
+
+### 问题: 演示 PDF 封面行重叠
+- 场景: 目检试读/下载 PDF 渲染图
+- 现象: 「分类/学段/学科」行与简介行叠印
+- 原因: drawLine 返回原 y 不推进行距，封面meta行后只留 10pt 而字号 12pt
+- 解决: drawLine 后按字号显式推进行距（封面 20pt、正文标题 24pt）
+- 预防: PDF 排版改动必须渲染成图目检，文本断言看不出叠印
+
+### 问题: 新增 Element Plus 图标未注册导致组件解析警告
+- 场景: MaterialDetail/LearningSpace 使用 Download 图标
+- 现象: 控制台「Failed to resolve component: Download」
+- 原因: 项目图标在 main.js 手工全局注册，非全量自动导入
+- 解决: main.js 导入并注册 Download
+- 预防: 用新图标前先查 main.js 注册清单

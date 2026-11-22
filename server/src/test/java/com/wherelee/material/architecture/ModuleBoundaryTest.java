@@ -69,11 +69,11 @@ class ModuleBoundaryTest {
     static final ArchRule material_should_only_depend_on_platform_and_apis =
             noClasses().that().resideInAPackage("..modules.material..")
                     .should().dependOnClassesThat().resideInAnyPackage(
-                            "..modules.identity..",
                             "..modules.course..",
                             "..modules.learning..",
                             "..modules.operations.."
                     )
+                    .orShould().dependOnClassesThat(identityInternal())
                     .orShould().dependOnClassesThat(commerceInternal())
                     .orShould().dependOnClassesThat(entitlementInternal());
 
@@ -166,6 +166,12 @@ class ModuleBoundaryTest {
         return DescribedPredicate.describe("commerce 内部实现（非 api）",
                 javaClass -> javaClass.getPackageName().startsWith("com.wherelee.material.modules.commerce")
                         && !javaClass.getPackageName().startsWith("com.wherelee.material.modules.commerce.api"));
+    }
+
+    private static DescribedPredicate<JavaClass> identityInternal() {
+        return DescribedPredicate.describe("identity 内部实现（非 api）",
+                javaClass -> javaClass.getPackageName().startsWith("com.wherelee.material.modules.identity")
+                        && !javaClass.getPackageName().startsWith("com.wherelee.material.modules.identity.api"));
     }
 
     private static DescribedPredicate<JavaClass> materialInternal() {

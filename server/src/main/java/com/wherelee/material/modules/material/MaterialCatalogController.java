@@ -2,6 +2,8 @@ package com.wherelee.material.modules.material;
 
 import com.wherelee.material.modules.platform.common.BizException;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,9 +22,12 @@ public class MaterialCatalogController {
     private static final int MAX_SIZE = 50;
 
     private final MaterialRepository materialRepository;
+    private final MaterialDeliveryService deliveryService;
 
-    public MaterialCatalogController(MaterialRepository materialRepository) {
+    public MaterialCatalogController(MaterialRepository materialRepository,
+                                     MaterialDeliveryService deliveryService) {
         this.materialRepository = materialRepository;
+        this.deliveryService = deliveryService;
     }
 
     @GetMapping
@@ -55,6 +60,13 @@ public class MaterialCatalogController {
         return new MaterialDtos.DetailView(material.id(), material.title(), material.category(),
                 material.stage(), material.subject(), material.summary(), material.priceCents(),
                 material.currency(), material.pageCount(), material.previewPages(), material.coverKey());
+    }
+
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<byte[]> preview(@PathVariable Long id) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(deliveryService.preview(id));
     }
 
     private MaterialDtos.ListItemView toListItem(MaterialRecord m) {

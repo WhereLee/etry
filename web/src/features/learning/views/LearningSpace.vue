@@ -1,11 +1,18 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { listSeries } from '@/features/learning/api/learning'
+import { CATEGORY_LABELS } from '@/features/material/api/material'
+import { downloadMaterial, fetchLibrary, openPreview } from '@/features/material/api/library'
 import { session } from '@/store/session'
 
 const series = ref([])
 const loading = ref(true)
 const error = ref('')
+const materials = ref([])
+const materialsLoading = ref(true)
+const materialsError = ref('')
+const downloadingId = ref(null)
 
 const displayName = computed(() => session.user?.nickname || session.user?.username || '同学')
 const greeting = computed(() => {
@@ -30,7 +37,34 @@ async function load() {
   }
 }
 
-onMounted(load)
+async function loadMaterials() {
+  materialsLoading.value = true
+  materialsError.value = ''
+  try {
+    materials.value = await fetchLibrary()
+  } catch (e) {
+    materialsError.value = e.message
+  } finally {
+    materialsLoading.value = false
+  }
+}
+
+async function download(item) {
+  downloadingId.value = item.id
+  try {
+    await downloadMaterial(item.id, item.title)
+    ElMessage.success('已开始下载')
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    downloadingId.value = null
+  }
+}
+
+onMounted(() => {
+  load()
+  loadMaterials()
+})
 
 function progressPercent(item) {
   if (!item.videoCount) return 0
@@ -57,6 +91,10 @@ function serial(index) {
       </div>
       <div class="overview" aria-label="学习概览">
         <div class="overview-item">
+          <strong>{{ materials.length }}</strong>
+          <span>已购资料</span>
+        </div>
+        <div class="overview-item">
           <strong>{{ series.length }}</strong>
           <span>系列课程</span>
         </div>
@@ -69,6 +107,52 @@ function serial(index) {
           <span>已完成</span>
         </div>
       </div>
+    </section>
+
+    <div class="shelf-head">
+      <div>
+        <span class="shelf-title">我的资料</span>
+        <span class="shelf-hint">已购电子版 · 下载附带专属水印</span>
+      </div>
+      <span class="shelf-count">{{ materials.length }} 份资料</span>
+    </div>
+
+    <div v-if="materialsLoading" class="loading-panel panel">
+      <el-skeleton animated :rows="3" />
+    </div>
+
+    <el-alert v-else-if="materialsError" type="error" :closable="false" show-icon class="feedback-alert">
+      <template #title>{{ materialsError }}</template>
+      <el-button type="primary" link @click="loadMaterials">重新加载</el-button>
+    </el-alert>
+
+    <div v-else-if="!materials.length" class="empty-panel panel">
+      <el-empty description="还没有已购资料">
+        <RouterLink to="/materials" class="empty-link">去资料商城逛逛</RouterLink>
+      </el-empty>
+    </div>
+
+    <section v-else class="material-grid">
+      <article v-for="item in materials" :key="item.id" class="material-card">
+        <div class="card-top">
+          <el-tag effect="plain" round>{{ CATEGORY_LABELS[item.category] || item.category }}</el-tag>
+          <span class="card-count">{{ item.pageCount }} 页</span>
+        </div>
+        <h2>{{ item.title }}</h2>
+        <p class="material-subject">{{ item.subject || '综合' }}</p>
+        <div class="material-actions">
+          <el-button
+            type="primary"
+            :disabled="!item.downloadable"
+            :loading="downloadingId === item.id"
+            @click="download(item)"
+          >
+            <el-icon><Download /></el-icon>
+            {{ item.downloadable ? '下载' : '文件缺失' }}
+          </el-button>
+          <el-button @click="openPreview(item.id)">试读</el-button>
+        </div>
+      </article>
     </section>
 
     <div class="shelf-head">
@@ -233,6 +317,45 @@ function serial(index) {
   font-size: 13px;
 }
 
+.empty-link {
+  color: var(--pine);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.material-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.material-card {
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.material-card h2 {
+  margin: 16px 0 6px;
+  font-size: 18px;
+}
+
+.material-subject {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.material-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
 .series-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -357,6 +480,10 @@ h2 {
     flex-direction: column;
   }
 
+  .material-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .overview {
     width: 100%;
   }
@@ -368,6 +495,10 @@ h2 {
 
 @media (max-width: 680px) {
   .series-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .material-grid {
     grid-template-columns: 1fr;
   }
 

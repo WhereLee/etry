@@ -64,6 +64,8 @@ app:
   demo:
     video-key: ${SAMPLE_VIDEO_KEY:edu/video/91/demo-real-181s-faststart-cache.mp4}
     video-duration-seconds: ${SAMPLE_VIDEO_DURATION_SECONDS:181}
+  material-storage:
+    root: ${MATERIAL_STORAGE_ROOT:./data/materials}
   alert:
     enabled: ${ALERT_ENABLED:true}
     webhook-url: ${ALERT_WEBHOOK_URL:}

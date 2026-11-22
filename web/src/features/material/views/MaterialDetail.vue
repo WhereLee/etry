@@ -8,6 +8,7 @@ import {
   getMaterial,
   priceText
 } from '@/features/material/api/material'
+import { downloadMaterial, fetchLibrary, openPreview } from '@/features/material/api/library'
 import { isLoggedIn } from '@/store/session'
 import { useCartStore } from '@/store/cart'
 
@@ -19,18 +20,45 @@ const material = ref(null)
 const loading = ref(true)
 const error = ref('')
 const adding = ref(false)
+const owned = ref(false)
+const downloading = ref(false)
 
 onMounted(load)
 
 async function load() {
   loading.value = true
   error.value = ''
+  owned.value = false
   try {
     material.value = await getMaterial(route.params.id)
+    if (isLoggedIn()) {
+      try {
+        const library = await fetchLibrary()
+        owned.value = library.some((item) => item.id === material.value.id)
+      } catch {
+        owned.value = false
+      }
+    }
   } catch (e) {
     error.value = e.message
   } finally {
     loading.value = false
+  }
+}
+
+function preview() {
+  openPreview(material.value.id)
+}
+
+async function download() {
+  downloading.value = true
+  try {
+    await downloadMaterial(material.value.id, material.value.title)
+    ElMessage.success('已开始下载')
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    downloading.value = false
   }
 }
 
@@ -90,7 +118,7 @@ async function add() {
           </div>
           <div>
             <dt>试读</dt>
-            <dd>购买后可预览前 {{ material.previewPages }} 页</dd>
+            <dd>免费试读前 {{ material.previewPages }} 页</dd>
           </div>
           <div>
             <dt>格式</dt>
@@ -104,11 +132,22 @@ async function add() {
             <strong>{{ priceText(material.priceCents, material.currency) }}</strong>
             <small>一次购买 · 长期有效</small>
           </div>
-          <el-button type="primary" size="large" :loading="adding" @click="add">
-            <el-icon><ShoppingCart /></el-icon>
-            加入购物车
-          </el-button>
+          <div class="action-row">
+            <el-button size="large" @click="preview">
+              <el-icon><View /></el-icon>
+              免费试读
+            </el-button>
+            <el-button v-if="owned" type="success" size="large" :loading="downloading" @click="download">
+              <el-icon><Download /></el-icon>
+              下载资料
+            </el-button>
+            <el-button v-else type="primary" size="large" :loading="adding" @click="add">
+              <el-icon><ShoppingCart /></el-icon>
+              加入购物车
+            </el-button>
+          </div>
         </div>
+        <p v-if="owned" class="owned-note">已购买 · 下载文件将附带你的专属水印</p>
       </section>
     </main>
   </div>
@@ -257,6 +296,18 @@ async function add() {
 
 .price-block small {
   color: var(--muted);
+  font-size: 12px;
+}
+
+.action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.owned-note {
+  margin: 14px 0 0;
+  color: var(--pine);
   font-size: 12px;
 }
 </style>
