@@ -189,7 +189,7 @@ async function submitSale() {
       <span class="total-count">共 {{ pageData.total }} 个系列</span>
     </section>
 
-    <el-alert v-if="notice" type="success" show-icon class="feedback" @close="notice = ''" :title="notice" />
+    <el-alert v-if="notice" type="success" show-icon class="feedback" :title="notice" @close="notice = ''" />
     <el-alert v-if="error" type="error" show-icon :closable="false" class="feedback" :title="error" />
 
     <section class="list-panel">

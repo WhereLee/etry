@@ -54,7 +54,7 @@ async function submit() {
 <template>
   <main class="invite-page">
     <section class="invite-card">
-      <div class="card-accent"></div>
+      <div class="card-accent" />
       <RouterLink to="/login" class="brand-row">
         <span class="brand-seal">学</span>
         <span>学习空间</span>

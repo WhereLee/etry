@@ -143,7 +143,7 @@ function formatDate(value) {
       description="管理员生成一次性邀请链接，教师设置密码后激活账号。链接只在生成时展示一次。"
     />
 
-    <el-alert v-if="notice" type="success" show-icon class="feedback" @close="notice = ''" :title="notice" />
+    <el-alert v-if="notice" type="success" show-icon class="feedback" :title="notice" @close="notice = ''" />
     <el-alert v-if="error" type="error" show-icon :closable="false" class="feedback" :title="error" />
 
     <section class="create-panel">

@@ -335,7 +335,7 @@ function mediaLabel(status) {
         <StatusTag v-if="series" :status="series.status" />
       </header>
 
-      <el-alert v-if="notice" type="success" show-icon class="feedback" @close="notice = ''" :title="notice" />
+      <el-alert v-if="notice" type="success" show-icon class="feedback" :title="notice" @close="notice = ''" />
       <el-alert v-if="error" type="error" show-icon :closable="false" class="feedback" :title="error" />
 
       <section class="form-card">
@@ -428,7 +428,7 @@ function mediaLabel(status) {
                   <label class="file-button" :class="{ busy: uploads[video.id] && uploads[video.id].progress < 100 }">
                     <el-icon><UploadFilled /></el-icon>
                     {{ video.mediaStatus === 'READY' ? '替换视频' : '上传视频' }}
-                    <input type="file" accept="video/mp4,video/webm" @change="uploadVideoFile(chapter, video, $event)" />
+                    <input type="file" accept="video/mp4,video/webm" @change="uploadVideoFile(chapter, video, $event)">
                   </label>
                   <div v-if="uploads[video.id]" class="upload-progress">
                     <el-progress :percentage="uploads[video.id].progress" :stroke-width="4" :show-text="false" />

@@ -342,9 +342,9 @@ onBeforeUnmount(() => {
         <section class="main-column">
           <div class="video-panel">
             <div class="video-topline">
-              <span class="live-dot"></span>
+              <span class="live-dot" />
               <span>COS 直连播放</span>
-              <span class="topline-separator"></span>
+              <span class="topline-separator" />
               <span>{{ current ? formatDuration(current.durationSeconds) : '--:--' }}</span>
             </div>
             <div class="video-shell">
@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
                 @stalled="onStalled"
                 @ended="onEnded"
                 @error="onVideoError"
-              ></video>
+              />
               <div v-else class="video-placeholder">
                 <el-icon><VideoCamera /></el-icon>
                 <span>{{ loadingPlay ? '正在获取播放地址…' : '选择右侧视频开始学习' }}</span>
@@ -379,7 +379,7 @@ onBeforeUnmount(() => {
 
           <div v-if="current" class="now-playing">
             <div class="now-copy">
-              <div class="playing-label"><span></span> 正在播放</div>
+              <div class="playing-label"><span /> 正在播放</div>
               <h2>{{ current.title }}</h2>
               <p>进度与观看位置会自动保存，刷新后可以继续。</p>
             </div>

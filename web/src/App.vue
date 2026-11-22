@@ -48,89 +48,89 @@ function logout() {
 
 <template>
   <el-config-provider :locale="zhCn">
-  <div v-if="showShell">
-    <div v-if="isConsole" class="console-layout">
-      <aside class="console-rail">
-        <RouterLink :to="homePath()" class="brand">
-          <span class="brand-seal">学</span>
-          <span class="brand-copy">
-            <strong>学习空间</strong>
-            <small>ETRY LEARNING</small>
-          </span>
-        </RouterLink>
-
-        <div class="rail-role">{{ roleLabel }}工作台</div>
-        <nav class="rail-nav" aria-label="主导航">
-          <RouterLink v-for="item in consoleNav" :key="item.to" :to="item.to" class="rail-link">
-            <el-icon><component :is="item.icon" /></el-icon>
-            <span>{{ item.label }}</span>
+    <div v-if="showShell">
+      <div v-if="isConsole" class="console-layout">
+        <aside class="console-rail">
+          <RouterLink :to="homePath()" class="brand">
+            <span class="brand-seal">学</span>
+            <span class="brand-copy">
+              <strong>学习空间</strong>
+              <small>ETRY LEARNING</small>
+            </span>
           </RouterLink>
-        </nav>
 
-        <div class="rail-foot">
-          <div class="rail-account">
+          <div class="rail-role">{{ roleLabel }}工作台</div>
+          <nav class="rail-nav" aria-label="主导航">
+            <RouterLink v-for="item in consoleNav" :key="item.to" :to="item.to" class="rail-link">
+              <el-icon><component :is="item.icon" /></el-icon>
+              <span>{{ item.label }}</span>
+            </RouterLink>
+          </nav>
+
+          <div class="rail-foot">
+            <div class="rail-account">
+              <span class="avatar">{{ avatarText }}</span>
+              <span class="account-copy">
+                <strong>{{ displayName }}</strong>
+                <small>{{ roleLabel }}</small>
+              </span>
+            </div>
+            <el-button text class="logout-button" @click="logout">
+              <el-icon><SwitchButton /></el-icon>
+              退出登录
+            </el-button>
+          </div>
+        </aside>
+
+        <div class="console-main">
+          <header class="console-mobile-bar">
+            <RouterLink :to="homePath()" class="mobile-brand">
+              <span class="brand-seal">学</span>
+              <span>{{ brand }}</span>
+            </RouterLink>
+            <nav class="mobile-links" aria-label="移动端导航">
+              <RouterLink v-for="item in consoleNav" :key="item.to" :to="item.to">{{ item.label }}</RouterLink>
+            </nav>
+            <el-button circle text aria-label="退出登录" @click="logout">
+              <el-icon><SwitchButton /></el-icon>
+            </el-button>
+          </header>
+          <RouterView />
+        </div>
+      </div>
+
+      <div v-else class="student-layout">
+        <header class="student-bar">
+          <RouterLink :to="homePath()" class="brand">
+            <span class="brand-seal">学</span>
+            <span class="brand-copy">
+              <strong>学习空间</strong>
+              <small>ETRY LEARNING</small>
+            </span>
+          </RouterLink>
+          <nav class="student-nav" aria-label="主导航">
+            <RouterLink v-for="item in studentNav" :key="item.to" :to="item.to">
+              <el-icon><component :is="item.icon" /></el-icon>
+              {{ item.label }}
+            </RouterLink>
+          </nav>
+          <span class="spacer" />
+          <div class="student-account">
             <span class="avatar">{{ avatarText }}</span>
             <span class="account-copy">
               <strong>{{ displayName }}</strong>
-              <small>{{ roleLabel }}</small>
+              <small>学员</small>
             </span>
           </div>
           <el-button text class="logout-button" @click="logout">
             <el-icon><SwitchButton /></el-icon>
-            退出登录
-          </el-button>
-        </div>
-      </aside>
-
-      <div class="console-main">
-        <header class="console-mobile-bar">
-          <RouterLink :to="homePath()" class="mobile-brand">
-            <span class="brand-seal">学</span>
-            <span>{{ brand }}</span>
-          </RouterLink>
-          <nav class="mobile-links" aria-label="移动端导航">
-            <RouterLink v-for="item in consoleNav" :key="item.to" :to="item.to">{{ item.label }}</RouterLink>
-          </nav>
-          <el-button circle text aria-label="退出登录" @click="logout">
-            <el-icon><SwitchButton /></el-icon>
+            退出
           </el-button>
         </header>
         <RouterView />
       </div>
     </div>
-
-    <div v-else class="student-layout">
-      <header class="student-bar">
-        <RouterLink :to="homePath()" class="brand">
-          <span class="brand-seal">学</span>
-          <span class="brand-copy">
-            <strong>学习空间</strong>
-            <small>ETRY LEARNING</small>
-          </span>
-        </RouterLink>
-        <nav class="student-nav" aria-label="主导航">
-          <RouterLink v-for="item in studentNav" :key="item.to" :to="item.to">
-            <el-icon><component :is="item.icon" /></el-icon>
-            {{ item.label }}
-          </RouterLink>
-        </nav>
-        <span class="spacer"></span>
-        <div class="student-account">
-          <span class="avatar">{{ avatarText }}</span>
-          <span class="account-copy">
-            <strong>{{ displayName }}</strong>
-            <small>学员</small>
-          </span>
-        </div>
-        <el-button text class="logout-button" @click="logout">
-          <el-icon><SwitchButton /></el-icon>
-          退出
-        </el-button>
-      </header>
-      <RouterView />
-    </div>
-  </div>
-  <RouterView v-else />
+    <RouterView v-else />
   </el-config-provider>
 </template>
 

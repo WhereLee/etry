@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessageBox } from 'element-plus'
 import {
   actOnBreak,
   executeReconciliation,
@@ -271,7 +271,7 @@ function statusType(status) {
         </div>
         <el-button text :loading="loading" @click="load">刷新</el-button>
       </div>
-      <el-table :data="pageData.records" v-loading="loading" size="small" @row-click="selectStatement">
+      <el-table v-loading="loading" :data="pageData.records" size="small" @row-click="selectStatement">
         <el-table-column prop="statementDate" label="账期" width="120" />
         <el-table-column prop="fileName" label="文件" min-width="220" />
         <el-table-column prop="rowCount" label="行数" width="80" />

@@ -199,7 +199,7 @@ function timelineType(type) {
       <span class="total-count">共 {{ pageData.total }} 个订单</span>
     </section>
 
-    <el-alert v-if="notice" type="success" show-icon class="feedback" @close="notice = ''" :title="notice" />
+    <el-alert v-if="notice" type="success" show-icon class="feedback" :title="notice" @close="notice = ''" />
     <el-alert v-if="error" type="error" show-icon :closable="false" class="feedback" :title="error" />
 
     <section class="table-panel">
@@ -283,7 +283,9 @@ function timelineType(type) {
                 :key="item.type + item.time"
                 :type="timelineType(item.type)"
                 :timestamp="formatDate(item.time)"
-              >{{ item.title }}</el-timeline-item>
+              >
+                {{ item.title }}
+              </el-timeline-item>
             </el-timeline>
           </el-tab-pane>
           <el-tab-pane label="支付尝试">
@@ -302,7 +304,9 @@ function timelineType(type) {
                     type="danger"
                     link
                     @click="openRefund(row.attemptNo)"
-                  >退重复款</el-button>
+                  >
+                    退重复款
+                  </el-button>
                 </template>
               </el-table-column>
             </el-table>

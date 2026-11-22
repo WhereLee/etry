@@ -277,12 +277,6 @@ function beforeSeriesClose(done) {
   done()
 }
 
-function toggleSeries(id) {
-  selectedSeries.value = selectedSeries.value.includes(id)
-    ? selectedSeries.value.filter((item) => item !== id)
-    : [...selectedSeries.value, id]
-}
-
 async function saveSeries() {
   resetFeedback()
   seriesSaving.value = true

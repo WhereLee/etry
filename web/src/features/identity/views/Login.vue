@@ -44,7 +44,7 @@ async function submit() {
 <template>
   <main class="login-page">
     <section class="login-story">
-      <div class="story-grid" aria-hidden="true"></div>
+      <div class="story-grid" aria-hidden="true" />
       <div class="story-top">
         <span class="brand-seal">学</span>
         <span class="story-brand">ETRY · 内部课程平台</span>
@@ -52,7 +52,7 @@ async function submit() {
 
       <div class="story-content">
         <div class="eyebrow">RECORDED LEARNING</div>
-        <h1>把课程放回<br /><em>学习本身。</em></h1>
+        <h1>把课程放回<br><em>学习本身。</em></h1>
         <p>面向机构内部的录播课程空间。按系列组织内容，保留学习进度，随时从上次的位置继续。</p>
       </div>
 
