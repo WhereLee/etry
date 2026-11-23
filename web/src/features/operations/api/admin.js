@@ -24,6 +24,22 @@ export function getUserSeries(id) {
   return get(`/admin/users/${id}/series`)
 }
 
+export function getUserEntitlements(id) {
+  return get(`/admin/users/${id}/entitlements`)
+}
+
+export function listRoles() {
+  return get('/admin/roles')
+}
+
+export function getUserRoles(id) {
+  return get(`/admin/users/${id}/roles`)
+}
+
+export function assignUserRoles(id, roleCodes) {
+  return put(`/admin/users/${id}/roles`, { roleCodes })
+}
+
 export function assignUserSeries(id, seriesIds) {
   return put(`/admin/users/${id}/series`, { seriesIds })
 }

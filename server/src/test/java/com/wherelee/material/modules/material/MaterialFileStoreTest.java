@@ -44,6 +44,6 @@ class MaterialFileStoreTest {
     private MaterialRecord material(String fileKey) {
         LocalDateTime now = LocalDateTime.now();
         return new MaterialRecord(1L, "测试资料", "EXAM_PAPER", "SENIOR", "数学", "简介",
-                990, "CNY", 2, 1, null, fileKey, MaterialRecord.ON_SALE, now, now, now);
+                990, "CNY", 2, 1, null, fileKey, MaterialRecord.ON_SALE, now, now, now, false);
     }
 }

@@ -24,13 +24,17 @@ const consoleNav = computed(() => {
       { to: '/admin/users', label: '用户管理', icon: 'User' },
       { to: '/admin/teacher-invitations', label: '教师邀请', icon: 'Link' },
       { to: '/admin/series', label: '内容管理', icon: 'Collection' },
+      { to: '/admin/materials', label: '资料管理', icon: 'Document' },
       { to: '/admin/orders', label: '订单管理', icon: 'Tickets' },
       { to: '/admin/reconciliation', label: '资金对账', icon: 'DataLine' },
+      { to: '/admin/audit-logs', label: '审计日志', icon: 'Clock' },
+      { to: '/admin/system', label: '系统配置', icon: 'Key' },
       { to: '/password', label: '修改密码', icon: 'Lock' }
     ]
   }
   return [
     { to: '/teacher/series', label: '我的系列', icon: 'Reading' },
+    { to: '/admin/materials', label: '资料管理', icon: 'Document' },
     { to: '/password', label: '修改密码', icon: 'Lock' }
   ]
 })

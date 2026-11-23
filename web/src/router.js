@@ -95,6 +95,12 @@ const routes = [
     meta: { auth: true, role: 'ADMIN' }
   },
   {
+    path: '/admin/materials',
+    name: 'adminMaterials',
+    component: () => import('@/features/operations/views/AdminMaterials.vue'),
+    meta: { auth: true, roles: ['ADMIN', 'TEACHER'] }
+  },
+  {
     path: '/admin/orders',
     name: 'adminOrders',
     component: () => import('@/features/operations/views/AdminOrders.vue'),
@@ -104,6 +110,18 @@ const routes = [
     path: '/admin/reconciliation',
     name: 'adminReconciliation',
     component: () => import('@/features/operations/views/AdminReconciliation.vue'),
+    meta: { auth: true, role: 'ADMIN' }
+  },
+  {
+    path: '/admin/audit-logs',
+    name: 'adminAuditLogs',
+    component: () => import('@/features/operations/views/AdminAuditLogs.vue'),
+    meta: { auth: true, role: 'ADMIN' }
+  },
+  {
+    path: '/admin/system',
+    name: 'adminSystem',
+    component: () => import('@/features/operations/views/AdminSystem.vue'),
     meta: { auth: true, role: 'ADMIN' }
   },
   {
@@ -146,6 +164,9 @@ router.beforeEach((to) => {
     return { name: 'password', query: { forced: '1' } }
   }
   if (to.meta.role && !hasRole(to.meta.role)) {
+    return homePath()
+  }
+  if (to.meta.roles && !to.meta.roles.some((role) => hasRole(role))) {
     return homePath()
   }
   if (to.name === 'login' && isLoggedIn()) {

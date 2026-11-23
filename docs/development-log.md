@@ -164,3 +164,61 @@
 - 原因: 项目图标在 main.js 手工全局注册，非全量自动导入
 - 解决: main.js 导入并注册 Download
 - 预防: 用新图标前先查 main.js 注册清单
+
+## 2026-11-23 阶段6（运营端）
+
+### 问题: AccessDeniedException 被吞成 500 而非 403
+- 场景: 无权限点身份调用 @PreAuthorize 管理端接口
+- 现象: 期望 403「没有权限执行该操作」，实际 500
+- 原因: Spring Security 的 AccessDeniedException 冒泡到通用 Exception 兜底分支
+- 解决: GlobalExceptionHandler 显式 @ExceptionHandler(AccessDeniedException) 返回 403 固定文案
+- 预防: 鉴权异常必须有独立处理分支，不能落进通用 500 兜底
+
+### 问题: Git Bash 原生 curl 把命令行中文按 GBK 转码
+- 场景: 冒烟脚本管理端 keyword 中文筛选（检查 27/28）
+- 现象: 服务端收到乱码关键词，筛选 total=0
+- 原因: Windows Git Bash 的 curl 按 ANSI(GBK) 编码 argv 中文，且读不了 MSYS 临时路径
+- 解决: 关键词写入相对路径 UTF-8 文件，python `urllib.parse.quote` 预编码后拼 URL
+- 预防: 含中文的查询参数一律走 UTF-8 文件 + 百分号编码，不直接放 curl argv
+
+### 问题: MockMvc 响应中文按默认字符集读取乱码
+- 场景: 集成测试断言审计 errorMessage 含「角色不存在」
+- 现象: 断言拿到「????GHOST」
+- 原因: `getContentAsString()` 用默认 ISO-8859-1，中文被破坏（DB 与写入路径均为 utf8mb4，无损）
+- 解决: 解析响应树改用 `getContentAsString(StandardCharsets.UTF_8)`
+- 预防: MockMvc 凡断言/解析中文响应体必须显式 UTF-8
+
+### 问题: 新表与跨模块读未登记导致表归属测试红
+- 场景: 新增 t_refund_request 与 RefundRequestRepository join t_user
+- 现象: TableOwnershipTest 报「访问未登记归属的表」「跨归属访问 t_user」
+- 原因: 每张表须登记 OWNER，跨模块 SQL join 须登记 READ_MODEL_EXEMPTIONS
+- 解决: OWNER 增 `t_refund_request→commerce`；豁免增 `RefundRequestRepository→{t_user}`（测试既有的登记机制，非放宽断言）
+- 预防: 新增表/跨模块读模型时同步登记归属与豁免，这是架构守卫的正式入口
+
+### 问题: 注册即授 BUYER 导致角色断言漏项
+- 场景: 集成测试断言超管角色集合
+- 现象: containsExactly("SUPER_ADMIN") 失败
+- 原因: register 默认授 BUYER，超管同时持有 BUYER+ SUPER_ADMIN
+- 解决: 改 containsExactlyInAnyOrder("BUYER","SUPER_ADMIN")
+- 预防: 角色断言先核对注册默认授角逻辑
+
+### 问题: 退款申请并发同意的重复退款防护
+- 场景: 6 线程同时 approve 同一退款申请
+- 现象: 需保证恰好退款一次
+- 原因: 先查后改存在竞态
+- 解决: 条件抢占 `UPDATE ... WHERE id=? AND status='PENDING'`，命中才调 RefundService.refund；退款抛异常则 revertToPending 回滚抢占
+- 预防: 一次性资金动作一律「条件更新抢占 + 失败回滚」，并以真并发集成测试断言恰好一次
+
+### 问题: 浏览器合成点击不触发 Vue 事件处理器
+- 场景: 浏览器 E2E 点登录/退出/角色按钮均无反应
+- 现象: click 工具报成功但无网络请求、对话框不弹
+- 原因: 自动化合成点击未派发 Vue 监听的真实事件
+- 解决: evaluate_script 内用原生 `element.click()` 驱动；输入框用原生 value setter + dispatch input 事件触发响应式
+- 预防: 本环境浏览器交互优先原生 DOM 事件，表单提交可用回车或原生 click
+
+### 问题: Git Bash /tmp 与 Windows python 路径不一致
+- 场景: bash 重定向到 /tmp 后 python 读同路径
+- 现象: python FileNotFoundError（curl 却 HTTP 200）
+- 原因: MSYS /tmp 映射到真实临时目录，Windows python 把 '/tmp' 当字面盘符路径
+- 解决: 改用管道喂 python stdin，或落到工作目录相对路径
+- 预防: 跨 bash/python 交换文件用相对路径或 stdin，不共用 /tmp 绝对路径

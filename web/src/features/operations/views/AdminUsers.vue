@@ -2,11 +2,15 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import {
+  assignUserRoles,
   assignUserSeries,
   changeUserStatus,
   createUser,
+  getUserEntitlements,
+  getUserRoles,
   getUserSeries,
   listAllSeries,
+  listRoles,
   listUsers,
   resetUserPassword
 } from '@/features/operations/api/admin'
@@ -38,6 +42,18 @@ const seriesSaving = ref(false)
 const seriesTarget = ref(null)
 const seriesOptions = ref([])
 const selectedSeries = ref([])
+
+const entitlementOpen = ref(false)
+const entitlementLoading = ref(false)
+const entitlementTarget = ref(null)
+const entitlements = ref([])
+
+const rolesOpen = ref(false)
+const rolesLoading = ref(false)
+const rolesSaving = ref(false)
+const rolesTarget = ref(null)
+const roleOptions = ref([])
+const selectedRoles = ref([])
 
 const totalPages = computed(() => Math.max(1, Math.ceil(state.value.total / state.value.size)))
 const rangeStart = computed(() => state.value.total ? (state.value.page - 1) * state.value.size + 1 : 0)
@@ -277,6 +293,78 @@ function beforeSeriesClose(done) {
   done()
 }
 
+async function openEntitlements(user) {
+  resetFeedback()
+  entitlementTarget.value = user
+  entitlements.value = []
+  entitlementLoading.value = true
+  entitlementOpen.value = true
+  try {
+    entitlements.value = await getUserEntitlements(user.id)
+  } catch (e) {
+    dialogError.value = e.message
+  } finally {
+    entitlementLoading.value = false
+  }
+}
+
+function closeEntitlements() {
+  entitlementOpen.value = false
+  entitlementTarget.value = null
+  entitlements.value = []
+  dialogError.value = ''
+}
+
+function productTypeLabel(type) {
+  return { MATERIAL: '电子资料', COURSE_SERIES: '课程系列' }[type] || type
+}
+
+async function openRoles(user) {
+  if (isSelf(user)) return
+  resetFeedback()
+  rolesTarget.value = user
+  selectedRoles.value = []
+  rolesLoading.value = true
+  rolesOpen.value = true
+  try {
+    if (!roleOptions.value.length) roleOptions.value = await listRoles()
+    selectedRoles.value = await getUserRoles(user.id)
+  } catch (e) {
+    dialogError.value = e.message
+  } finally {
+    rolesLoading.value = false
+  }
+}
+
+function closeRoles() {
+  if (rolesSaving.value) return
+  rolesOpen.value = false
+  rolesTarget.value = null
+  selectedRoles.value = []
+  dialogError.value = ''
+}
+
+function beforeRolesClose(done) {
+  if (rolesSaving.value) return
+  dialogError.value = ''
+  done()
+}
+
+async function saveRoles() {
+  resetFeedback()
+  rolesSaving.value = true
+  try {
+    await assignUserRoles(rolesTarget.value.id, selectedRoles.value)
+    notice.value = `已更新 ${rolesTarget.value.username} 的角色，权限即时生效`
+    rolesOpen.value = false
+    await load()
+  } catch (e) {
+    dialogError.value = e.message
+  } finally {
+    rolesSaving.value = false
+  }
+}
+
 async function saveSeries() {
   resetFeedback()
   seriesSaving.value = true
@@ -380,10 +468,12 @@ async function saveSeries() {
         <el-table-column label="创建时间" min-width="145">
           <template #default="{ row }"><span class="date-text">{{ formatDate(row.createdAt) }}</span></template>
         </el-table-column>
-        <el-table-column label="操作" width="285" fixed="right">
+        <el-table-column label="操作" width="400" fixed="right">
           <template #default="{ row }">
             <div class="row-actions">
               <el-button v-if="row.role === 'STUDENT'" link type="primary" :disabled="!!busy || row.status !== 'ACTIVE'" @click="openSeries(row)">分配系列</el-button>
+              <el-button link type="primary" :disabled="!!busy" @click="openEntitlements(row)">已购权益</el-button>
+              <el-button link type="primary" :disabled="isSelf(row) || !!busy" @click="openRoles(row)">角色</el-button>
               <el-button link type="primary" :disabled="isSelf(row) || !!busy" @click="openReset(row)">重置密码</el-button>
               <el-button link :type="row.status === 'ACTIVE' ? 'danger' : 'success'" :disabled="isSelf(row) || !!busy" @click="toggleStatus(row)">
                 {{ row.status === 'ACTIVE' ? '停用' : '启用' }}
@@ -470,6 +560,55 @@ async function saveSeries() {
       <template #footer>
         <el-button :disabled="seriesSaving" @click="closeSeries">取消</el-button>
         <el-button type="primary" :loading="seriesSaving" :disabled="seriesLoading" @click="saveSeries">保存分配</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="rolesOpen" :title="`调整 ${rolesTarget?.nickname || rolesTarget?.username || ''} 的角色`" width="620px" align-center :before-close="beforeRolesClose">
+      <div class="dialog-kicker">RBAC ROLES</div>
+      <p class="hint">勾选后台角色后保存，接口权限按角色权限点即时生效；不勾选任何角色即收回全部后台权限。</p>
+      <el-alert v-if="dialogError" :title="dialogError" type="error" :closable="false" show-icon class="dialog-error" />
+      <div v-loading="rolesLoading" class="series-dialog-body">
+        <el-empty v-if="!rolesLoading && !roleOptions.length" description="没有可用角色" />
+        <el-checkbox-group v-else v-model="selectedRoles" class="series-options">
+          <el-checkbox v-for="item in roleOptions" :key="item.code" :value="item.code" border class="series-option">
+            <span>{{ item.name }}</span>
+            <small class="role-code">{{ item.code }} · {{ item.permissions.length }} 个权限点</small>
+          </el-checkbox>
+        </el-checkbox-group>
+      </div>
+      <template #footer>
+        <el-button :disabled="rolesSaving" @click="closeRoles">取消</el-button>
+        <el-button type="primary" :loading="rolesSaving" :disabled="rolesLoading" @click="saveRoles">保存角色</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog
+      v-model="entitlementOpen"
+      :title="`${entitlementTarget?.nickname || entitlementTarget?.username || ''} 的已购权益`"
+      width="560px"
+      align-center
+      @close="closeEntitlements"
+    >
+      <div class="dialog-kicker">USER ENTITLEMENTS</div>
+      <p class="hint">客服视角：该账号当前有效的电子资料与课程系列权益，退款回收后不再展示。</p>
+      <el-alert v-if="dialogError" :title="dialogError" type="error" :closable="false" show-icon class="dialog-error" />
+      <div v-loading="entitlementLoading" class="series-dialog-body">
+        <el-empty v-if="!entitlementLoading && !entitlements.length" description="该账号暂无有效权益" />
+        <el-table v-else :data="entitlements" size="small" stripe>
+          <el-table-column label="类型" width="110">
+            <template #default="{ row }">
+              <el-tag :type="row.productType === 'MATERIAL' ? 'success' : 'primary'" effect="light" size="small">
+                {{ productTypeLabel(row.productType) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="商品" min-width="220">
+            <template #default="{ row }">{{ row.title }}</template>
+          </el-table-column>
+          <el-table-column label="商品ID" prop="productId" width="90" />
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button @click="entitlementOpen = false">关闭</el-button>
       </template>
     </el-dialog>
   </main>
@@ -637,6 +776,13 @@ async function saveSeries() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.role-code {
+  margin-left: 6px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 @media (max-width: 940px) {

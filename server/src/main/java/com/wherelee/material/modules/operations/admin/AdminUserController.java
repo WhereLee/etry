@@ -10,9 +10,9 @@ import com.wherelee.material.modules.platform.aop.AdminAudit;
 import com.wherelee.material.modules.platform.aop.Idempotent;
 import com.wherelee.material.modules.platform.aop.Measured;
 import com.wherelee.material.modules.platform.aop.RateLimit;
-import com.wherelee.material.modules.platform.aop.RequireRole;
 import com.wherelee.material.modules.platform.common.PageResult;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,7 +36,7 @@ public class AdminUserController {
     }
 
     @GetMapping("/users")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:read')")
     @Measured("admin.user.page")
     public PageResult<AdminUserVO> users(@RequestParam(required = false) String keyword,
                                          @RequestParam(required = false) String role,
@@ -46,8 +46,16 @@ public class AdminUserController {
         return service.page(keyword, role, status, page, size);
     }
 
+    @GetMapping("/users/{id}/entitlements")
+    @PreAuthorize("hasAuthority('user:read')")
+    @Measured("admin.user.entitlements")
+    public List<com.wherelee.material.modules.operations.admin.dto.UserEntitlementView> entitlements(
+            @PathVariable Long id) {
+        return service.entitlements(id);
+    }
+
     @PostMapping("/users")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:manage')")
     @RateLimit(key = "admin:createUser", limit = 30, windowSeconds = 60)
     @Idempotent(key = "admin:createUser", windowSeconds = 5)
     @Measured("admin.user.create")
@@ -57,7 +65,7 @@ public class AdminUserController {
     }
 
     @PutMapping("/users/{id}/status")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:manage')")
     @Idempotent(key = "admin:changeUserStatus", windowSeconds = 3)
     @Measured("admin.user.status")
     @AdminAudit(action = "USER_STATUS_CHANGE", targetType = "USER", targetIdArg = 1)
@@ -68,7 +76,7 @@ public class AdminUserController {
     }
 
     @PutMapping("/users/{id}/password")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:manage')")
     @Idempotent(key = "admin:resetUserPassword", windowSeconds = 5)
     @Measured("admin.user.resetPassword")
     @AdminAudit(action = "USER_PASSWORD_RESET", targetType = "USER", targetIdArg = 1)
@@ -79,21 +87,21 @@ public class AdminUserController {
     }
 
     @GetMapping("/series")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:read')")
     @Measured("admin.series.options")
     public List<SeriesOptionVO> series() {
         return service.seriesOptions();
     }
 
     @GetMapping("/users/{id}/series")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:read')")
     @Measured("admin.user.series")
     public List<Long> userSeries(@PathVariable Long id) {
         return service.seriesIds(id);
     }
 
     @PutMapping("/users/{id}/series")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:manage')")
     @Idempotent(key = "admin:assignSeries", windowSeconds = 3)
     @Measured("admin.user.assignSeries")
     @AdminAudit(action = "USER_SERIES_ASSIGN", targetType = "USER", targetIdArg = 0)

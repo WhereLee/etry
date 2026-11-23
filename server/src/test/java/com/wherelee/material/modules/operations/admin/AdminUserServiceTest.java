@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -39,13 +40,15 @@ class AdminUserServiceTest {
     private EntitlementQuery entitlementQuery;
     @Mock
     private CourseGovernance courseGovernance;
+    @Mock
+    private com.wherelee.material.modules.material.api.MaterialQuery materialQuery;
 
     private AdminUserService service;
 
     @BeforeEach
     void setUp() {
         service = new AdminUserService(userAccountQuery, userAccounts,
-                entitlementCommand, entitlementQuery, courseGovernance);
+                entitlementCommand, entitlementQuery, courseGovernance, materialQuery);
     }
 
     @Test
@@ -79,5 +82,27 @@ class AdminUserServiceTest {
                 .hasMessage("教师账号必须通过邀请注册");
 
         verifyNoInteractions(userAccountQuery, courseGovernance, userAccounts);
+    }
+
+    @Test
+    void entitlementsMergesMaterialAndSeriesTitles() {
+        when(userAccounts.require(2L)).thenReturn(new UserAccount(2L, "student", "学生", "STUDENT", "ACTIVE"));
+        when(entitlementQuery.listActive(2L, com.wherelee.material.modules.entitlement.api.ProductTypes.MATERIAL))
+                .thenReturn(List.of(new EntitlementQuery.ActiveProduct(7L, "MATERIAL", 1)));
+        when(materialQuery.findFacts(List.of(7L))).thenReturn(List.of(
+                new com.wherelee.material.modules.material.api.MaterialQuery.MaterialFact(
+                        7L, "数学试卷", "EXAM_PAPER", 990, "CNY", "ON_SALE", null)));
+        when(entitlementQuery.listActive(2L, com.wherelee.material.modules.entitlement.api.ProductTypes.COURSE_SERIES))
+                .thenReturn(List.of(new EntitlementQuery.ActiveProduct(3L, "COURSE_SERIES", 2)));
+        when(courseGovernance.publishedOptions())
+                .thenReturn(List.of(new CourseGovernance.SeriesOption(3L, "物理必修一")));
+
+        var views = service.entitlements(2L);
+
+        assertThat(views).hasSize(2);
+        assertThat(views.get(0).productType()).isEqualTo("MATERIAL");
+        assertThat(views.get(0).title()).isEqualTo("数学试卷");
+        assertThat(views.get(1).productType()).isEqualTo("COURSE_SERIES");
+        assertThat(views.get(1).title()).isEqualTo("物理必修一");
     }
 }

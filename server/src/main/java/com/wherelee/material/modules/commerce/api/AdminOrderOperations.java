@@ -1,5 +1,7 @@
 package com.wherelee.material.modules.commerce.api;
 
+import com.wherelee.material.modules.platform.common.PageResult;
+
 import java.util.List;
 
 /**
@@ -22,6 +24,12 @@ public interface AdminOrderOperations {
 
     void refundDuplicate(String orderNo, int attemptNo, Long operatorId,
                          String reason, boolean simulateFailure);
+
+    PageResult<RefundRequestDtos.AdminView> refundRequests(String status, int page, int size);
+
+    void approveRefundRequest(long requestId, Long operatorId);
+
+    void rejectRefundRequest(long requestId, Long operatorId, String note);
 
     record Snapshot(
             OrderDtos.OrderDetail orderDetail,

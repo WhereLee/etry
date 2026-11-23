@@ -4,10 +4,10 @@ import com.wherelee.material.modules.commerce.api.AdminReconciliationOperations;
 import com.wherelee.material.modules.platform.aop.AdminAudit;
 import com.wherelee.material.modules.platform.aop.Measured;
 import com.wherelee.material.modules.platform.aop.RateLimit;
-import com.wherelee.material.modules.platform.aop.RequireRole;
 import com.wherelee.material.modules.platform.common.BizException;
 import com.wherelee.material.modules.platform.common.PageResult;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
@@ -31,13 +31,16 @@ import java.util.List;
 public class AdminReconciliationController {
 
     private final AdminReconciliationOperations operations;
+    private final AdminExportService exportService;
 
-    public AdminReconciliationController(AdminReconciliationOperations operations) {
+    public AdminReconciliationController(AdminReconciliationOperations operations,
+                                         AdminExportService exportService) {
         this.operations = operations;
+        this.exportService = exportService;
     }
 
     @GetMapping("/statements")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('recon:read')")
     @Measured("admin.recon.statements")
     public PageResult<AdminReconciliationOperations.StatementView> statements(
             @RequestParam(defaultValue = "1") int page,
@@ -46,7 +49,7 @@ public class AdminReconciliationController {
     }
 
     @PostMapping(value = "/statements", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('recon:operate')")
     @RateLimit(key = "admin:reconUpload", limit = 10, windowSeconds = 60)
     @Measured("admin.recon.upload")
     @AdminAudit(action = "RECON_STATEMENT_UPLOAD", targetType = "RECONCILIATION")
@@ -69,14 +72,14 @@ public class AdminReconciliationController {
     }
 
     @GetMapping("/statements/{fileId}/runs")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('recon:read')")
     @Measured("admin.recon.runs")
     public List<AdminReconciliationOperations.RunView> runs(@PathVariable long fileId) {
         return operations.runs(fileId);
     }
 
     @PostMapping("/statements/{fileId}/runs")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('recon:operate')")
     @RateLimit(key = "admin:reconRun", limit = 10, windowSeconds = 60)
     @Measured("admin.recon.run")
     @AdminAudit(action = "RECON_RUN", targetType = "RECONCILIATION")
@@ -87,7 +90,7 @@ public class AdminReconciliationController {
     }
 
     @GetMapping("/runs/{runId}/breaks")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('recon:read')")
     @Measured("admin.recon.breaks")
     public PageResult<AdminReconciliationOperations.BreakView> breaks(
             @PathVariable long runId,
@@ -97,8 +100,19 @@ public class AdminReconciliationController {
         return operations.breaks(runId, status, page, size);
     }
 
+    @GetMapping("/runs/{runId}/breaks/export")
+    @PreAuthorize("hasAuthority('recon:read')")
+    @Measured("admin.recon.breaks.export")
+    public void exportBreaks(@PathVariable long runId,
+                             jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=recon-breaks-" + runId + ".xlsx");
+        exportService.exportBreaks(response.getOutputStream(), runId);
+    }
+
     @PostMapping("/breaks/{breakId}/actions")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('recon:operate')")
     @Measured("admin.recon.breakAction")
     @AdminAudit(action = "RECON_BREAK_ACTION", targetType = "RECONCILIATION")
     public AdminReconciliationOperations.BreakView act(

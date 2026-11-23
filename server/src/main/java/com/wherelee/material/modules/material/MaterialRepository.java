@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -32,7 +33,8 @@ public class MaterialRepository {
             rs.getString("sale_status"),
             toLocal(rs.getTimestamp("sale_updated_at")),
             toLocal(rs.getTimestamp("created_at")),
-            toLocal(rs.getTimestamp("updated_at"))
+            toLocal(rs.getTimestamp("updated_at")),
+            rs.getBoolean("featured")
     );
 
     private final JdbcTemplate jdbc;
@@ -59,12 +61,12 @@ public class MaterialRepository {
         if (category == null || category.isBlank()) {
             return jdbc.query("""
                     SELECT * FROM t_material WHERE sale_status = 'ON_SALE'
-                    ORDER BY id DESC LIMIT ? OFFSET ?
+                    ORDER BY featured DESC, id DESC LIMIT ? OFFSET ?
                     """, MAPPER, limit, offset);
         }
         return jdbc.query("""
                 SELECT * FROM t_material WHERE sale_status = 'ON_SALE' AND category = ?
-                ORDER BY id DESC LIMIT ? OFFSET ?
+                ORDER BY featured DESC, id DESC LIMIT ? OFFSET ?
                 """, MAPPER, category, limit, offset);
     }
 
@@ -73,7 +75,7 @@ public class MaterialRepository {
                 SELECT * FROM t_material
                 WHERE sale_status = 'ON_SALE'
                   AND MATCH(title, summary) AGAINST (? IN NATURAL LANGUAGE MODE)
-                ORDER BY id DESC LIMIT ?
+                ORDER BY featured DESC, id DESC LIMIT ?
                 """, MAPPER, keyword, limit);
     }
 
@@ -96,8 +98,8 @@ public class MaterialRepository {
             PreparedStatement ps = connection.prepareStatement("""
                     INSERT INTO t_material
                         (title, category, stage, subject, summary, price_cents, currency,
-                         page_count, preview_pages, cover_key, file_key, sale_status, sale_updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         page_count, preview_pages, cover_key, file_key, sale_status, sale_updated_at, featured)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, material.title());
             ps.setString(2, material.category());
@@ -113,6 +115,7 @@ public class MaterialRepository {
             ps.setString(12, material.saleStatus());
             ps.setTimestamp(13, material.saleUpdatedAt() == null
                     ? null : Timestamp.valueOf(material.saleUpdatedAt()));
+            ps.setBoolean(14, material.featured());
             return ps;
         }, keyHolder);
         return keyHolder.getKey().longValue();
@@ -123,6 +126,65 @@ public class MaterialRepository {
                 UPDATE t_material SET sale_status = ?, sale_updated_at = CURRENT_TIMESTAMP(3)
                 WHERE id = ?
                 """, saleStatus, id);
+    }
+
+    public int update(MaterialRecord m) {
+        return jdbc.update("""
+                UPDATE t_material
+                SET title = ?, category = ?, stage = ?, subject = ?, summary = ?,
+                    price_cents = ?, currency = ?, page_count = ?, preview_pages = ?, cover_key = ?
+                WHERE id = ?
+                """, m.title(), m.category(), m.stage(), m.subject(), m.summary(),
+                m.priceCents(), m.currency(), m.pageCount(), m.previewPages(), m.coverKey(), m.id());
+    }
+
+    public int updateFileKey(long id, String fileKey) {
+        return jdbc.update("UPDATE t_material SET file_key = ? WHERE id = ?", fileKey, id);
+    }
+
+    public int setFeatured(long id, boolean featured) {
+        return jdbc.update("UPDATE t_material SET featured = ? WHERE id = ?", featured, id);
+    }
+
+    public List<MaterialRecord> adminPage(String keyword, String category, String saleStatus,
+                                          int limit, long offset) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM t_material WHERE 1=1");
+        List<Object> args = new ArrayList<>();
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND title LIKE ?");
+            args.add("%" + keyword.strip() + "%");
+        }
+        if (category != null && !category.isBlank()) {
+            sql.append(" AND category = ?");
+            args.add(category);
+        }
+        if (saleStatus != null && !saleStatus.isBlank()) {
+            sql.append(" AND sale_status = ?");
+            args.add(saleStatus);
+        }
+        sql.append(" ORDER BY id DESC LIMIT ? OFFSET ?");
+        args.add(limit);
+        args.add(offset);
+        return jdbc.query(sql.toString(), MAPPER, args.toArray());
+    }
+
+    public long countAdmin(String keyword, String category, String saleStatus) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM t_material WHERE 1=1");
+        List<Object> args = new ArrayList<>();
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND title LIKE ?");
+            args.add("%" + keyword.strip() + "%");
+        }
+        if (category != null && !category.isBlank()) {
+            sql.append(" AND category = ?");
+            args.add(category);
+        }
+        if (saleStatus != null && !saleStatus.isBlank()) {
+            sql.append(" AND sale_status = ?");
+            args.add(saleStatus);
+        }
+        Long count = jdbc.queryForObject(sql.toString(), Long.class, args.toArray());
+        return count == null ? 0 : count;
     }
 
     private static LocalDateTime toLocal(Timestamp timestamp) {

@@ -5,6 +5,7 @@ import com.wherelee.material.modules.platform.aop.RateLimit;
 import com.wherelee.material.modules.platform.aop.RequireRole;
 import com.wherelee.material.modules.platform.common.PageResult;
 import com.wherelee.material.modules.commerce.api.OrderDtos;
+import com.wherelee.material.modules.commerce.api.RefundRequestDtos;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrderController {
 
     private final OrderService orderService;
+    private final RefundRequestService refundRequestService;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, RefundRequestService refundRequestService) {
         this.orderService = orderService;
+        this.refundRequestService = refundRequestService;
     }
 
     @PostMapping
@@ -58,5 +61,23 @@ public class OrderController {
     public OrderDtos.OrderView close(@RequestAttribute("userId") Long userId,
                                      @PathVariable String orderNo) {
         return orderService.close(userId, orderNo);
+    }
+
+    @PostMapping("/{orderNo}/refund-request")
+    @RequireRole("STUDENT")
+    @RateLimit(key = "order:refundRequest", limit = 5, windowSeconds = 60)
+    @Measured("order.refundRequest")
+    public RefundRequestDtos.BuyerView requestRefund(@RequestAttribute("userId") Long userId,
+                                                     @PathVariable String orderNo,
+                                                     @Valid @RequestBody RefundRequestDtos.SubmitRequest request) {
+        return refundRequestService.request(userId, orderNo, request.reason());
+    }
+
+    @GetMapping("/{orderNo}/refund-request")
+    @RequireRole("STUDENT")
+    @Measured("order.refundRequest.get")
+    public RefundRequestDtos.BuyerView refundRequest(@RequestAttribute("userId") Long userId,
+                                                     @PathVariable String orderNo) {
+        return refundRequestService.latest(userId, orderNo);
     }
 }

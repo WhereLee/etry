@@ -20,6 +20,7 @@ public class RbacSeedContributor implements SeedContributor {
             new String[]{"material:update", "资料编辑", "material"},
             new String[]{"material:sale", "资料上下架", "material"},
             new String[]{"order:read", "订单查询", "commerce"},
+            new String[]{"order:operate", "订单运维（查单/补履约/关单）", "commerce"},
             new String[]{"refund:operate", "退款处理", "commerce"},
             new String[]{"recon:read", "对账查询", "commerce"},
             new String[]{"recon:operate", "对账处理", "commerce"},

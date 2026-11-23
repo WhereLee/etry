@@ -2,21 +2,26 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import {
+  approveRefundRequest,
   closeAdminOrder,
   fulfillAdminOrder,
   getAdminOrder,
   listAdminOrderExceptions,
   listAdminOrders,
+  listRefundRequests,
   queryAdminOrder,
   refundDuplicateAdminOrder,
-  refundAdminOrder
+  refundAdminOrder,
+  rejectRefundRequest
 } from '@/features/operations/api/order'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusTag from '@/components/StatusTag.vue'
+import { download } from '@/shared/api/http'
 
 const loading = ref(true)
 const error = ref('')
 const notice = ref('')
+const exportBusy = ref(false)
 const pageData = ref({ records: [], total: 0, page: 1, size: 20 })
 const filters = reactive({ keyword: '', status: '', page: 1, size: 20 })
 const exceptionsOnly = ref(false)
@@ -29,6 +34,12 @@ const refundOpen = ref(false)
 const refundBusy = ref(false)
 const refundAttemptNo = ref(null)
 const refundForm = reactive({ reason: '', simulateFailure: false })
+
+const requestsOpen = ref(false)
+const requestsLoading = ref(false)
+const requestBusy = ref('')
+const requestStatus = ref('PENDING')
+const requests = ref([])
 
 const statusOptions = [
   ['CREATED', '待支付'], ['PAYING', '支付中'], ['PAID', '已支付'], ['FULFILLED', '已完成'],
@@ -58,9 +69,103 @@ async function load() {
   }
 }
 
+async function exportOrders() {
+  error.value = ''
+  notice.value = ''
+  exportBusy.value = true
+  try {
+    await download('/admin/orders/export', 'orders-export.xlsx', {
+      keyword: filters.keyword.trim() || undefined,
+      status: filters.status || undefined
+    })
+    notice.value = '订单报表已开始下载（最多 10000 行）'
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    exportBusy.value = false
+  }
+}
+
 function search() {
   filters.page = 1
   load()
+}
+
+async function openRequests() {
+  requestsOpen.value = true
+  await loadRequests()
+}
+
+async function loadRequests() {
+  requestsLoading.value = true
+  try {
+    const data = await listRefundRequests({ status: requestStatus.value || undefined, page: 1, size: 50 })
+    requests.value = data.records
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    requestsLoading.value = false
+  }
+}
+
+async function approveRequest(row) {
+  try {
+    await ElMessageBox.confirm(
+      `同意后将按原渠道整单退款 ${row.orderNo}，并回收已发放权益。确认同意？`,
+      '同意退款申请',
+      { type: 'warning', confirmButtonText: '同意并退款', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  requestBusy.value = `approve-${row.id}`
+  error.value = ''
+  notice.value = ''
+  try {
+    await approveRefundRequest(row.id)
+    notice.value = `已同意 ${row.orderNo} 的退款申请，退款发起后权益自动回收`
+    await loadRequests()
+    await load()
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    requestBusy.value = ''
+  }
+}
+
+async function rejectRequest(row) {
+  let note
+  try {
+    const result = await ElMessageBox.prompt('请填写拒绝理由（将展示给买家）', '拒绝退款申请', {
+      confirmButtonText: '确认拒绝',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：资料已下载完成',
+      inputValidator: (value) => (value && value.trim() ? true : '请填写拒绝理由')
+    })
+    note = result.value.trim()
+  } catch {
+    return
+  }
+  requestBusy.value = `reject-${row.id}`
+  error.value = ''
+  notice.value = ''
+  try {
+    await rejectRefundRequest(row.id, note)
+    notice.value = `已拒绝 ${row.orderNo} 的退款申请`
+    await loadRequests()
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    requestBusy.value = ''
+  }
+}
+
+function requestStatusLabel(status) {
+  return { PENDING: '待处理', APPROVED: '已同意', REJECTED: '已拒绝' }[status] || status
+}
+
+function requestStatusType(status) {
+  return { PENDING: 'warning', APPROVED: 'success', REJECTED: 'info' }[status] || 'info'
 }
 
 function clearFilters() {
@@ -178,6 +283,14 @@ function timelineType(type) {
   <main class="page admin-orders-page">
     <PageHeader eyebrow="ORDER OPERATIONS" title="订单管理" description="查看支付状态、处理异常订单、补履约和全额退款。">
       <template #actions>
+        <el-button type="warning" plain @click="openRequests">
+          <el-icon><Clock /></el-icon>
+          退款申请
+        </el-button>
+        <el-button :loading="exportBusy" @click="exportOrders">
+          <el-icon><Download /></el-icon>
+          导出 Excel
+        </el-button>
         <el-button :type="exceptionsOnly ? 'warning' : 'default'" @click="toggleExceptions">
           {{ exceptionsOnly ? '查看全部订单' : '只看异常订单' }}
         </el-button>
@@ -362,6 +475,51 @@ function timelineType(type) {
         <el-button type="danger" :loading="refundBusy" @click="submitRefund">确认退款</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="requestsOpen" title="买家退款申请" width="860px" align-center>
+      <div class="requests-toolbar">
+        <el-radio-group v-model="requestStatus" size="small" @change="loadRequests">
+          <el-radio-button value="PENDING">待处理</el-radio-button>
+          <el-radio-button value="APPROVED">已同意</el-radio-button>
+          <el-radio-button value="REJECTED">已拒绝</el-radio-button>
+          <el-radio-button value="">全部</el-radio-button>
+        </el-radio-group>
+        <el-button size="small" :loading="requestsLoading" @click="loadRequests">刷新</el-button>
+      </div>
+      <el-table v-loading="requestsLoading" :data="requests" size="small" stripe max-height="420">
+        <el-table-column label="订单" min-width="170">
+          <template #default="{ row }">
+            <div class="request-order">
+              <strong>{{ row.orderNo }}</strong>
+              <span>{{ row.username }} · ¥{{ (row.priceCents / 100).toFixed(2) }} · {{ row.orderStatus }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="申请理由" prop="reason" min-width="160" show-overflow-tooltip />
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="requestStatusType(row.status)" size="small" effect="light">{{ requestStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="申请时间" min-width="140">
+          <template #default="{ row }">{{ String(row.createdAt || '').replace('T', ' ').slice(0, 16) }}</template>
+        </el-table-column>
+        <el-table-column label="处理备注" prop="handleNote" min-width="130" show-overflow-tooltip />
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <template v-if="row.status === 'PENDING'">
+              <el-button link type="danger" :disabled="!!requestBusy" @click="approveRequest(row)">同意退款</el-button>
+              <el-button link type="primary" :disabled="!!requestBusy" @click="rejectRequest(row)">拒绝</el-button>
+            </template>
+            <span v-else class="request-done">已处理</span>
+          </template>
+        </el-table-column>
+        <template #empty><el-empty description="暂无退款申请" :image-size="60" /></template>
+      </el-table>
+      <template #footer>
+        <el-button @click="requestsOpen = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </main>
 </template>
 
@@ -517,5 +675,34 @@ function timelineType(type) {
   .status-select {
     width: calc(100% - 130px);
   }
+}
+
+.requests-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.request-order {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.request-order strong {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.request-order span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.request-done {
+  color: var(--muted);
+  font-size: 11px;
 }
 </style>

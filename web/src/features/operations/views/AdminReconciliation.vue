@@ -10,10 +10,12 @@ import {
   uploadStatement
 } from '@/features/operations/api/reconciliation'
 import PageHeader from '@/components/PageHeader.vue'
+import { download } from '@/shared/api/http'
 
 const loading = ref(false)
 const uploadBusy = ref(false)
 const runBusy = ref(false)
+const exportBusy = ref(false)
 const error = ref('')
 const notice = ref('')
 const pageData = ref({ records: [], total: 0, page: 1, size: 20 })
@@ -139,6 +141,22 @@ async function loadBreaks() {
     })
   } catch (e) {
     error.value = e.message
+  }
+}
+
+async function exportBreaks() {
+  if (!activeRun.value) return
+  error.value = ''
+  notice.value = ''
+  exportBusy.value = true
+  try {
+    await download(`/admin/reconciliation/runs/${activeRun.value.id}/breaks/export`,
+      `recon-breaks-${activeRun.value.id}.xlsx`)
+    notice.value = '对账差异报表已开始下载（最多 10000 行）'
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    exportBusy.value = false
   }
 }
 
@@ -327,12 +345,18 @@ function statusType(status) {
           </el-descriptions>
           <div class="break-toolbar">
             <span>差异工作台</span>
-            <el-select v-model="breakStatus" size="small" clearable placeholder="全部状态" @change="loadBreaks">
-              <el-option label="待处理" value="OPEN" />
-              <el-option label="处理中" value="IN_REVIEW" />
-              <el-option label="已解决" value="RESOLVED" />
-              <el-option label="已忽略" value="IGNORED" />
-            </el-select>
+            <div class="break-toolbar-actions">
+              <el-select v-model="breakStatus" size="small" clearable placeholder="全部状态" @change="loadBreaks">
+                <el-option label="待处理" value="OPEN" />
+                <el-option label="处理中" value="IN_REVIEW" />
+                <el-option label="已解决" value="RESOLVED" />
+                <el-option label="已忽略" value="IGNORED" />
+              </el-select>
+              <el-button size="small" :loading="exportBusy" @click="exportBreaks">
+                <el-icon><Download /></el-icon>
+                导出差异
+              </el-button>
+            </div>
           </div>
           <el-table :data="breaks.records" size="small" empty-text="暂无差异">
             <el-table-column prop="breakType" label="差异类型" min-width="160" />
@@ -395,6 +419,8 @@ function statusType(status) {
 .run-pill small { color: var(--muted); }
 .run-summary { margin-top: 8px; }
 .break-toolbar { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 10px; font-weight: 600; }
+.break-toolbar-actions { display: flex; align-items: center; gap: 8px; }
+.break-toolbar-actions .el-select { width: 130px; }
 .feedback { margin-bottom: 16px; }
 @media (max-width: 900px) { .upload-grid { grid-template-columns: 1fr; } .panel { padding: 16px; } }
 </style>

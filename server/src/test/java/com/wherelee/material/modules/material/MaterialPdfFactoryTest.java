@@ -61,6 +61,6 @@ class MaterialPdfFactoryTest {
         LocalDateTime now = LocalDateTime.now();
         return new MaterialRecord(1L, "高中数学函数专项突破试卷", "EXAM_PAPER", "SENIOR", "数学",
                 "覆盖函数定义域与单调性。", 990, "CNY", pageCount, previewPages, null,
-                "material/unit.pdf", MaterialRecord.ON_SALE, now, now, now);
+                "material/unit.pdf", MaterialRecord.ON_SALE, now, now, now, false);
     }
 }

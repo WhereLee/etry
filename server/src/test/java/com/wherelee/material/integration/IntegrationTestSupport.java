@@ -175,6 +175,7 @@ public abstract class IntegrationTestSupport {
                 "t_recon_statement_item", "t_recon_statement_file",
                 "t_playback_log", "t_admin_audit_log", "t_alert_log",
                 "t_refund", "t_payment_event", "t_payment_attempt",
+                "t_refund_request",
                 "t_order_item", "t_cart_item", "t_order",
                 "t_outbox_message",
                 "t_entitlement", "t_student_series", "t_learning_progress",

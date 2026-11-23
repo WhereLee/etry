@@ -33,7 +33,7 @@ class MaterialCheckoutIntegrationTest extends IntegrationTestSupport {
         return materialRepository.insert(new MaterialRecord(
                 null, title, "EXAM_PAPER", "SENIOR", "数学", "交易闭环集成资料",
                 priceCents, "CNY", 10, 3, null, "material/checkout.pdf", saleStatus,
-                null, null, null));
+                null, null, null, false));
     }
 
     private OrderDtos.OrderView checkout(List<Long> materialIds, String requestId) {

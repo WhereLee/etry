@@ -2,6 +2,7 @@ package com.wherelee.material.modules.commerce.order;
 
 import com.wherelee.material.modules.commerce.api.AdminOrderOperations;
 import com.wherelee.material.modules.commerce.api.OrderDtos;
+import com.wherelee.material.modules.commerce.api.RefundRequestDtos;
 import com.wherelee.material.modules.commerce.payment.OrderFulfillmentService;
 import com.wherelee.material.modules.commerce.api.PaymentDtos;
 import com.wherelee.material.modules.commerce.payment.PaymentRepository;
@@ -9,6 +10,7 @@ import com.wherelee.material.modules.commerce.payment.PaymentService;
 import com.wherelee.material.modules.commerce.payment.RefundRecord;
 import com.wherelee.material.modules.commerce.payment.RefundService;
 import com.wherelee.material.modules.platform.common.BizException;
+import com.wherelee.material.modules.platform.common.PageResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -26,19 +28,22 @@ public class AdminOrderOperationsService implements AdminOrderOperations {
     private final PaymentService paymentService;
     private final OrderFulfillmentService fulfillmentService;
     private final RefundService refundService;
+    private final RefundRequestService refundRequestService;
 
     public AdminOrderOperationsService(OrderService orderService,
                                        OrderRepository orderRepository,
                                        PaymentRepository paymentRepository,
                                        PaymentService paymentService,
                                        OrderFulfillmentService fulfillmentService,
-                                       RefundService refundService) {
+                                       RefundService refundService,
+                                       RefundRequestService refundRequestService) {
         this.orderService = orderService;
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.paymentService = paymentService;
         this.fulfillmentService = fulfillmentService;
         this.refundService = refundService;
+        this.refundRequestService = refundRequestService;
     }
 
     @Override
@@ -92,6 +97,21 @@ public class AdminOrderOperationsService implements AdminOrderOperations {
     public void refundDuplicate(String orderNo, int attemptNo, Long operatorId,
                                 String reason, boolean simulateFailure) {
         refundService.refundDuplicatePayment(orderNo, attemptNo, operatorId, reason, simulateFailure);
+    }
+
+    @Override
+    public PageResult<RefundRequestDtos.AdminView> refundRequests(String status, int page, int size) {
+        return refundRequestService.adminPage(status, page, size);
+    }
+
+    @Override
+    public void approveRefundRequest(long requestId, Long operatorId) {
+        refundRequestService.approve(requestId, operatorId);
+    }
+
+    @Override
+    public void rejectRefundRequest(long requestId, Long operatorId, String note) {
+        refundRequestService.reject(requestId, operatorId, note);
     }
 
     private PaymentDtos.RefundView refundView(RefundRecord refund, OrderRecord order,

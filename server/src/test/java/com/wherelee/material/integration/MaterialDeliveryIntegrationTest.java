@@ -45,7 +45,7 @@ class MaterialDeliveryIntegrationTest extends IntegrationTestSupport {
     private long insertMaterial(String title, String saleStatus, String fileKey) {
         return materialRepository.insert(new MaterialRecord(
                 null, title, "EXAM_PAPER", "SENIOR", "数学", "交付集成资料",
-                990, "CNY", 10, 3, null, fileKey, saleStatus, null, null, null));
+                990, "CNY", 10, 3, null, fileKey, saleStatus, null, null, null, false));
     }
 
     private String registerBuyer(String username) throws Exception {

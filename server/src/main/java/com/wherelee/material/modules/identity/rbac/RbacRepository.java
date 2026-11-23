@@ -54,6 +54,19 @@ public class RbacRepository {
                 """, String.class, userId);
     }
 
+    public List<String> findPermissionCodesByRole(String roleCode) {
+        return jdbc.queryForList("""
+                SELECT p.code FROM t_role_permission rp
+                JOIN t_role r ON r.id = rp.role_id
+                JOIN t_permission p ON p.id = rp.permission_id
+                WHERE r.code = ? ORDER BY p.code
+                """, String.class, roleCode);
+    }
+
+    public int deleteUserRoles(long userId) {
+        return jdbc.update("DELETE FROM t_user_role WHERE user_id = ?", userId);
+    }
+
     /** 幂等授角色；角色不存在返回 false。 */
     public boolean grantRole(long userId, String roleCode, Long grantedBy) {
         return jdbc.update("""

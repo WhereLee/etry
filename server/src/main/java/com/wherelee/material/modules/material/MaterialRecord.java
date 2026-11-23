@@ -21,7 +21,8 @@ public record MaterialRecord(
         String saleStatus,
         LocalDateTime saleUpdatedAt,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        boolean featured
 ) {
     public static final String ON_SALE = "ON_SALE";
     public static final String OFF_SALE = "OFF_SALE";

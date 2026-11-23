@@ -1,8 +1,8 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { closeOrder, getOrder, payOrder } from '@/features/commerce/api/order'
+import { closeOrder, getOrder, getRefundRequest, payOrder, submitRefundRequest } from '@/features/commerce/api/order'
 import StatusTag from '@/components/StatusTag.vue'
 
 const route = useRoute()
@@ -12,12 +12,19 @@ const loading = ref(true)
 const busy = ref('')
 const error = ref('')
 const detail = ref(null)
+const refundRequest = ref(null)
+const refundOpen = ref(false)
+const refundBusy = ref(false)
+const refundForm = reactive({ reason: '' })
 let pollTimer = null
 let pollCount = 0
 
 const order = computed(() => detail.value?.order || null)
 const isMaterial = computed(() => order.value?.productType === 'MATERIAL')
-const shouldPoll = computed(() => order.value && ['PAYING', 'PAID'].includes(order.value.status))
+const shouldPoll = computed(() => order.value && ['PAYING', 'PAID', 'REFUNDING'].includes(order.value.status))
+const canRequestRefund = computed(() => order.value
+  && ['PAID', 'FULFILLED', 'REFUND_FAILED'].includes(order.value.status)
+  && (!refundRequest.value || refundRequest.value.status === 'REJECTED'))
 
 onMounted(load)
 onBeforeUnmount(stopPolling)
@@ -27,6 +34,7 @@ async function load(silent = false) {
   error.value = ''
   try {
     detail.value = await getOrder(orderNo.value)
+    refundRequest.value = await getRefundRequest(orderNo.value).catch(() => null)
     if (shouldPoll.value) startPolling()
     else stopPolling()
   } catch (e) {
@@ -47,6 +55,7 @@ function startPolling() {
     }
     try {
       detail.value = await getOrder(orderNo.value)
+      refundRequest.value = await getRefundRequest(orderNo.value).catch(() => null)
       if (!shouldPoll.value) stopPolling()
     } catch {
       stopPolling()
@@ -103,6 +112,35 @@ async function close() {
 
 function priceText(cents, currency = 'CNY') {
   return new Intl.NumberFormat('zh-CN', { style: 'currency', currency }).format((cents || 0) / 100)
+}
+
+function openRefund() {
+  refundForm.reason = ''
+  error.value = ''
+  refundOpen.value = true
+}
+
+async function submitRefund() {
+  const reason = refundForm.reason.trim()
+  if (!reason) {
+    error.value = '请填写退款理由'
+    return
+  }
+  refundBusy.value = true
+  error.value = ''
+  try {
+    refundRequest.value = await submitRefundRequest(orderNo.value, reason)
+    refundOpen.value = false
+    await load(true)
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    refundBusy.value = false
+  }
+}
+
+function refundStatusLabel(status) {
+  return { PENDING: '处理中', APPROVED: '已同意', REJECTED: '已拒绝' }[status] || status
 }
 
 function formatDate(value) {
@@ -186,7 +224,24 @@ function timelineType(type) {
                 <template #default>退款相关问题请联系管理员处理。</template>
               </el-alert>
             </template>
+            <el-button v-if="canRequestRefund" type="danger" plain @click="openRefund">申请整单退款</el-button>
           </div>
+
+          <el-alert
+            v-if="refundRequest"
+            class="refund-state"
+            :type="refundRequest.status === 'APPROVED' ? 'success' : refundRequest.status === 'REJECTED' ? 'warning' : 'info'"
+            :closable="false"
+            show-icon
+            :title="`退款申请：${refundStatusLabel(refundRequest.status)}`"
+          >
+            <template #default>
+              <span>理由：{{ refundRequest.reason }}</span>
+              <span v-if="refundRequest.status === 'REJECTED' && refundRequest.handleNote">
+                · 处理备注：{{ refundRequest.handleNote }}（可再次申请）
+              </span>
+            </template>
+          </el-alert>
         </section>
 
         <section class="timeline-card">
@@ -208,6 +263,22 @@ function timelineType(type) {
         </section>
       </div>
     </template>
+
+    <el-dialog v-model="refundOpen" title="申请整单退款" width="520px" align-center>
+      <p class="refund-hint">提交后由客服审核，同意后按原支付渠道整单退款，已发放的资料权益将被回收。</p>
+      <el-input
+        v-model="refundForm.reason"
+        type="textarea"
+        :rows="4"
+        maxlength="500"
+        show-word-limit
+        placeholder="请说明退款理由，例如：买错了 / 内容与描述不符"
+      />
+      <template #footer>
+        <el-button :disabled="refundBusy" @click="refundOpen = false">取消</el-button>
+        <el-button type="danger" :loading="refundBusy" @click="submitRefund">提交申请</el-button>
+      </template>
+    </el-dialog>
   </main>
 </template>
 
@@ -359,6 +430,17 @@ function timelineType(type) {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 20px;
+}
+
+.refund-state {
+  margin-top: 14px;
+}
+
+.refund-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
 }
 
 .timeline-head {

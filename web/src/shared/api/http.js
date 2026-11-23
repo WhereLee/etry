@@ -55,4 +55,14 @@ export function upload(url, file) {
   })
 }
 
+export async function download(url, filename, params) {
+  const blob = await http.get(url, { params, responseType: 'blob', timeout: 60000 })
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(objectUrl)
+}
+
 export default http

@@ -24,6 +24,14 @@ export function closeOrder(orderNo) {
   return post(`/orders/${orderNo}/close`)
 }
 
+export function getRefundRequest(orderNo) {
+  return get(`/orders/${orderNo}/refund-request`)
+}
+
+export function submitRefundRequest(orderNo, reason) {
+  return post(`/orders/${orderNo}/refund-request`, { reason })
+}
+
 export function getMockCashier(orderNo) {
   return get(`/payments/mock/${orderNo}`)
 }

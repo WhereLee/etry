@@ -55,6 +55,42 @@ public class MaterialFileStore {
         }
     }
 
+    /**
+     * 运营上传的 PDF 落盘，返回新 fileKey。仅接受 %PDF 魔数文件。
+     */
+    public String saveUploaded(long materialId, byte[] bytes) {
+        if (bytes == null || bytes.length < 5
+                || bytes[0] != '%' || bytes[1] != 'P' || bytes[2] != 'D' || bytes[3] != 'F' || bytes[4] != '-') {
+            throw BizException.badRequest("仅支持 PDF 文件");
+        }
+        String fileKey = "material/upload-" + materialId + "-" + System.nanoTime() + ".pdf";
+        Path path = resolve(fileKey);
+        try {
+            Files.createDirectories(path.getParent());
+            Path tmp = Files.createTempFile(path.getParent(), "upload-", ".tmp");
+            try {
+                Files.write(tmp, bytes);
+                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING);
+            } finally {
+                Files.deleteIfExists(tmp);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("资料文件保存失败", e);
+        }
+        return fileKey;
+    }
+
+    public void deleteUploaded(String fileKey) {
+        if (fileKey == null || !fileKey.startsWith("material/upload-")) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(resolve(fileKey));
+        } catch (IOException e) {
+            throw new UncheckedIOException("资料文件删除失败", e);
+        }
+    }
+
     private Path resolve(String fileKey) {
         Path root = Path.of(properties.root()).toAbsolutePath().normalize();
         Path path = root.resolve(fileKey).normalize();

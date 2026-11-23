@@ -35,7 +35,7 @@ class StorefrontApiIntegrationTest extends IntegrationTestSupport {
         return materialRepository.insert(new MaterialRecord(
                 null, title, "EXAM_PAPER", "SENIOR", "数学", "HTTP 集成资料",
                 priceCents, "CNY", 10, 3, null, "material/http.pdf", saleStatus,
-                null, null, null));
+                null, null, null, false));
     }
 
     private String registerBuyer(String username) throws Exception {

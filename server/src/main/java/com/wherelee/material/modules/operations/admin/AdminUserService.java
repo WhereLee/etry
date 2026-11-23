@@ -7,15 +7,18 @@ import com.wherelee.material.modules.entitlement.api.ProductTypes;
 import com.wherelee.material.modules.identity.api.UserAccount;
 import com.wherelee.material.modules.identity.api.UserAccountOperations;
 import com.wherelee.material.modules.identity.api.UserAccountQuery;
+import com.wherelee.material.modules.material.api.MaterialQuery;
 import com.wherelee.material.modules.operations.admin.dto.AdminUserVO;
 import com.wherelee.material.modules.operations.admin.dto.AssignSeriesRequest;
 import com.wherelee.material.modules.operations.admin.dto.CreateUserRequest;
 import com.wherelee.material.modules.operations.admin.dto.SeriesOptionVO;
+import com.wherelee.material.modules.operations.admin.dto.UserEntitlementView;
 import com.wherelee.material.modules.platform.common.BizException;
 import com.wherelee.material.modules.platform.common.PageResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,15 +35,17 @@ public class AdminUserService {
     private final EntitlementCommand entitlementCommand;
     private final EntitlementQuery entitlementQuery;
     private final CourseGovernance courseGovernance;
+    private final MaterialQuery materialQuery;
 
     public AdminUserService(UserAccountQuery userAccountQuery, UserAccountOperations userAccounts,
                             EntitlementCommand entitlementCommand, EntitlementQuery entitlementQuery,
-                            CourseGovernance courseGovernance) {
+                            CourseGovernance courseGovernance, MaterialQuery materialQuery) {
         this.userAccountQuery = userAccountQuery;
         this.userAccounts = userAccounts;
         this.entitlementCommand = entitlementCommand;
         this.entitlementQuery = entitlementQuery;
         this.courseGovernance = courseGovernance;
+        this.materialQuery = materialQuery;
     }
 
     public PageResult<AdminUserVO> page(String keyword, String role, String status, int page, int size) {
@@ -113,5 +118,28 @@ public class AdminUserService {
         return courseGovernance.publishedOptions().stream()
                 .map(option -> new SeriesOptionVO(option.id(), option.title()))
                 .toList();
+    }
+
+    public List<UserEntitlementView> entitlements(Long userId) {
+        userAccounts.require(userId);
+        List<UserEntitlementView> views = new ArrayList<>();
+        List<EntitlementQuery.ActiveProduct> materials = entitlementQuery.listActive(userId, ProductTypes.MATERIAL);
+        Map<Long, String> materialTitles = materialQuery.findFacts(
+                        materials.stream().map(EntitlementQuery.ActiveProduct::productId).toList())
+                .stream().collect(Collectors.toMap(MaterialQuery.MaterialFact::materialId,
+                        MaterialQuery.MaterialFact::title));
+        for (EntitlementQuery.ActiveProduct product : materials) {
+            views.add(new UserEntitlementView(ProductTypes.MATERIAL, product.productId(),
+                    materialTitles.getOrDefault(product.productId(), "资料#" + product.productId()),
+                    product.displayOrder()));
+        }
+        Map<Long, String> seriesTitles = courseGovernance.publishedOptions().stream()
+                .collect(Collectors.toMap(CourseGovernance.SeriesOption::id, CourseGovernance.SeriesOption::title));
+        for (EntitlementQuery.ActiveProduct product : entitlementQuery.listActive(userId, ProductTypes.COURSE_SERIES)) {
+            views.add(new UserEntitlementView(ProductTypes.COURSE_SERIES, product.productId(),
+                    seriesTitles.getOrDefault(product.productId(), "系列#" + product.productId()),
+                    product.displayOrder()));
+        }
+        return views;
     }
 }

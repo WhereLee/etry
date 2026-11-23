@@ -138,6 +138,6 @@ class MaterialDeliveryServiceTest {
     private MaterialRecord material(String saleStatus, String fileKey) {
         LocalDateTime now = LocalDateTime.now();
         return new MaterialRecord(1L, "测试资料", "EXAM_PAPER", "SENIOR", "数学", "简介",
-                990, "CNY", 6, 3, null, fileKey, saleStatus, now, now, now);
+                990, "CNY", 6, 3, null, fileKey, saleStatus, now, now, now, false);
     }
 }

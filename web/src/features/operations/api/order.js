@@ -31,3 +31,14 @@ export function refundAdminOrder(orderNo, body) {
 export function refundDuplicateAdminOrder(orderNo, attemptNo, body) {
   return post(`/admin/orders/${orderNo}/attempts/${attemptNo}/refund`, body)
 }
+export function listRefundRequests(params) {
+  return get('/admin/refund-requests', params)
+}
+
+export function approveRefundRequest(id) {
+  return post(`/admin/refund-requests/${id}/approve`)
+}
+
+export function rejectRefundRequest(id, note) {
+  return post(`/admin/refund-requests/${id}/reject`, { note })
+}

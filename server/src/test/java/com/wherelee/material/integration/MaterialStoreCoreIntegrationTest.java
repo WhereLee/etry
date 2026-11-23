@@ -35,7 +35,7 @@ class MaterialStoreCoreIntegrationTest extends IntegrationTestSupport {
         return materialRepository.insert(new MaterialRecord(
                 null, title, "EXAM_PAPER", "SENIOR", "数学", "集成测试资料",
                 priceCents, "CNY", 10, 3, null, fileKey, saleStatus,
-                null, null, null));
+                null, null, null, false));
     }
 
     @Test
