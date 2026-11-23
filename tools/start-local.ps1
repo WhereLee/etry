@@ -28,6 +28,10 @@ if (Test-Path -LiteralPath $envFile) {
     Write-Host "==> Loaded environment from $envFile"
 }
 
+# 本地演示显式启用 Mock 支付；应用默认关闭（fail-closed），生产由 prod profile 禁止。
+if (-not $env:PAYMENT_PROVIDER) { $env:PAYMENT_PROVIDER = 'mock' }
+if (-not $env:PAYMENT_MOCK_ENABLED) { $env:PAYMENT_MOCK_ENABLED = 'true' }
+
 if (-not $RedisHome) {
     $RedisHome = if ($env:REDIS_HOME) { $env:REDIS_HOME } else { 'F:\Redis' }
 }

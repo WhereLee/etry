@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 权益中心应用服务，实现写/读端口。写操作幂等并由唯一键与状态条件保证 grant-once/revoke-once。
@@ -53,6 +54,11 @@ public class EntitlementService implements EntitlementCommand, EntitlementQuery 
     @Override
     public boolean hasActive(Long userId, Long productId, String productType) {
         return repository.hasActive(userId, productId, productType);
+    }
+
+    @Override
+    public Set<Long> findActiveIds(Long userId, String productType, Collection<Long> productIds) {
+        return repository.findActiveIds(userId, productType, productIds);
     }
 
     @Override

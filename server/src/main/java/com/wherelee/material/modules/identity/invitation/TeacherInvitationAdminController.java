@@ -4,10 +4,10 @@ import com.wherelee.material.modules.platform.aop.AdminAudit;
 import com.wherelee.material.modules.platform.aop.Idempotent;
 import com.wherelee.material.modules.platform.aop.Measured;
 import com.wherelee.material.modules.platform.aop.RateLimit;
-import com.wherelee.material.modules.platform.aop.RequireRole;
 import com.wherelee.material.modules.platform.common.PageResult;
 import com.wherelee.material.modules.identity.invitation.dto.TeacherInvitationDtos;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,7 +29,7 @@ public class TeacherInvitationAdminController {
     }
 
     @PostMapping
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:manage')")
     @RateLimit(key = "admin:teacherInvite", limit = 20, windowSeconds = 60)
     @Idempotent(key = "admin:teacherInvite", windowSeconds = 5)
     @Measured("admin.teacherInvitation.create")
@@ -42,7 +42,7 @@ public class TeacherInvitationAdminController {
     }
 
     @GetMapping
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:manage')")
     @Measured("admin.teacherInvitation.page")
     public PageResult<TeacherInvitationVO> page(
             @RequestParam(required = false) String status,
@@ -52,7 +52,7 @@ public class TeacherInvitationAdminController {
     }
 
     @PutMapping("/{id}/revoke")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasAuthority('user:manage')")
     @Idempotent(key = "admin:teacherInviteRevoke", windowSeconds = 3)
     @Measured("admin.teacherInvitation.revoke")
     @AdminAudit(action = "TEACHER_INVITE_REVOKE", targetType = "TEACHER_INVITATION",

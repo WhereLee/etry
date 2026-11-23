@@ -25,6 +25,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -121,9 +122,27 @@ public class OrderService {
         if (total == 0) {
             return new PageResult<>(List.of(), 0, safePage, safeSize);
         }
-        List<OrderDtos.OrderView> records = orderRepository
-                .findUserOrders(userId, (safePage - 1) * safeSize, safeSize)
-                .stream().map(order -> view(order, userId)).toList();
+        List<OrderRecord> orders = orderRepository.findUserOrders(userId, (safePage - 1) * safeSize, safeSize);
+        List<Long> cartOrderIds = orders.stream()
+                .filter(order -> order.productId() == 0)
+                .map(OrderRecord::id)
+                .toList();
+        Map<Long, List<OrderItemRecord>> itemsByOrder = orderItemRepository.findByOrderIds(cartOrderIds);
+        Set<Long> materialIds = itemsByOrder.values().stream()
+                .flatMap(List::stream)
+                .map(OrderItemRecord::materialId)
+                .collect(Collectors.toSet());
+        Set<Long> activeMaterialIds = entitlementRepository.findActiveIds(userId, ProductTypes.MATERIAL, materialIds);
+        Map<String, List<Long>> productIdsByType = orders.stream()
+                .filter(order -> order.productId() != 0)
+                .collect(Collectors.groupingBy(OrderRecord::productType,
+                        Collectors.mapping(OrderRecord::productId, Collectors.toList())));
+        Map<String, Set<Long>> activeByType = productIdsByType.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey,
+                        entry -> entitlementRepository.findActiveIds(userId, entry.getKey(), entry.getValue())));
+        List<OrderDtos.OrderView> records = orders.stream()
+                .map(order -> view(order, userId, itemsByOrder, activeMaterialIds, activeByType))
+                .toList();
         return new PageResult<>(records, total, safePage, safeSize);
     }
 
@@ -168,6 +187,26 @@ public class OrderService {
     }
 
     public OrderDtos.OrderView view(OrderRecord order, Long userId) {
+        return buildView(order, owned(order, userId));
+    }
+
+    /** 列表路径：用预取的明细与权益集合判定 owned，避免逐单查询。 */
+    private OrderDtos.OrderView view(OrderRecord order, Long userId,
+                                     Map<Long, List<OrderItemRecord>> itemsByOrder,
+                                     Set<Long> activeMaterialIds,
+                                     Map<String, Set<Long>> activeByType) {
+        boolean owned;
+        if (order.productId() == 0) {
+            List<OrderItemRecord> items = itemsByOrder.getOrDefault(order.id(), List.of());
+            owned = !items.isEmpty() && items.stream()
+                    .allMatch(item -> activeMaterialIds.contains(item.materialId()));
+        } else {
+            owned = activeByType.getOrDefault(order.productType(), Set.of()).contains(order.productId());
+        }
+        return buildView(order, owned);
+    }
+
+    private OrderDtos.OrderView buildView(OrderRecord order, boolean owned) {
         return new OrderDtos.OrderView(
                 order.orderNo(),
                 order.productId(),
@@ -184,7 +223,7 @@ public class OrderService {
                 order.paidAt(),
                 order.fulfilledAt(),
                 order.createdAt(),
-                owned(order, userId)
+                owned
         );
     }
 

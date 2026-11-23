@@ -5,7 +5,8 @@ param(
     [string]$User,
     [string]$Password,
     [string]$BackupDir,
-    [string]$MySqlDump
+    [string]$MySqlDump,
+    [string]$MaterialRoot
 )
 
 $ErrorActionPreference = 'Stop'
@@ -22,6 +23,13 @@ if (-not $MySqlDump) {
         throw 'mysqldump not found. Pass -MySqlDump or add MySQL bin to PATH.'
     }
     $MySqlDump = $command.Source
+}
+if (-not $MaterialRoot) {
+    $MaterialRoot = if ($env:MATERIAL_STORAGE_ROOT) {
+        $env:MATERIAL_STORAGE_ROOT
+    } else {
+        Join-Path (Split-Path -Parent $PSScriptRoot) 'server/data/materials'
+    }
 }
 
 New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
@@ -51,6 +59,19 @@ try {
     }
     Remove-Item -LiteralPath $errorFile -Force -ErrorAction SilentlyContinue
     Write-Host "Backup created: $target"
+
+    $materialFiles = if (Test-Path -LiteralPath $MaterialRoot) {
+        Get-ChildItem -LiteralPath $MaterialRoot -Recurse -File -ErrorAction SilentlyContinue
+    } else {
+        @()
+    }
+    if ($materialFiles) {
+        $materialTarget = Join-Path $BackupDir "$Database-materials-$stamp.zip"
+        Compress-Archive -Path (Join-Path $MaterialRoot '*') -DestinationPath $materialTarget -Force
+        Write-Host "Materials backup created: $materialTarget"
+    } else {
+        Write-Host "Materials dir empty or missing, skip: $MaterialRoot"
+    }
 } finally {
     if ($null -eq $oldPassword) {
         Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue

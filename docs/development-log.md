@@ -268,3 +268,62 @@
 - 原因: 种子仅在目录为空时写入，运行库经阶段6冒烟/E2E 运营改动
 - 解决: README 描述 fresh-start 种子口径，演示脚本以实际 UI 为准，二者不混淆
 - 预防: 区分「种子初始态」与「运行期被改动态」，文档注明口径
+
+## 2026-11-23 质量打磨（审查整改）
+
+### 问题: compose 默认部署时 Mock 支付真实可用（审查 B1）
+- 场景: 按仓库 `compose.yml` 部署
+- 现象: 未设 prod profile，`PAYMENT_MOCK_ENABLED` 默认 true，学员可「模拟支付成功」零成本拿权益
+- 原因: Mock 开关默认开启，安全守卫只在 prod 拒绝 Mock
+- 解决: Mock 默认关闭（`application.yml`/compose 默认 false）；`PaymentSafetyGuard` 对 `provider=mock && !mockEnabled` 启动失败；本地 start-local 显式开启；prod 关闭 springdoc；补齐 ALIPAY_* 透传与部署文档
+- 预防: 安全开关一律 fail-closed；新增配置默认值必须按「最安全」取值
+
+### 问题: 运营订单列表资料订单标题为空、搜不到（审查 M1）
+- 场景: 运营端订单列表/关键词检索
+- 现象: 购物车订单商品名为空，按资料标题搜索无结果
+- 原因: 列表 SQL 只读 `series_title_snapshot`，资料订单写的是 `product_title_snapshot`
+- 解决: 查询与过滤改用 `COALESCE(product_title_snapshot, series_title_snapshot)`，并补关键词检索列；新增 `AdminOrderListIntegrationTest`
+- 预防: 通用化字段（product_*）上线时同步改造所有读取方，避免只改写入方
+
+### 问题: 参数校验异常回落 500（审查 m1）
+- 场景: 空关键词搜索、分页参数非数字、非法 JSON
+- 现象: 返回 500 兜底而非 400
+- 原因: 只处理了 `MethodArgumentNotValidException`
+- 解决: 补 `HandlerMethodValidationException`/`MethodArgumentTypeMismatch`/`MissingServletRequestParameter`/`HttpMessageNotReadable` 的 400 映射；新增 `ApiErrorContractIntegrationTest`
+- 预防: 参数错误契约要有集成测试覆盖，不能只测正常路径
+
+### 问题: X-Forwarded-For 可伪造绕过登录 IP 限流（审查 M2）
+- 场景: compose 的 web nginx / Caddy 反代
+- 现象: nginx 用 `$proxy_add_x_forwarded_for` 追加，应用取首个值，客户端自带 XFF 即可伪造 IP
+- 原因: 追加语义与「取首个值」不匹配
+- 解决: 边缘代理改为覆盖写入 `X-Forwarded-For $remote_addr`（Caddy 用 `header_up {remote_host}`）；解析器注释明确契约；补 `ClientIpResolverTest`
+- 预防: 限流类安全字段必须由边缘覆盖写入，不信任客户端可写头
+
+### 问题: 备份不含资料 PDF（审查 M3）
+- 场景: 服务器备份/恢复
+- 现象: 只备份 MySQL，恢复后运营上传的资料文件丢失
+- 原因: 引入本地 PDF 存储后未扩展备份
+- 解决: `deploy/btry-backup.sh` 增资料目录 tar.gz + 保留期清理 + 恢复步骤注释；`tools/backup-mysql.ps1` 增 `-MaterialRoot` 打包
+- 预防: 新增本地落盘能力时同步备份与恢复演练
+
+### 问题: 订单列表 N+1（审查 m3）
+- 场景: 我的订单分页
+- 现象: 每单再查明细与权益
+- 原因: view() 内逐单 hasActive
+- 解决: 新增 `OrderItemRepository.findByOrderIds` 与权益批量端口 `EntitlementQuery.findActiveIds`（与 hasActive 同口径），列表一次预取；新增 `OrderListOwnedIntegrationTest`
+- 预防: 列表路径禁止逐行查询，批量接口与单判定保持同一 SQL 谓词
+
+### 问题: 遗留运营端降权不生效（审查 M4）
+- 场景: 撤销某账号 RBAC SUPER_ADMIN 后
+- 现象: 其仍可修改系列上下架/发教师邀请（只校验 legacy `t_user.role=ADMIN`）
+- 原因: 遗留控制器未迁移到权限点
+- 解决: 系列治理改 RBAC `hasRole('SUPER_ADMIN')`（访问集合不变，避免把权限扩到 OPERATOR），教师邀请改 `user:manage`；新增 `LegacyAdminRbacIntegrationTest` 验证撤权即 403
+- 说明: 若改用 `material:read/sale` 会顺带把系列治理开放给 OPERATOR，属未经授权的权限扩张，故选择与 legacy ADMIN 等价的最窄 RBAC 角色
+- 预防: 授权判定只认 RBAC 权限点，legacy 角色仅作兼容回退，不得作为管理端唯一门禁
+
+### 问题: 退款按订单查询缺索引（审查 m4）
+- 场景: 订单详情/客服/对账按 order_id 查退款
+- 现象: V15 删除 `uk_refund_order` 后 order_id 无索引，全表扫描
+- 原因: 迁移升级为 attempt 维度时未补普通索引
+- 解决: 新增 `V24__refund_order_index.sql` 加 `idx_refund_order(order_id)`
+- 预防: 删除唯一键/改查询维度时同步评估索引覆盖

@@ -6,7 +6,11 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Repository
 public class OrderItemRepository {
@@ -42,6 +46,18 @@ public class OrderItemRepository {
         return jdbc.query("""
                 SELECT * FROM t_order_item WHERE order_id = ? ORDER BY id
                 """, MAPPER, orderId);
+    }
+
+    /** 批量按订单取明细，供订单列表一次查询避免 N+1。 */
+    public Map<Long, List<OrderItemRecord>> findByOrderIds(Collection<Long> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            return Map.of();
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(orderIds.size(), "?"));
+        return jdbc.query("""
+                        SELECT * FROM t_order_item WHERE order_id IN (%s) ORDER BY id
+                        """.formatted(placeholders), MAPPER, orderIds.toArray()).stream()
+                .collect(Collectors.groupingBy(OrderItemRecord::orderId, LinkedHashMap::new, Collectors.toList()));
     }
 
     private static LocalDateTime toLocal(Timestamp timestamp) {

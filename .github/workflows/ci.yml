@@ -100,5 +100,10 @@ jobs:
       JWT_SECRET: ci-dummy-jwt-secret-not-for-production
     steps:
       - uses: actions/checkout@v5
+      - name: Validate compose and deploy scripts
+        run: |
+          docker compose config -q
+          bash -n deploy/btry-backup.sh
+          bash -n deploy/setup-server.sh
       - name: Build backend and web images
         run: docker compose build

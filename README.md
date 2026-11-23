@@ -15,7 +15,7 @@
 ## 功能
 
 ### 买家
-- 自助注册 / 登录 / 首次强制改密；注册即授予 `BUYER` 角色。
+- 自助注册 / 登录（注册即登录、无需首改密）；注册即授予 `BUYER` 角色。种子账号首次登录强制改密。
 - 资料目录：分类筛选、分页、关键词搜索（MySQL ngram 全文索引）、详情。
 - 游客试读：前 N 页预览，叠加「试读」水印，无需登录。
 - 购物车：多商品加购、结算生成一笔多明细订单。
@@ -48,7 +48,7 @@ Spring Boot 3（Java 17）
   ├─ identity（注册/登录/JWT/RBAC） / material（目录/交付/管理）
   ├─ commerce（购物车/订单/支付/退款/对账/outbox） / entitlement（权益）
   ├─ operations（运营端） / platform（安全/审计/种子/异常）
-  ├─ MySQL 8 + Flyway（V1–V23，utf8mb4 + ngram FULLTEXT）
+  ├─ MySQL 8 + Flyway（V1–V24，utf8mb4 + ngram FULLTEXT）
   ├─ Redis 7：限流 / 幂等兜底 / 缓存
   ├─ 本地 PDF 存储：PDFBox 生成演示资料、试读截页、下载水印
   └─ 支付宝 / Mock 支付
@@ -100,6 +100,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\stop-local.ps1
 | `MATERIAL_STORAGE_ROOT` | 资料 PDF 存储根（默认 `./data/materials`；容器内挂 `material-data` 卷持久化） |
 | `CORS_ALLOWED_ORIGINS` | 跨域白名单，生产必填 |
 | `PAYMENT_PROVIDER` | `mock` 或 `alipay`，生产真实支付须为 `alipay` |
+| `PAYMENT_MOCK_ENABLED` | Mock 支付开关，**默认 false（fail-closed）**：`provider=mock` 未显式开启则启动失败；仅演示/测试开启，prod 禁止 |
 | `ALIPAY_APP_ID` / `ALIPAY_PRIVATE_KEY` / `ALIPAY_PUBLIC_KEY` | 支付宝应用配置 |
 | `SEED_ADMIN_PASSWORD` / `SEED_TEACHER_PASSWORD` / `SEED_STUDENT_PASSWORD` | 演示账号初始密码 |
 

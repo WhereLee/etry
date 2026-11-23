@@ -11,8 +11,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 权益中心仓储。
@@ -79,6 +81,26 @@ public class EntitlementStore {
                   AND (valid_to IS NULL OR valid_to > CURRENT_TIMESTAMP(3))
                 """, Integer.class, userId, productId, productType);
         return count != null && count > 0;
+    }
+
+    public Set<Long> findActiveIds(Long userId, String productType, Collection<Long> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return Set.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(productIds.size(), "?"));
+        List<Object> args = new ArrayList<>(productIds.size() + 2);
+        args.add(userId);
+        args.add(productType);
+        args.addAll(productIds);
+        List<Long> ids = jdbc.query("""
+                SELECT DISTINCT product_id
+                FROM t_entitlement
+                WHERE user_id = ? AND product_type = ? AND status = 'ACTIVE'
+                  AND (valid_from IS NULL OR valid_from <= CURRENT_TIMESTAMP(3))
+                  AND (valid_to IS NULL OR valid_to > CURRENT_TIMESTAMP(3))
+                  AND product_id IN (%s)
+                """.formatted(placeholders), (rs, rowNum) -> rs.getLong(1), args.toArray());
+        return new HashSet<>(ids);
     }
 
     public List<EntitlementQuery.ActiveProduct> listActive(Long userId, String productType) {

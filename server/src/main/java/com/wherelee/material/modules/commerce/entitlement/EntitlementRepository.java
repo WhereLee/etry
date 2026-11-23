@@ -5,8 +5,10 @@ import com.wherelee.material.modules.entitlement.api.EntitlementQuery;
 import com.wherelee.material.modules.entitlement.api.ProductTypes;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -36,6 +38,10 @@ public class EntitlementRepository {
 
     public boolean hasActive(Long userId, Long productId, String productType) {
         return entitlementQuery.hasActive(userId, productId, productType);
+    }
+
+    public Set<Long> findActiveIds(Long userId, String productType, Collection<Long> productIds) {
+        return entitlementQuery.findActiveIds(userId, productType, productIds);
     }
 
     public void grantOrder(Long userId, Long seriesId, Long orderId) {

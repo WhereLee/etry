@@ -10,7 +10,7 @@
         u.username,
         u.nickname,
         o.series_id AS seriesId,
-        o.series_title_snapshot AS seriesTitle,
+        COALESCE(o.product_title_snapshot, o.series_title_snapshot) AS seriesTitle,
         o.price_cents AS priceCents,
         o.currency,
         o.status,
@@ -32,6 +32,7 @@
                 AND (o.order_no LIKE CONCAT('%', #{keyword}, '%')
                      OR u.username LIKE CONCAT('%', #{keyword}, '%')
                      OR u.nickname LIKE CONCAT('%', #{keyword}, '%')
+                     OR o.product_title_snapshot LIKE CONCAT('%', #{keyword}, '%')
                      OR o.series_title_snapshot LIKE CONCAT('%', #{keyword}, '%'))
             </if>
             <if test="status != null and status != ''">

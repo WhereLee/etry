@@ -2,7 +2,11 @@
     encode gzip
 
     handle /api/* {
-        reverse_proxy 127.0.0.1:8084
+        reverse_proxy 127.0.0.1:8084 {
+            # 覆盖而非追加，防止客户端伪造 X-Forwarded-For 绕过按 IP 的登录限流。
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Real-IP {remote_host}
+        }
     }
 
     handle {

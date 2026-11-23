@@ -30,6 +30,10 @@ public class PaymentSafetyGuard {
         if (prod && ("mock".equals(provider) || properties.mockEnabled())) {
             throw new IllegalStateException("生产环境禁止启用 Mock 支付");
         }
+        if ("mock".equals(provider) && !properties.mockEnabled()) {
+            throw new IllegalStateException(
+                    "Mock 支付未显式启用：请设置 PAYMENT_MOCK_ENABLED=true（仅演示/测试），或切换真实支付渠道");
+        }
         if (!SUPPORTED.contains(provider)) {
             throw new IllegalStateException("不支持的支付渠道：" + properties.provider());
         }

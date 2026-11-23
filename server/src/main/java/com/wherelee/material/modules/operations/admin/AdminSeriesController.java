@@ -4,9 +4,9 @@ import com.wherelee.material.modules.operations.admin.dto.AdminSeriesDtos;
 import com.wherelee.material.modules.platform.aop.AdminAudit;
 import com.wherelee.material.modules.platform.aop.Idempotent;
 import com.wherelee.material.modules.platform.aop.Measured;
-import com.wherelee.material.modules.platform.aop.RequireRole;
 import com.wherelee.material.modules.platform.common.PageResult;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -27,7 +27,7 @@ public class AdminSeriesController {
     }
 
     @GetMapping
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Measured("admin.content.series.page")
     public PageResult<AdminSeriesVO> page(@RequestParam(required = false) String keyword,
                                           @RequestParam(required = false) String status,
@@ -38,14 +38,14 @@ public class AdminSeriesController {
     }
 
     @GetMapping("/{id}")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Measured("admin.content.series.detail")
     public AdminSeriesDtos.SeriesDetail detail(@PathVariable Long id) {
         return service.detail(id);
     }
 
     @PutMapping("/{id}/status")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Idempotent(key = "admin:content:seriesStatus", windowSeconds = 3)
     @Measured("admin.content.series.status")
     @AdminAudit(action = "ADMIN_SERIES_STATUS", targetType = "SERIES", targetIdArg = 1)
@@ -56,7 +56,7 @@ public class AdminSeriesController {
     }
 
     @PutMapping("/{id}/sale")
-    @RequireRole("ADMIN")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Idempotent(key = "admin:content:seriesSale", windowSeconds = 3)
     @Measured("admin.content.series.sale")
     @AdminAudit(action = "ADMIN_SERIES_SALE", targetType = "SERIES", targetIdArg = 1)

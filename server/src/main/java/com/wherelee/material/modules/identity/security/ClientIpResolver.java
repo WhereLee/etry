@@ -5,6 +5,11 @@ import com.wherelee.material.modules.platform.config.SecurityProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 
+/**
+ * 客户端 IP 解析。仅在 trust-forwarded-headers=true 时读取转发头，且约定边缘代理
+ * **覆盖**写入 X-Forwarded-For（见 web/nginx.conf、deploy/Caddyfile.example），
+ * 因此取第一个合法值即真实客户端；代理若采用追加语义需另行配置可信代理链。
+ */
 @Component
 public class ClientIpResolver {
 

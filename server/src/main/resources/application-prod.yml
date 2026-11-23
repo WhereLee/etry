@@ -70,6 +70,12 @@ app:
       connect-timeout-ms: ${ALIPAY_CONNECT_TIMEOUT_MS:5000}
       read-timeout-ms: ${ALIPAY_READ_TIMEOUT_MS:15000}
 
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 management:
   server:
     address: 127.0.0.1

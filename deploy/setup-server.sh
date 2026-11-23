@@ -22,6 +22,19 @@ set +a
 mkdir -p "$APP_DIR/logs"
 chmod 600 "$ENV_FILE"
 
+echo "==> preflight: dependencies"
+for bin in java mysql mysqldump redis-server nginx; do
+  if ! command -v "$bin" >/dev/null 2>&1; then
+    echo "missing dependency: $bin — 请先安装 JDK17 / MySQL8 / Redis / nginx（见 docs/部署与验收清单-资料商城.md）" >&2
+    exit 1
+  fi
+done
+JAVA_MAJOR="$(java -version 2>&1 | awk -F'"' '/version/ {print $2}' | cut -d. -f1)"
+if [ "${JAVA_MAJOR:-0}" -lt 17 ]; then
+  echo "需要 JDK 17 及以上，当前: ${JAVA_MAJOR:-unknown}" >&2
+  exit 1
+fi
+
 echo "==> MySQL"
 systemctl enable --now mysql
 for _ in $(seq 1 30); do

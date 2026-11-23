@@ -97,7 +97,9 @@ app:
     student-password: ${SEED_STUDENT_PASSWORD:}
   payment:
     provider: ${PAYMENT_PROVIDER:mock}
-    mock-enabled: ${PAYMENT_MOCK_ENABLED:true}
+    # Mock 支付默认关闭：必须显式 PAYMENT_MOCK_ENABLED=true 才可用（仅演示/测试）。
+    # 生产禁用 Mock，请使用 prod profile + 真实支付宝渠道。
+    mock-enabled: ${PAYMENT_MOCK_ENABLED:false}
     mock-secret: ${PAYMENT_MOCK_SECRET:btry-mock-payment-secret-change-before-production}
     order-expire-minutes: ${PAYMENT_ORDER_EXPIRE_MINUTES:15}
     query-after-seconds: ${PAYMENT_QUERY_AFTER_SECONDS:15}
