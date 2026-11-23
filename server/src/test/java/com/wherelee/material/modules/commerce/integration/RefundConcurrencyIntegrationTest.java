@@ -28,7 +28,17 @@ class RefundConcurrencyIntegrationTest extends IntegrationTestSupport {
                 runConcurrently(10, () -> refundService.refund(order.orderNo(), fx.adminId(), "集成测试退款", false));
 
         drainOutbox();
-        assertThat(results).allSatisfy(result -> assertThat(result.error()).isNull());
+        // 并发退款的安全不变量是「恰好一笔退款、权益恰好回收一次、订单终态 REFUNDED」。
+        // 在 FULFILLED 窗口内到达的调用幂等返回同一笔退款；晚于退款终态到达的调用
+        // 会被状态守卫合法拒绝（当前订单状态不能退款）。两种结果都正确，取决于线程调度，
+        // 因此只要求至少一笔成功，且任何失败都必须是该合法拒绝，不允许出现意外错误。
+        assertThat(results).anySatisfy(result -> assertThat(result.error()).isNull());
+        assertThat(results).allSatisfy(result -> {
+            if (result.error() != null) {
+                assertThat(result.error()).isInstanceOf(BizException.class)
+                        .hasMessageContaining("当前订单状态不能退款");
+            }
+        });
         assertThat(count("t_refund", "order_id = ?", orderId)).isEqualTo(1);
         assertThat(count("t_entitlement", "user_id = ? AND product_id = ? AND product_type = 'COURSE_SERIES' AND status = 'REVOKED'",
                 fx.studentId(), fx.seriesId())).isEqualTo(1);

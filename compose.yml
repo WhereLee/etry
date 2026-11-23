@@ -83,6 +83,7 @@ services:
       SEED_TEACHER_PASSWORD: ${SEED_TEACHER_PASSWORD:-}
       SEED_STUDENT_PASSWORD: ${SEED_STUDENT_PASSWORD:-}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      MATERIAL_STORAGE_ROOT: /app/data/materials
       LOG_FILE: /app/logs/btry.log
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=70 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -Duser.timezone=Asia/Shanghai -Xlog:gc*:file=/app/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20M}
     ports:
@@ -90,6 +91,7 @@ services:
       - "${MANAGEMENT_BIND:-127.0.0.1}:${MANAGEMENT_PORT:-9091}:9091"
     volumes:
       - backend-logs:/app/logs
+      - material-data:/app/data/materials
     depends_on:
       mysql:
         condition: service_healthy
@@ -125,3 +127,4 @@ volumes:
   mysql-data:
   redis-data:
   backend-logs:
+  material-data:

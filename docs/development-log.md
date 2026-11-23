@@ -222,3 +222,26 @@
 - 原因: MSYS /tmp 映射到真实临时目录，Windows python 把 '/tmp' 当字面盘符路径
 - 解决: 改用管道喂 python stdin，或落到工作目录相对路径
 - 预防: 跨 bash/python 交换文件用相对路径或 stdin，不共用 /tmp 绝对路径
+
+## 2026-11-23 阶段7（质量/安全/部署准备）
+
+### 问题: CORS 未知来源在集成上下文返回 403 而本地直连返回 200
+- 场景: 新增 SecurityContractIntegrationTest.corsRejectsUnknownOrigin
+- 现象: MockMvc 全量上下文断言 status().isOk() 失败，实际 403；本地 curl 直连 8084 却是 200（仅无 ACAO 头）
+- 原因: 集成上下文加载完整 Spring Security 过滤链，CorsFilter 对非白名单 Origin 直接 403 拒绝；本地直连未经同等代理/过滤路径，表现为放行但不回显 ACAO。两种行为都满足安全不变量——不授予跨域许可
+- 解决: 断言只校验安全不变量 header().doesNotExist("Access-Control-Allow-Origin")，不再绑定具体状态码
+- 预防: 安全契约测试断言「不变量」（是否泄露许可头）而非「实现细节」（具体状态码），避免被过滤链装配差异误伤
+
+### 问题: 退款并发测试在 CI 偶发全失败（时序前提过强）
+- 场景: stage-6 推送后 CI backend 失败（run 45157702462），本地隔离与全量均 5/5 通过
+- 现象: concurrentRefundsCreateOneRefundAndRevokeEntitlementOnce 所有并发调用 error「当前订单状态不能退款」
+- 原因: CI CPU 争用下赢家线程先提交 REFUNDED，晚到线程读到的订单已是终态，被状态守卫合法拒绝。原断言 allSatisfy(error==null) 把「所有调用都在 FULFILLED 窗口内到达」当成必然前提，实际取决于线程调度
+- 解决: 改为 anySatisfy(至少一笔成功) + allSatisfy(任何失败必须是该合法守卫拒绝)；安全不变量 t_refund=1、权益 REVOKED=1、订单 REFUNDED 全部保留不变
+- 预防: 并发测试只断言与调度无关的安全不变量（恰好一笔/终态一致），把「调用成败分布」视为调度结果而非正确性判据；这不是放宽断言掩盖缺陷，而是修正过强的时序前提
+
+### 问题: 容器重启丢失已上传资料 PDF（持久化缺口）
+- 场景: 审查 compose.yml 部署资产
+- 现象: 后端资料存储根 ./data/materials 落在容器可写层，未挂卷，容器重建即丢
+- 原因: 课程时代只有 COS 视频（外部对象存储），资料商城改为本地 PDF 存储后未补持久卷
+- 解决: compose 新增 material-data 命名卷挂 /app/data/materials + 环境变量 MATERIAL_STORAGE_ROOT；Dockerfile 预创建该目录并 chown app（命名卷挂载点需属主正确）；.env.docker.example 注明资料持久化、COS 为遗留可选
+- 预防: 引入新的本地落盘能力时同步审查部署持久化，不能只改应用配置
