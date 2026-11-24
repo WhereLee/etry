@@ -44,6 +44,10 @@ public class EntitlementRepository {
         return entitlementQuery.findActiveIds(userId, productType, productIds);
     }
 
+    public Set<Long> findActiveOrderSourceIds(Collection<Long> orderIds) {
+        return entitlementQuery.findActiveOrderSourceIds(orderIds);
+    }
+
     public void grantOrder(Long userId, Long seriesId, Long orderId) {
         grantOrder(userId, seriesId, ProductTypes.COURSE_SERIES, orderId);
     }

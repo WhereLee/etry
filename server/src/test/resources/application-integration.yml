@@ -40,6 +40,8 @@ app:
     reconcile-initial-delay-ms: 3600000
     query-after-seconds: 0
     reconcile-batch-size: 100
+    entitlement-consistency-interval-ms: 3600000
+    entitlement-consistency-initial-delay-ms: 3600000
   outbox:
     interval-ms: 3600000
     initial-delay-ms: 3600000
@@ -47,6 +49,10 @@ app:
     lease-seconds: 60
     max-retry: 5
     retry-base-seconds: 1
+  reconciliation:
+    recovery-interval-ms: 3600000
+    recovery-initial-delay-ms: 3600000
+    stuck-timeout-minutes: 30
   alert:
     enabled: false
     initial-delay-ms: 3600000

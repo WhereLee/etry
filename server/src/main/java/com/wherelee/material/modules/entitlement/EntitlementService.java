@@ -62,6 +62,11 @@ public class EntitlementService implements EntitlementCommand, EntitlementQuery 
     }
 
     @Override
+    public Set<Long> findActiveOrderSourceIds(Collection<Long> orderIds) {
+        return repository.findActiveOrderSourceIds(orderIds);
+    }
+
+    @Override
     public List<ActiveProduct> listActive(Long userId, String productType) {
         return repository.listActive(userId, productType);
     }

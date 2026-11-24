@@ -97,6 +97,11 @@ public class ReconciliationRepository {
                 FILE_MAPPER, id).stream().findFirst();
     }
 
+    public Optional<ReconciliationModels.StatementFile> lockFileForRun(Long id) {
+        return jdbc.query("SELECT " + FILE_COLUMNS + " FROM t_recon_statement_file WHERE id = ? FOR UPDATE",
+                FILE_MAPPER, id).stream().findFirst();
+    }
+
     public Long createFile(String provider, LocalDate date, String fileName, String contentType,
                            String sha256, long fileSize, byte[] rawContent, String parserVersion,
                            Long importedBy) {
@@ -297,6 +302,12 @@ public class ReconciliationRepository {
                      provider_trade_no, merchant_trade_no, local_amount_cents,
                      provider_amount_cents, delta_cents, detail)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    severity = VALUES(severity),
+                    local_amount_cents = VALUES(local_amount_cents),
+                    provider_amount_cents = VALUES(provider_amount_cents),
+                    delta_cents = VALUES(delta_cents),
+                    detail = VALUES(detail)
                 """, runId, itemId, breakType, severity, orderId, orderNo, attemptId,
                 providerTradeNo, merchantTradeNo, localAmount, providerAmount, delta, truncate(detail, 1000));
     }
@@ -358,6 +369,24 @@ public class ReconciliationRepository {
                 WHERE run_id = ? AND status IN ('OPEN', 'IN_REVIEW')
                 """, Long.class, runId);
         return value == null ? 0 : value;
+    }
+
+    public int recoverStuckArtifacts(int timeoutMinutes) {
+        int safeMinutes = Math.max(5, timeoutMinutes);
+        int files = jdbc.update("""
+                UPDATE t_recon_statement_file
+                SET status = 'FAILED', parse_error = '解析任务超时，请重新上传账单'
+                WHERE status = 'PARSING'
+                  AND created_at <= TIMESTAMPADD(MINUTE, -?, CURRENT_TIMESTAMP(3))
+                """, safeMinutes);
+        int runs = jdbc.update("""
+                UPDATE t_recon_run
+                SET status = 'FAILED', error_message = '对账任务超时，请重新执行',
+                    finished_at = CURRENT_TIMESTAMP(3)
+                WHERE status = 'RUNNING'
+                  AND started_at <= TIMESTAMPADD(MINUTE, -?, CURRENT_TIMESTAMP(3))
+                """, safeMinutes);
+        return files + runs;
     }
 
     public void refreshRunUnresolvedCount(Long runId) {

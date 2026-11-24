@@ -140,10 +140,27 @@ public class OutboxRepository {
                 """, error, id, leaseToken);
     }
 
+    public Optional<OutboxMessage> findById(Long id) {
+        return jdbc.query("SELECT " + COLUMNS + """
+                FROM t_outbox_message WHERE id = ?
+                """, MAPPER, id).stream().findFirst();
+    }
+
     public Optional<OutboxMessage> findByOrderAndType(Long orderId, String messageType) {
         return jdbc.query("SELECT " + COLUMNS + """
                 FROM t_outbox_message WHERE order_id = ? AND message_type = ?
                 """, MAPPER, orderId, messageType).stream().findFirst();
+    }
+
+    public int claimReplay(Long id, String leaseToken, int leaseSeconds) {
+        return jdbc.update("""
+                UPDATE t_outbox_message
+                SET status = 'PROCESSING', lease_token = ?, retry_count = retry_count + 1,
+                    processed_at = NULL, last_error = 'manual replay', next_retry_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP(3),
+                    lease_until = TIMESTAMPADD(SECOND, ?, CURRENT_TIMESTAMP(3))
+                WHERE id = ? AND status IN ('DONE', 'DEAD')
+                """, leaseToken, Math.max(30, leaseSeconds), id);
     }
 
     public long countByStatus(String status) {

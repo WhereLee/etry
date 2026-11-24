@@ -16,6 +16,9 @@ public interface EntitlementQuery {
     /** 批量判定给定商品集合中的有效权益（与 hasActive 同口径），供列表一次查询避免 N+1。 */
     Set<Long> findActiveIds(Long userId, String productType, Collection<Long> productIds);
 
+    /** 批量查询仍为 ACTIVE 的订单来源权益，供退款后一致性巡检。 */
+    Set<Long> findActiveOrderSourceIds(Collection<Long> orderIds);
+
     /** 用户有效权益列表，按 displayOrder 聚合（同商品多来源取最小序号），供学习空间排序。 */
     List<ActiveProduct> listActive(Long userId, String productType);
 

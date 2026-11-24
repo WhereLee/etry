@@ -5,7 +5,10 @@ import com.wherelee.material.integration.IntegrationTestSupport;
 import com.wherelee.material.modules.commerce.order.OrderStatus;
 import com.wherelee.material.modules.commerce.api.OrderDtos;
 import com.wherelee.material.modules.commerce.outbox.OutboxMessage;
+import com.wherelee.material.modules.commerce.outbox.OutboxReplayService;
+import com.wherelee.material.modules.commerce.payment.EntitlementConsistencyJob;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +20,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 重试耗尽 DEAD 转人工、退款撤销异步投递（最终一致窗口）。
  */
 class OutboxIntegrationTest extends IntegrationTestSupport {
+
+    @Autowired private OutboxReplayService outboxReplayService;
+    @Autowired private EntitlementConsistencyJob entitlementConsistencyJob;
 
     @Test
     void crashBetweenCommitAndDeliveryIsRecoveredByRelay() {
@@ -157,6 +163,39 @@ class OutboxIntegrationTest extends IntegrationTestSupport {
                 fx.studentId(), fx.seriesId())).isEqualTo(1);
         assertThat(outboxRepository.findByOrderAndType(orderId, OutboxMessage.TYPE_REVOKE).orElseThrow().status())
                 .isEqualTo(OutboxMessage.STATUS_DONE);
+    }
+
+    @Test
+    void manualReplayOfDeliveredOrDeadMessageIsIdempotent() {
+        OrderDtos.OrderView order = createOrder(nextRequestId());
+        completePayment(order.orderNo());
+        Long orderId = orderRepository.findByOrderNo(order.orderNo()).orElseThrow().id();
+        Long outboxId = outboxRepository.findByOrderAndType(orderId, OutboxMessage.TYPE_FULFILL)
+                .orElseThrow().id();
+
+        jdbc.update("UPDATE t_outbox_message SET status = 'DEAD', last_error = 'drill' WHERE id = ?", outboxId);
+        OutboxMessage replayed = outboxReplayService.replay(outboxId);
+
+        assertThat(replayed.status()).isEqualTo(OutboxMessage.STATUS_DONE);
+        assertThat(activeEntitlements()).isEqualTo(1);
+        assertThat(count("t_entitlement", "source_order_id = ? AND status = 'ACTIVE'", orderId)).isEqualTo(1);
+    }
+
+    @Test
+    void refundedOrderWithActiveEntitlementIsCompensatedEvenWhenRevokeIsDead() {
+        OrderDtos.OrderView order = createOrder(nextRequestId());
+        completePayment(order.orderNo());
+        Long orderId = orderRepository.findByOrderNo(order.orderNo()).orElseThrow().id();
+        refundService.refund(order.orderNo(), fx.adminId(), "权益补偿测试", false);
+        Long revokeId = outboxRepository.findByOrderAndType(orderId, OutboxMessage.TYPE_REVOKE)
+                .orElseThrow().id();
+        jdbc.update("UPDATE t_outbox_message SET status = 'DEAD', last_error = 'lost' WHERE id = ?", revokeId);
+        assertThat(activeEntitlements()).isEqualTo(1);
+
+        entitlementConsistencyJob.reconcile();
+
+        assertThat(activeEntitlements()).isZero();
+        assertThat(count("t_entitlement", "source_order_id = ? AND status = 'REVOKED'", orderId)).isEqualTo(1);
     }
 
     private int activeEntitlements() {

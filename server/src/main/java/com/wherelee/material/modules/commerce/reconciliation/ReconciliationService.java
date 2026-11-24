@@ -81,23 +81,36 @@ public class ReconciliationService implements AdminReconciliationOperations {
             if ("PARSING".equals(existing.get().status())) {
                 throw new BizException(HttpStatus.CONFLICT, "同名账单正在解析，请稍后刷新");
             }
-            repository.reopenFile(existing.get().id());
-            return parseAndStore(existing.get().id(), content);
+            StatementView reparsed = transactionTemplate.execute(status -> {
+                repository.reopenFile(existing.get().id());
+                return parseAndStore(existing.get().id(), content);
+            });
+            if (reparsed == null) {
+                throw new IllegalStateException("账单重新解析后不可读取");
+            }
+            return reparsed;
         }
 
-        Long fileId;
         try {
-            fileId = repository.createFile(normalizedProvider, statementDate,
-                    safeFileName(fileName), contentType, sha, content.length,
-                    gzip(content), AlipayBillParser.PARSER_VERSION, operatorId);
+            StatementView parsed = transactionTemplate.execute(status -> {
+                Long fileId = repository.createFile(normalizedProvider, statementDate,
+                        safeFileName(fileName), contentType, sha, content.length,
+                        gzip(content), AlipayBillParser.PARSER_VERSION, operatorId);
+                return parseAndStore(fileId, content);
+            });
+            if (parsed == null) {
+                throw new IllegalStateException("账单解析后不可读取");
+            }
+            return parsed;
         } catch (DuplicateKeyException e) {
             ReconciliationModels.StatementFile file = repository.findFileByDigest(
                             normalizedProvider, statementDate, sha)
                     .orElseThrow(() -> new IllegalStateException("并发上传账单后不可读取"));
+            if ("PARSING".equals(file.status())) {
+                throw new BizException(HttpStatus.CONFLICT, "同名账单正在解析，请稍后刷新");
+            }
             return statementView(file, null, null);
         }
-
-        return parseAndStore(fileId, content);
     }
 
     private StatementView parseAndStore(Long fileId, byte[] content) {
@@ -123,34 +136,35 @@ public class ReconciliationService implements AdminReconciliationOperations {
 
     @Override
     public RunView run(long fileId, Long operatorId) {
-        ReconciliationModels.StatementFile file = repository.findFileById(fileId)
-                .orElseThrow(() -> BizException.notFound("账单不存在"));
-        if (!"PARSED".equals(file.status())) {
-            throw BizException.badRequest("只有解析成功的账单才能执行对账");
-        }
-
-        Long runId;
         try {
-            int version = repository.nextRunVersion(fileId);
-            runId = repository.createRun(fileId, version, RULE_VERSION, operatorId);
-        } catch (DuplicateKeyException e) {
-            return runs(fileId).stream().findFirst()
-                    .orElseThrow(() -> new BizException(HttpStatus.CONFLICT, "该账单已有对账任务正在运行"));
-        }
-
-        try {
-            MatchingResult result = transactionTemplate.execute(status -> match(file, runId));
-            if (result == null) {
+            RunView view = transactionTemplate.execute(status -> {
+                ReconciliationModels.StatementFile file = repository.lockFileForRun(fileId)
+                        .orElseThrow(() -> BizException.notFound("账单不存在"));
+                if (!"PARSED".equals(file.status())) {
+                    throw BizException.badRequest("只有解析成功的账单才能执行对账");
+                }
+                int version = repository.nextRunVersion(fileId);
+                Long runId = repository.createRun(fileId, version, RULE_VERSION, operatorId);
+                MatchingResult result = match(file, runId);
+                if (result == null) {
+                    throw new IllegalStateException("对账结果为空");
+                }
+                repository.completeRun(runId, result.totalRows(), result.matched(),
+                        result.breaks(), result.unresolved(), result.unmatchedAmount());
+                return runView(repository.findRunById(runId)
+                        .orElseThrow(() -> new IllegalStateException("对账运行后不可读取")));
+            });
+            if (view == null) {
                 throw new IllegalStateException("对账结果为空");
             }
-            repository.completeRun(runId, result.totalRows(), result.matched(),
-                    result.breaks(), result.unresolved(), result.unmatchedAmount());
+            return view;
+        } catch (BizException e) {
+            throw e;
+        } catch (DuplicateKeyException e) {
+            throw new BizException(HttpStatus.CONFLICT, "该账单已有对账任务正在运行");
         } catch (Exception e) {
-            repository.failRun(runId, e.getMessage());
             throw new BizException(HttpStatus.CONFLICT, "对账执行失败：" + e.getMessage());
         }
-        return runView(repository.findRunById(runId)
-                .orElseThrow(() -> new IllegalStateException("对账运行后不可读取")));
     }
 
     @Override

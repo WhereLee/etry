@@ -217,6 +217,15 @@ public class OrderRepository {
                 """.formatted(COLUMNS), MAPPER, limit);
     }
 
+    public List<OrderRecord> findRefunded(int limit) {
+        return jdbc.query("""
+                SELECT %s FROM t_order
+                WHERE status = 'REFUNDED'
+                ORDER BY id
+                LIMIT ?
+                """.formatted(COLUMNS), MAPPER, limit);
+    }
+
     public List<OrderRecord> findExpired(int limit) {
         return jdbc.query("""
                 SELECT %s FROM t_order

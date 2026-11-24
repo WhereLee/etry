@@ -103,6 +103,19 @@ public class EntitlementStore {
         return new HashSet<>(ids);
     }
 
+    public Set<Long> findActiveOrderSourceIds(Collection<Long> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            return Set.of();
+        }
+        List<Long> ids = orderIds.stream().distinct().toList();
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        List<Long> sourceIds = jdbc.query("""
+                SELECT DISTINCT source_order_id FROM t_entitlement
+                WHERE source = 'ORDER' AND status = 'ACTIVE' AND source_order_id IN (%s)
+                """.formatted(placeholders), (rs, rowNum) -> rs.getLong(1), ids.toArray());
+        return new HashSet<>(sourceIds);
+    }
+
     public List<EntitlementQuery.ActiveProduct> listActive(Long userId, String productType) {
         return jdbc.query("""
                 SELECT product_id, MIN(display_order) AS display_order
