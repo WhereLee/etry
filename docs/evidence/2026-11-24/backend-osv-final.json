@@ -1,0 +1,132 @@
+{
+  "mode": "maven",
+  "queried": 227,
+  "findings": [
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.2.19",
+      "ecosystem": "Maven",
+      "id": "GHSA-j9f9-w8pj-32f8",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.2.19",
+      "ecosystem": "Maven",
+      "id": "GHSA-pc63-qcmh-9cmg",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.rabbitmq:amqp-client",
+      "version": "5.34.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-7822-rcf6-97fx",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.rabbitmq:amqp-client",
+      "version": "5.34.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-cqgh-8p3p-mx4m",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.rabbitmq:amqp-client",
+      "version": "5.34.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-h6w7-qmcm-q6xr",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.opentelemetry:opentelemetry-api",
+      "version": "1.49.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-ccrj-gw8r-854m",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.opentelemetry:opentelemetry-api",
+      "version": "1.49.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-rcgg-9c38-7xpx",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.opentelemetry:opentelemetry-extension-trace-propagators",
+      "version": "1.49.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-rcgg-9c38-7xpx",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.poi:poi-ooxml",
+      "version": "5.2.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-gmg8-593g-7mv3",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-4h8f-2wvx-gg5w",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-8xfc-gm6g-vgpv",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-hr8g-6v94-x4m9",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-v435-xc8x-wvr9",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-wjxj-5m7g-mg7q",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    }
+  ]
+}
