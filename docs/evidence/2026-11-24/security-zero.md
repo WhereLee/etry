@@ -12,9 +12,13 @@
 服务器 `/opt/etry`：
 
 ```
-单元测试：245/245，Failures 0，Errors 0
+单元测试：246/246，Failures 0，Errors 0
 集成测试：101/101，Failures 0，Errors 0
 ```
+
+新增 `AlipaySignatureCompatibilityTest`：用本地生成的 RSA 密钥调用支付宝 SDK 的
+`pageExecute` 签名路径，验证 BouncyCastle 1.85 与 `alipay-sdk-java` 兼容；
+该测试不发起任何真实网络请求、不产生真实订单或扣款。
 
 ## 部署
 
