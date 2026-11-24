@@ -24,3 +24,4 @@
 - `deploy-logs/deploy-bc85-20261124-223305.log`：新镜像构建、前端切换、readiness UP。
 - `deploy-logs/deploy-20261124-221510.log`：首次部署（发现 COS 传递 BC 1.70 的那一版，已保留作问题追溯）。
 | 依赖清零复扫 | `security-zero.md` |
+| 支付宝真实验收 Runbook | `p0-alipay-acceptance-runbook.md` |
