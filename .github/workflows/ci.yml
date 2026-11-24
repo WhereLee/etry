@@ -90,22 +90,42 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+  # google/osv-scanner-action@v2 is not runnable: there is no v2 tag/branch and
+  # its root action.yml has no runs block. The v2 CLI also lacks --min-severity.
+  # Use the OSV API scripts with a fail-closed HIGH/CRITICAL gate instead.
   sca:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
-      security-events: write
     steps:
       - uses: actions/checkout@v5
-      - name: OSV dependency scan (high and critical)
-        uses: google/osv-scanner-action@v2
+      - uses: actions/setup-java@v5
         with:
-          scan-args: |-
-            --recursive
-            --min-severity HIGH
-            --config=./osv-scanner.toml
-            .
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: server/pom.xml
+      - name: Generate Maven dependency list
+        working-directory: server
+        run: mvn -B -ntp -DskipTests dependency:list -DoutputFile=dependency-list.txt
+      - name: OSV scan and HIGH/CRITICAL gate
+        env:
+          OSV_OUT: ${{ runner.temp }}/osv
+        run: |
+          set -euo pipefail
+          mkdir -p "$OSV_OUT"
+          python3 tools/osv-scan.py maven server/dependency-list.txt > "$OSV_OUT/backend-osv.json"
+          python3 tools/osv-details.py "$OSV_OUT/backend-osv.json" "$OSV_OUT/backend-osv-details.json"
+          python3 tools/osv-gate.py "$OSV_OUT/backend-osv.json" "$OSV_OUT/backend-osv-details.json" osv-scanner.toml
+      - name: Upload OSV scan evidence
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: osv-scan-evidence
+          path: ${{ runner.temp }}/osv/*
+          if-no-files-found: ignore
+          retention-days: 14
 
   docker-build:
     runs-on: ubuntu-latest

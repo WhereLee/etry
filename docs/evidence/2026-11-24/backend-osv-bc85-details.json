@@ -1,0 +1,79 @@
+[
+  {
+    "id": "GHSA-7822-rcf6-97fx",
+    "severity": "MODERATE",
+    "summary": "RabbitMQ: Malformed UTF-8 in shortstr properties permanently disables RPC consumers",
+    "aliases": [
+      "CVE-2026-106122"
+    ],
+    "fixed": [
+      "5.36.0"
+    ]
+  },
+  {
+    "id": "GHSA-ccrj-gw8r-854m",
+    "severity": "MODERATE",
+    "summary": "opentelemetry-java: Quadratic CPU consumption in W3C tracestate parsing",
+    "aliases": [
+      "CVE-2026-118259"
+    ],
+    "fixed": [
+      "1.67.0"
+    ]
+  },
+  {
+    "id": "GHSA-cqgh-8p3p-mx4m",
+    "severity": "MODERATE",
+    "summary": "RabbitMQ: JSONReader in the default JSON-RPC mapper never terminates on truncated input, causing DoS",
+    "aliases": [
+      "CVE-2026-106121"
+    ],
+    "fixed": [
+      "5.36.1"
+    ]
+  },
+  {
+    "id": "GHSA-h6w7-qmcm-q6xr",
+    "severity": "MODERATE",
+    "summary": "RabbitMQ Java client: plaintext broker credentials leaked in exception message from ConnectionFactoryConfigurator.load()",
+    "aliases": [
+      "CVE-2026-106123"
+    ],
+    "fixed": [
+      "5.35.0"
+    ]
+  },
+  {
+    "id": "GHSA-j9f9-w8pj-32f8",
+    "severity": "CRITICAL",
+    "summary": "Spring Framework Server Sent Event stream corruption while rendering fragments",
+    "aliases": [
+      "CVE-2026-47890"
+    ],
+    "fixed": [
+      "7.0.9"
+    ]
+  },
+  {
+    "id": "GHSA-pc63-qcmh-9cmg",
+    "severity": "CRITICAL",
+    "summary": "Spring Framework Improper Path Limitation in XsltView",
+    "aliases": [
+      "CVE-2026-47884"
+    ],
+    "fixed": [
+      "7.0.9"
+    ]
+  },
+  {
+    "id": "GHSA-rcgg-9c38-7xpx",
+    "severity": "MODERATE",
+    "summary": "OpenTelemetry Java SDK has Unbounded Memory Allocation in W3C Baggage Propagation",
+    "aliases": [
+      "CVE-2026-45292"
+    ],
+    "fixed": [
+      "1.62.0"
+    ]
+  }
+]

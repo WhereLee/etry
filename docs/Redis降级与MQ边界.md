@@ -93,6 +93,11 @@ MQ 只承载履约/撤销意图，不用于播放日志、上传完成、审计�
 换不来业务收益。`OutboxTransport` 是端口，未来若出现分区顺序或高吞吐诉求，
 可新增 RocketMQ 适配器并复用同一发件箱与幂等消费者，无需改资金链路。
 
+**生产决策（2026-11-24 定稿）**：生产唯一 MQ 为 RabbitMQ 3.13；RocketMQ 5.3.1
+只用于 staging 的低配顺序/延迟消息演练，演练容器与网络已销毁，不部署到生产。
+演练结论见 `docs/evidence/2026-11-24/p2-rocketmq.md`。不因面试演示引入 RocketMQ、
+Elasticsearch、Redisson 等当前没有明确业务需求的新组件。
+
 暂不将 MQ 用于：
 
 - 播放日志；

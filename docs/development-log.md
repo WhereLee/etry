@@ -399,3 +399,25 @@
 - 后端历史镜像回滚后登录响应不含 roles，readiness/API 200；trap 自动恢复
 - 前端 webroot 切换后入口资源 hash 改变，/learn/ 200；自动恢复当前构建
 - 最终 roles 恢复、队列消费者 3/3、web/api 200
+
+## 2026-11-24 P1 依赖收口
+
+### 问题: BC 1.85 升级后旧 bcprov 1.70 仍由 COS SDK 带入
+- 场景: POI 5.4.0 + BouncyCastle 1.85 升级后重建生产镜像
+- 现象: 依赖树和运行 jar 同时出现 `bcprov-jdk15on 1.70` 与 `bcprov-jdk18on 1.85`
+- 原因: 只从支付宝 SDK 排除了旧 BC，遗漏腾讯云 COS SDK 的传递依赖
+- 解决: 从 `cos_api` 也排除 `bcprov-jdk15on`；依赖树与运行 jar 均只剩 1.85
+- 验证: 单元 245/245、集成 101/101；新镜像部署 health 200；OSV 无 BC finding
+- 预防: 升级安全相关库后必须同时核对 dependency tree 和最终运行镜像，不只看单测
+
+### 结论: 退款租约不需要心跳续租
+- 退款租约 120s，支付宝客户端读超时 15s，租约约为读超时 8 倍
+- 渠道退款请求具备幂等性，失败由补偿任务重试；无需增加续租复杂度
+- 只有渠道超时显著调大或单次退款接近租约时才重新评估
+
+### 问题: CI 的 OSV action 版本和参数不可用
+- 现象: workflow 使用 `google/osv-scanner-action@v2`，但仓库没有 `v2` tag/分支
+- 原因: v2.7.1 根 action.yml 无 `runs`，且 v2 CLI 没有 `--min-severity`
+- 解决: 改为 Maven 依赖清单 + OSV API + `tools/osv-gate.py` fail-closed 门禁
+- 验证: 正向 PASS；空配置/过期忽略/详情 ERROR 三种负向测试均失败
+- 预防: CI 引用的 action 必须用精确 tag，并先在本地验证参数和失败模式

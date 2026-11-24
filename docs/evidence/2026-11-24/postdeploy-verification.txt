@@ -1,0 +1,18 @@
+verified_at=2026-11-24T22:49:29+08:00
+image_id=sha256:ffa988517ee67960f192790d423c74c8e5a261f255a9068bccc7b85c43b953a9
+container_started=2026-11-24T14:34:44.121396553Z
+backend_status=running/healthy
+external_health=200
+frontend_learn=200
+jar_bc=BOOT-INF/lib/bcprov-jdk18on-1.85.jar,
+jar_poi=BOOT-INF/lib/poi-5.4.0.jar,BOOT-INF/lib/poi-ooxml-5.4.0.jar,BOOT-INF/lib/poi-ooxml-lite-5.4.0.jar,
+rabbit_queues:
+  Timeout: 60.0 seconds ...
+  Listing queues for vhost / ...
+  name	consumers	messages
+  btry.outbox.fulfill	1	0
+  btry.outbox.dlq	1	0
+  btry.outbox.revoke	1	0
+auth_login=ok
+auth_roles=SUPER_ADMIN
+auth_permissions_count=12
