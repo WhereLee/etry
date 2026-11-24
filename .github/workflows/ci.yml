@@ -104,6 +104,7 @@ jobs:
           scan-args: |-
             --recursive
             --min-severity HIGH
+            --config=./osv-scanner.toml
             .
 
   docker-build:

@@ -1,0 +1,9 @@
+[[IgnoredVulns]]
+id = "GHSA-j9f9-w8pj-32f8"
+ignoreUntil = 2027-06-30
+reason = "项目未使用 Spring WebMVC SSE/fragment 渲染，仅 JSON REST 与 PDF；升级需 Spring Boot 4。"
+
+[[IgnoredVulns]]
+id = "GHSA-pc63-qcmh-9cmg"
+ignoreUntil = 2027-06-30
+reason = "项目未暴露 XsltView/XML 视图，仅 JSON REST 与 PDF；升级需 Spring Boot 4。"
