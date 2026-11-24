@@ -134,6 +134,7 @@ jobs:
       DB_PASSWORD: ci-dummy
       MYSQL_ROOT_PASSWORD: ci-dummy
       REDIS_PASSWORD: ci-dummy
+      RABBITMQ_PASSWORD: ci-dummy
       JWT_SECRET: ci-dummy-jwt-secret-not-for-production
     steps:
       - uses: actions/checkout@v5
