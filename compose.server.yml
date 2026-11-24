@@ -1,0 +1,5 @@
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0

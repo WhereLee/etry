@@ -1,0 +1,75 @@
+groups:
+  - name: btry-basic
+    rules:
+      - alert: BtryBackendDown
+        expr: up{job="btry-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "btry backend 不可达"
+          description: "Prometheus 连续 1 分钟无法抓取 backend:9091。"
+      - alert: BtryHigh5xx
+        expr: sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) > 0.2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "btry 5xx 速率升高"
+          description: "最近 5 分钟 5xx 速率超过 0.2 req/s。"
+      - alert: BtryDbPoolPending
+        expr: max(hikaricp_connections_pending) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "btry 数据库连接池排队"
+          description: "Hikari pending 连接持续 >0 达 2 分钟。"
+      - alert: BtryHighHeap
+        expr: sum(jvm_memory_used_bytes{area="heap"}) / sum(jvm_memory_max_bytes{area="heap"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "btry JVM 堆使用率 >85%"
+          description: "连续 5 分钟堆使用率超过 85%，关注内存限额。"
+      - alert: BtryPaidUnfulfilled
+        expr: btry_payment_paid_unfulfilled > 0
+        for: 1m
+        labels:
+          severity: high
+        annotations:
+          summary: "btry 已支付未履约订单"
+          description: "已支付未履约订单数 > 0，检查支付/outbox/权益链路。"
+      - alert: BtryPayingStuck
+        expr: btry_payment_paying_stuck > 0
+        for: 1m
+        labels:
+          severity: medium
+        annotations:
+          summary: "btry 支付中卡住订单"
+          description: "支付中超过阈值订单数 > 0。"
+      - alert: BtryRefundRetryExhausted
+        expr: btry_payment_refund_retry_exhausted > 0
+        for: 1m
+        labels:
+          severity: high
+        annotations:
+          summary: "btry 退款重试耗尽"
+          description: "退款重试次数耗尽的订单数 > 0，需要人工介入。"
+      - alert: BtryDuplicateUnrefunded
+        expr: btry_payment_duplicate_unrefunded > 0
+        for: 1m
+        labels:
+          severity: high
+        annotations:
+          summary: "btry 重复支付未退款"
+          description: "已识别重复付款但未完成退款的订单数 > 0。"
+      - alert: BtryOutboxDead
+        expr: btry_outbox_dead > 0
+        for: 1m
+        labels:
+          severity: high
+        annotations:
+          summary: "btry 发件箱 DEAD 消息"
+          description: "outbox DEAD 消息数 > 0，检查履约/回收与重试。"

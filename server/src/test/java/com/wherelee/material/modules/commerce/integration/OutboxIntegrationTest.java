@@ -7,6 +7,9 @@ import com.wherelee.material.modules.commerce.api.OrderDtos;
 import com.wherelee.material.modules.commerce.outbox.OutboxMessage;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -63,6 +66,26 @@ class OutboxIntegrationTest extends IntegrationTestSupport {
                 .isEqualTo(OrderStatus.FULFILLED);
         assertThat(outboxRepository.findByOrderAndType(orderId, OutboxMessage.TYPE_FULFILL).orElseThrow().status())
                 .isEqualTo(OutboxMessage.STATUS_DONE);
+    }
+
+    @Test
+    void concurrentRelaysClaimDisjointBatches() throws Exception {
+        OrderDtos.OrderView order = createOrder(nextRequestId());
+        pay(order.orderNo());
+        paymentService.acceptVerified(successNotification(order.orderNo()));
+        outboxRepository.enqueueRevoke(
+                orderRepository.findByOrderNo(order.orderNo()).orElseThrow(), "并发认领测试");
+
+        List<CallResult<List<OutboxMessage>>> results = runConcurrently(2,
+                () -> outboxRepository.claimBatch("it-" + UUID.randomUUID(), 1, 60));
+        List<Long> claimedIds = results.stream()
+                .filter(CallResult::success)
+                .flatMap(result -> result.value().stream())
+                .map(OutboxMessage::id)
+                .toList();
+
+        assertThat(claimedIds).hasSize(2).doesNotHaveDuplicates();
+        assertThat(count("t_outbox_message", "status = 'PROCESSING'")).isEqualTo(2);
     }
 
     @Test

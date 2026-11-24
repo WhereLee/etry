@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { hasRole, homePath, isLoggedIn, session } from '@/store/session'
+import { hasPermission, hasRole, homePath, isLoggedIn, session } from '@/store/session'
 
 const routes = [
   { path: '/', redirect: '/materials' },
@@ -80,49 +80,49 @@ const routes = [
     path: '/admin/users',
     name: 'adminUsers',
     component: () => import('@/features/operations/views/AdminUsers.vue'),
-    meta: { auth: true, role: 'ADMIN' }
+    meta: { auth: true, permission: 'user:read' }
   },
   {
     path: '/admin/teacher-invitations',
     name: 'adminTeacherInvitations',
     component: () => import('@/features/operations/views/AdminTeacherInvitations.vue'),
-    meta: { auth: true, role: 'ADMIN' }
+    meta: { auth: true, permission: 'user:manage' }
   },
   {
     path: '/admin/series',
     name: 'adminSeries',
     component: () => import('@/features/operations/views/AdminSeries.vue'),
-    meta: { auth: true, role: 'ADMIN' }
+    meta: { auth: true, roles: ['SUPER_ADMIN'] }
   },
   {
     path: '/admin/materials',
     name: 'adminMaterials',
     component: () => import('@/features/operations/views/AdminMaterials.vue'),
-    meta: { auth: true, roles: ['ADMIN', 'TEACHER'] }
+    meta: { auth: true, permission: 'material:read' }
   },
   {
     path: '/admin/orders',
     name: 'adminOrders',
     component: () => import('@/features/operations/views/AdminOrders.vue'),
-    meta: { auth: true, role: 'ADMIN' }
+    meta: { auth: true, permission: 'order:read' }
   },
   {
     path: '/admin/reconciliation',
     name: 'adminReconciliation',
     component: () => import('@/features/operations/views/AdminReconciliation.vue'),
-    meta: { auth: true, role: 'ADMIN' }
+    meta: { auth: true, permission: 'recon:read' }
   },
   {
     path: '/admin/audit-logs',
     name: 'adminAuditLogs',
     component: () => import('@/features/operations/views/AdminAuditLogs.vue'),
-    meta: { auth: true, role: 'ADMIN' }
+    meta: { auth: true, permission: 'audit:read' }
   },
   {
     path: '/admin/system',
     name: 'adminSystem',
     component: () => import('@/features/operations/views/AdminSystem.vue'),
-    meta: { auth: true, role: 'ADMIN' }
+    meta: { auth: true, roles: ['SUPER_ADMIN'] }
   },
   {
     path: '/teacher/series',
@@ -162,6 +162,9 @@ router.beforeEach((to) => {
   }
   if (isLoggedIn() && session.mustChangePassword && !to.meta.allowWhenMustChange) {
     return { name: 'password', query: { forced: '1' } }
+  }
+  if (to.meta.permission && !hasPermission(to.meta.permission)) {
+    return homePath()
   }
   if (to.meta.role && !hasRole(to.meta.role)) {
     return homePath()

@@ -64,11 +64,10 @@ class MaterialDeliveryServiceTest {
     void previewTruncatesToPreviewPages() {
         MaterialRecord material = material(MaterialRecord.ON_SALE, "material/a.pdf");
         when(materialRepository.findById(1L)).thenReturn(Optional.of(material));
-        when(fileStore.loadOrGenerate(material)).thenReturn(new byte[]{9});
-        when(pdfFactory.preview(any(), eq(3))).thenReturn(new byte[]{8});
+        when(fileStore.loadOrGeneratePreview(material)).thenReturn(new byte[]{8});
 
         assertThat(service.preview(1L)).containsExactly(8);
-        verify(pdfFactory).preview(any(), eq(3));
+        verify(fileStore).loadOrGeneratePreview(material);
     }
 
     @Test

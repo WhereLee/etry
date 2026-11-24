@@ -2,14 +2,14 @@
 import { computed, watch } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import { clearSession, hasRole, homePath, isLoggedIn, session } from '@/store/session'
+import { clearSession, hasPermission, hasRole, homePath, isLoggedIn, session } from '@/store/session'
 import { useCartStore } from '@/store/cart'
 
 const router = useRouter()
 const route = useRoute()
 const cartStore = useCartStore()
 const loggedIn = computed(() => isLoggedIn())
-const isAdmin = computed(() => hasRole('ADMIN'))
+const isAdmin = computed(() => hasRole('ADMIN') || hasRole('SUPER_ADMIN'))
 const isTeacher = computed(() => hasRole('TEACHER'))
 const isConsole = computed(() => isAdmin.value || isTeacher.value)
 const showShell = computed(() => loggedIn.value && !['login', 'password', 'teacherInvite'].includes(route.name))
@@ -18,25 +18,31 @@ const avatarText = computed(() => String(displayName.value).slice(0, 1).toUpperC
 const roleLabel = computed(() => isAdmin.value ? '管理员' : isTeacher.value ? '教师' : '学员')
 const brand = computed(() => isTeacher.value ? '教师工作台' : '学习空间')
 
+const canSee = (item) => {
+  if (item.permission && !hasPermission(item.permission)) return false
+  if (item.roles && !item.roles.some((role) => hasRole(role))) return false
+  return true
+}
+
 const consoleNav = computed(() => {
   if (isAdmin.value) {
     return [
-      { to: '/admin/users', label: '用户管理', icon: 'User' },
-      { to: '/admin/teacher-invitations', label: '教师邀请', icon: 'Link' },
-      { to: '/admin/series', label: '内容管理', icon: 'Collection' },
-      { to: '/admin/materials', label: '资料管理', icon: 'Document' },
-      { to: '/admin/orders', label: '订单管理', icon: 'Tickets' },
-      { to: '/admin/reconciliation', label: '资金对账', icon: 'DataLine' },
-      { to: '/admin/audit-logs', label: '审计日志', icon: 'Clock' },
-      { to: '/admin/system', label: '系统配置', icon: 'Key' },
+      { to: '/admin/users', label: '用户管理', icon: 'User', permission: 'user:read' },
+      { to: '/admin/teacher-invitations', label: '教师邀请', icon: 'Link', permission: 'user:manage' },
+      { to: '/admin/series', label: '内容管理', icon: 'Collection', roles: ['SUPER_ADMIN'] },
+      { to: '/admin/materials', label: '资料管理', icon: 'Document', permission: 'material:read' },
+      { to: '/admin/orders', label: '订单管理', icon: 'Tickets', permission: 'order:read' },
+      { to: '/admin/reconciliation', label: '资金对账', icon: 'DataLine', permission: 'recon:read' },
+      { to: '/admin/audit-logs', label: '审计日志', icon: 'Clock', permission: 'audit:read' },
+      { to: '/admin/system', label: '系统配置', icon: 'Key', roles: ['SUPER_ADMIN'] },
       { to: '/password', label: '修改密码', icon: 'Lock' }
-    ]
+    ].filter(canSee)
   }
   return [
     { to: '/teacher/series', label: '我的系列', icon: 'Reading' },
-    { to: '/admin/materials', label: '资料管理', icon: 'Document' },
+    { to: '/admin/materials', label: '资料管理', icon: 'Document', permission: 'material:read' },
     { to: '/password', label: '修改密码', icon: 'Lock' }
-  ]
+  ].filter(canSee)
 })
 
 const studentNav = [

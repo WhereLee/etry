@@ -1,4 +1,7 @@
 package com.wherelee.material.modules.identity.auth.dto;
 
-public record UserInfo(Long id, String username, String nickname, String role) {
+import java.util.List;
+
+public record UserInfo(Long id, String username, String nickname, String role,
+                       List<String> roles, List<String> permissions) {
 }

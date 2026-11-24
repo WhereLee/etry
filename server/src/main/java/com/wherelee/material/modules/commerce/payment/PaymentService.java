@@ -16,8 +16,6 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -25,6 +23,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -50,6 +49,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final EntitlementRepository entitlementRepository;
     private final PaymentGateway paymentGateway;
+    private final PaymentAttemptStarter attemptStarter;
     private final PaymentConfirmationService confirmationService;
     private final OrderFulfillmentService fulfillmentService;
     private final MockSignatureService signatureService;
@@ -68,6 +68,7 @@ public class PaymentService {
                           PaymentRepository paymentRepository,
                           EntitlementRepository entitlementRepository,
                           PaymentGateway paymentGateway,
+                          PaymentAttemptStarter attemptStarter,
                           PaymentConfirmationService confirmationService,
                           OrderFulfillmentService fulfillmentService,
                           MockSignatureService signatureService,
@@ -80,6 +81,7 @@ public class PaymentService {
         this.paymentRepository = paymentRepository;
         this.entitlementRepository = entitlementRepository;
         this.paymentGateway = paymentGateway;
+        this.attemptStarter = attemptStarter;
         this.confirmationService = confirmationService;
         this.fulfillmentService = fulfillmentService;
         this.signatureService = signatureService;
@@ -88,7 +90,6 @@ public class PaymentService {
         this.traceSpans = traceSpans;
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderDtos.PayResponse pay(Long userId, String orderNo) {
         OrderRecord order = orderService.requireOwned(userId, orderNo);
         if (order.productId() == 0) {
@@ -114,29 +115,24 @@ public class PaymentService {
             orderRepository.close(order.orderNo(), false);
             throw BizException.badRequest("订单已过期，请重新下单");
         }
-        int changed = orderRepository.markPaying(order.orderNo(), paymentGateway.channel());
-        if (changed == 0) {
-            OrderRecord current = orderService.require(orderNo);
-            if (current.status() == OrderStatus.PAYING) {
-                PaymentAttemptRecord attempt = requireProcessingAttempt(current.id());
-                PaymentGateway.PaymentAction action = initiate(current, attempt);
-                return new OrderDtos.PayResponse(current.orderNo(), current.status().name(),
-                        paymentGateway.channel(), action.cashierUrl());
-            }
-            throw new BizException(HttpStatus.CONFLICT, "当前订单状态不能发起支付");
+        // 数据库事务只覆盖「置 PAYING + 建 attempt」；渠道下单在事务提交后执行，
+        // 避免长时间持有订单行锁等待第三方网络。渠道失败时 attempt 保留，客户端可重试。
+        Optional<PaymentAttemptStarter.Started> started = attemptStarter.start(order);
+        if (started.isPresent()) {
+            PaymentAttemptStarter.Started context = started.get();
+            PaymentGateway.PaymentAction action = initiate(context.order(), context.attempt());
+            return new OrderDtos.PayResponse(order.orderNo(), OrderStatus.PAYING.name(),
+                    paymentGateway.channel(), action.cashierUrl());
         }
 
-        int attemptNo = paymentRepository.nextAttemptNo(order.id());
-        String tradeNo = paymentGateway.outTradeNo(order, attemptNo);
-        paymentRepository.createAttempt(
-                order.id(), attemptNo, paymentGateway.channel(), tradeNo,
-                order.priceCents(), digest(order.orderNo() + "|" + attemptNo + "|" + order.priceCents()));
-        PaymentAttemptRecord attempt = paymentRepository.findLatestAttempt(order.id())
-                .orElseThrow(() -> new IllegalStateException("支付尝试创建后不可读取"));
-        PaymentGateway.PaymentAction action = initiate(
-                orderRepository.findByOrderNo(orderNo).orElse(order), attempt);
-        return new OrderDtos.PayResponse(order.orderNo(), OrderStatus.PAYING.name(),
-                paymentGateway.channel(), action.cashierUrl());
+        OrderRecord current = orderService.require(orderNo);
+        if (current.status() == OrderStatus.PAYING) {
+            PaymentAttemptRecord attempt = requireProcessingAttempt(current.id());
+            PaymentGateway.PaymentAction action = initiate(current, attempt);
+            return new OrderDtos.PayResponse(current.orderNo(), current.status().name(),
+                    paymentGateway.channel(), action.cashierUrl());
+        }
+        throw new BizException(HttpStatus.CONFLICT, "当前订单状态不能发起支付");
     }
 
     public PaymentDtos.MockCashierView cashier(Long userId, String orderNo) {

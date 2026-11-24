@@ -71,7 +71,10 @@ class StorefrontApiIntegrationTest extends IntegrationTestSupport {
 
         mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("it_buyer_reg"));
+                .andExpect(jsonPath("$.username").value("it_buyer_reg"))
+                .andExpect(jsonPath("$.roles[0]").value("BUYER"))
+                .andExpect(jsonPath("$.permissions").isArray())
+                .andExpect(jsonPath("$.permissions").isEmpty());
     }
 
     @Test

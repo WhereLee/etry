@@ -16,9 +16,10 @@ import {
 } from '@/features/operations/api/admin'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusTag from '@/components/StatusTag.vue'
-import { session } from '@/store/session'
+import { hasPermission, session } from '@/store/session'
 import { generateStrongPassword, passwordError } from '@/utils/password'
 
+const canManage = computed(() => hasPermission('user:manage'))
 const filters = reactive({ keyword: '', role: '', status: '', page: 1, size: 10 })
 const state = ref({ records: [], total: 0, page: 1, size: 10 })
 const loading = ref(true)
@@ -389,7 +390,7 @@ async function saveSeries() {
       description="管理员创建学员账号、维护账号状态，并控制学习空间可见的系列。教师账号通过邀请激活。"
     >
       <template #actions>
-        <el-button type="primary" @click="openCreate">
+        <el-button v-if="canManage" type="primary" @click="openCreate">
           <el-icon><Plus /></el-icon>
           新建学员
         </el-button>
@@ -471,11 +472,11 @@ async function saveSeries() {
         <el-table-column label="操作" width="400" fixed="right">
           <template #default="{ row }">
             <div class="row-actions">
-              <el-button v-if="row.role === 'STUDENT'" link type="primary" :disabled="!!busy || row.status !== 'ACTIVE'" @click="openSeries(row)">分配系列</el-button>
+              <el-button v-if="canManage && row.role === 'STUDENT'" link type="primary" :disabled="!!busy || row.status !== 'ACTIVE'" @click="openSeries(row)">分配系列</el-button>
               <el-button link type="primary" :disabled="!!busy" @click="openEntitlements(row)">已购权益</el-button>
-              <el-button link type="primary" :disabled="isSelf(row) || !!busy" @click="openRoles(row)">角色</el-button>
-              <el-button link type="primary" :disabled="isSelf(row) || !!busy" @click="openReset(row)">重置密码</el-button>
-              <el-button link :type="row.status === 'ACTIVE' ? 'danger' : 'success'" :disabled="isSelf(row) || !!busy" @click="toggleStatus(row)">
+              <el-button v-if="canManage" link type="primary" :disabled="isSelf(row) || !!busy" @click="openRoles(row)">角色</el-button>
+              <el-button v-if="canManage" link type="primary" :disabled="isSelf(row) || !!busy" @click="openReset(row)">重置密码</el-button>
+              <el-button v-if="canManage" link :type="row.status === 'ACTIVE' ? 'danger' : 'success'" :disabled="isSelf(row) || !!busy" @click="toggleStatus(row)">
                 {{ row.status === 'ACTIVE' ? '停用' : '启用' }}
               </el-button>
             </div>

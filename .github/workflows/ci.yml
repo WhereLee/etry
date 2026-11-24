@@ -90,6 +90,22 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+  sca:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: OSV dependency scan (high and critical)
+        uses: google/osv-scanner-action@v2
+        with:
+          scan-args: |-
+            --recursive
+            --min-severity HIGH
+            .
+
   docker-build:
     runs-on: ubuntu-latest
     timeout-minutes: 30

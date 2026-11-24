@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { login } from '@/features/identity/api/auth'
-import { setSession } from '@/store/session'
+import { homePath, setSession } from '@/store/session'
 
 const router = useRouter()
 const route = useRoute()
@@ -24,15 +24,7 @@ async function submit() {
       router.push({ name: 'password', query: { forced: '1' } })
       return
     }
-    if (data.user?.role === 'ADMIN') {
-      router.push({ name: 'adminUsers' })
-      return
-    }
-    if (data.user?.role === 'TEACHER') {
-      router.push({ name: 'teacherSeries' })
-      return
-    }
-    router.push(route.query.redirect || '/materials')
+    router.push(route.query.redirect || homePath())
   } catch (e) {
     error.value = e.message
   } finally {

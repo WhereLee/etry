@@ -11,6 +11,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.concurrent.Semaphore;
 
 /**
  * 资料文件本地磁盘存储。fileKey 相对存储根解析，拒绝越界路径。
@@ -21,6 +22,7 @@ public class MaterialFileStore {
 
     private final MaterialStorageProperties properties;
     private final MaterialPdfFactory pdfFactory;
+    private final Semaphore previewPermits = new Semaphore(4);
 
     public MaterialFileStore(MaterialStorageProperties properties, MaterialPdfFactory pdfFactory) {
         this.properties = properties;
@@ -30,28 +32,56 @@ public class MaterialFileStore {
     public byte[] loadOrGenerate(MaterialRecord material) {
         Path path = resolve(material.fileKey());
         try {
-            if (Files.exists(path)) {
-                return Files.readAllBytes(path);
-            }
-            byte[] demo = pdfFactory.generateDemo(material);
-            Files.createDirectories(path.getParent());
-            Path tmp = Files.createTempFile(path.getParent(), "gen-", ".tmp");
-            try {
-                Files.write(tmp, demo);
-                try {
-                    Files.move(tmp, path, StandardCopyOption.ATOMIC_MOVE);
-                } catch (AtomicMoveNotSupportedException | FileAlreadyExistsException | AccessDeniedException e) {
-                    // Windows 下目标已被并发线程落盘时 ATOMIC_MOVE 抛 AccessDeniedException，直接读已有文件
-                    if (!Files.exists(path)) {
-                        Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING);
-                    }
-                }
-            } finally {
-                Files.deleteIfExists(tmp);
+            if (!Files.exists(path)) {
+                writeAtomically(path, pdfFactory.generateDemo(material));
             }
             return Files.readAllBytes(path);
         } catch (IOException e) {
             throw new UncheckedIOException("资料文件读取失败", e);
+        }
+    }
+
+    /**
+     * 试读文件缓存：按「源文件 + 试读页数」落盘，限制同时生成的数量，避免高并发试读把堆打满。
+     */
+    public byte[] loadOrGeneratePreview(MaterialRecord material) {
+        Path path = resolve(material.fileKey() + ".preview-" + material.previewPages() + ".pdf");
+        try {
+            if (Files.exists(path)) {
+                return Files.readAllBytes(path);
+            }
+            previewPermits.acquire();
+            try {
+                if (!Files.exists(path)) {
+                    writeAtomically(path, pdfFactory.preview(loadOrGenerate(material), material.previewPages()));
+                }
+                return Files.readAllBytes(path);
+            } finally {
+                previewPermits.release();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("试读文件生成等待被中断", e);
+        } catch (IOException e) {
+            throw new UncheckedIOException("试读文件读取失败", e);
+        }
+    }
+
+    private void writeAtomically(Path path, byte[] bytes) throws IOException {
+        Files.createDirectories(path.getParent());
+        Path tmp = Files.createTempFile(path.getParent(), "gen-", ".tmp");
+        try {
+            Files.write(tmp, bytes);
+            try {
+                Files.move(tmp, path, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException | FileAlreadyExistsException | AccessDeniedException e) {
+                // 目标已被并发线程落盘：保留已有文件，直接读取
+                if (!Files.exists(path)) {
+                    Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+        } finally {
+            Files.deleteIfExists(tmp);
         }
     }
 

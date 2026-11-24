@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import {
   approveRefundRequest,
@@ -17,7 +17,10 @@ import {
 import PageHeader from '@/components/PageHeader.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import { download } from '@/shared/api/http'
+import { hasPermission } from '@/store/session'
 
+const canOperate = computed(() => hasPermission('order:operate'))
+const canRefund = computed(() => hasPermission('refund:operate'))
 const loading = ref(true)
 const error = ref('')
 const notice = ref('')
@@ -283,7 +286,7 @@ function timelineType(type) {
   <main class="page admin-orders-page">
     <PageHeader eyebrow="ORDER OPERATIONS" title="订单管理" description="查看支付状态、处理异常订单、补履约和全额退款。">
       <template #actions>
-        <el-button type="warning" plain @click="openRequests">
+        <el-button v-if="canRefund" type="warning" plain @click="openRequests">
           <el-icon><Clock /></el-icon>
           退款申请
         </el-button>
@@ -382,10 +385,10 @@ function timelineType(type) {
         </el-descriptions>
 
         <div class="detail-actions">
-          <el-button :loading="actionBusy === 'query'" @click="runAction('query')">主动查单</el-button>
-          <el-button v-if="detail.order.status === 'PAID'" type="primary" :loading="actionBusy === 'fulfill'" @click="runAction('fulfill')">补履约</el-button>
-          <el-button v-if="['CREATED', 'PAY_FAILED'].includes(detail.order.status)" :loading="actionBusy === 'close'" @click="runAction('close')">关闭订单</el-button>
-          <el-button v-if="['PAID', 'FULFILLED', 'REFUND_FAILED'].includes(detail.order.status)" type="danger" plain @click="openRefund()">发起退款</el-button>
+          <el-button v-if="canOperate" :loading="actionBusy === 'query'" @click="runAction('query')">主动查单</el-button>
+          <el-button v-if="canOperate && detail.order.status === 'PAID'" type="primary" :loading="actionBusy === 'fulfill'" @click="runAction('fulfill')">补履约</el-button>
+          <el-button v-if="canOperate && ['CREATED', 'PAY_FAILED'].includes(detail.order.status)" :loading="actionBusy === 'close'" @click="runAction('close')">关闭订单</el-button>
+          <el-button v-if="canRefund && ['PAID', 'FULFILLED', 'REFUND_FAILED'].includes(detail.order.status)" type="danger" plain @click="openRefund()">发起退款</el-button>
         </div>
 
         <el-tabs class="detail-tabs">
@@ -413,7 +416,7 @@ function timelineType(type) {
               <el-table-column label="操作" width="130" fixed="right">
                 <template #default="{ row }">
                   <el-button
-                    v-if="row.status === 'SUCCESS' && row.channelTradeNo && row.channelTradeNo !== detail.order.providerTradeNo"
+                    v-if="canRefund && row.status === 'SUCCESS' && row.channelTradeNo && row.channelTradeNo !== detail.order.providerTradeNo"
                     type="danger"
                     link
                     @click="openRefund(row.attemptNo)"

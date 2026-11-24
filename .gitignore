@@ -38,6 +38,13 @@ verify-*.png
 # 本地运行日志与截图
 logs/
 
+# Playwright 浏览器、报告与临时凭据
+.playwright/
+web/test-results/
+web/playwright-report/
+.e2e.env
+.e2e-playwright.env
+
 # 数据库备份产物
 backups/
 

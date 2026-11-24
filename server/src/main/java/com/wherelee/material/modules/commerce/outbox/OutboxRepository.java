@@ -5,9 +5,12 @@ import com.wherelee.material.modules.entitlement.api.ProductTypes;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -77,21 +80,32 @@ public class OutboxRepository {
     /**
      * 租约认领一批可投递消息：NEW/RETRY 到期，或 PROCESSING 租约过期（relay 宕机重认领）。
      */
+    @Transactional
     public List<OutboxMessage> claimBatch(String leaseToken, int batchSize, int leaseSeconds) {
-        int claimed = jdbc.update("""
-                UPDATE t_outbox_message
-                SET status = 'PROCESSING', lease_token = ?, retry_count = retry_count + 1,
-                    next_retry_at = NULL, last_error = NULL, updated_at = CURRENT_TIMESTAMP(3),
-                    lease_until = TIMESTAMPADD(SECOND, ?, CURRENT_TIMESTAMP(3))
+        List<Long> ids = jdbc.query("""
+                SELECT id FROM t_outbox_message
                 WHERE status IN ('NEW', 'RETRY', 'PROCESSING')
                   AND (lease_until IS NULL OR lease_until <= CURRENT_TIMESTAMP(3))
                   AND (next_retry_at IS NULL OR next_retry_at <= CURRENT_TIMESTAMP(3))
                 ORDER BY id
                 LIMIT ?
-                """, leaseToken, Math.max(10, leaseSeconds), batchSize);
-        if (claimed == 0) {
+                FOR UPDATE SKIP LOCKED
+                """, (rs, rowNum) -> rs.getLong(1), batchSize);
+        if (ids.isEmpty()) {
             return List.of();
         }
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        List<Object> args = new ArrayList<>(ids.size() + 2);
+        args.add(leaseToken);
+        args.add(Math.max(10, leaseSeconds));
+        args.addAll(ids);
+        jdbc.update("""
+                UPDATE t_outbox_message
+                SET status = 'PROCESSING', lease_token = ?, retry_count = retry_count + 1,
+                    next_retry_at = NULL, last_error = NULL, updated_at = CURRENT_TIMESTAMP(3),
+                    lease_until = TIMESTAMPADD(SECOND, ?, CURRENT_TIMESTAMP(3))
+                WHERE id IN (%s) AND status IN ('NEW', 'RETRY', 'PROCESSING')
+                """.formatted(placeholders), args.toArray());
         return jdbc.query("SELECT " + COLUMNS + """
                 FROM t_outbox_message
                 WHERE lease_token = ? AND status = 'PROCESSING'

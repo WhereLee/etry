@@ -41,13 +41,26 @@ export function isLoggedIn() {
 }
 
 export function hasRole(role) {
-  return session.user?.role === role
+  if (session.user?.role === role) return true
+  return (session.user?.roles || []).includes(role)
+}
+
+export function hasPermission(permission) {
+  return (session.user?.permissions || []).includes(permission)
+}
+
+export function hasAnyPermission(permissions) {
+  return permissions.some((permission) => hasPermission(permission))
 }
 
 export function homePath() {
   if (!isLoggedIn()) return '/materials'
   if (session.mustChangePassword) return '/password'
-  if (hasRole('ADMIN')) return '/admin/users'
+  if (hasRole('SUPER_ADMIN') || hasPermission('user:read')) return '/admin/users'
   if (hasRole('TEACHER')) return '/teacher/series'
+  if (hasPermission('order:read')) return '/admin/orders'
+  if (hasPermission('recon:read')) return '/admin/reconciliation'
+  if (hasPermission('audit:read')) return '/admin/audit-logs'
+  if (hasPermission('material:read')) return '/admin/materials'
   return '/materials'
 }

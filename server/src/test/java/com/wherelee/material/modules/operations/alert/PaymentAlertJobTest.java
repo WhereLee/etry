@@ -1,13 +1,16 @@
 package com.wherelee.material.modules.operations.alert;
 
+import com.wherelee.material.modules.commerce.outbox.OutboxRepository;
 import com.wherelee.material.modules.commerce.payment.PaymentProperties;
 import com.wherelee.material.modules.commerce.payment.PaymentRepository;
 import com.wherelee.material.modules.platform.alert.AlertPublisher;
 import com.wherelee.material.modules.platform.resilience.LocalFallbackCache;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -23,6 +26,8 @@ class PaymentAlertJobTest {
         PaymentProperties paymentProperties = new PaymentProperties(
                 "alipay", false, null, 15, 60, 50, 60000, 30000, 5, 30);
         PaymentRepository repository = mock(PaymentRepository.class);
+        OutboxRepository outbox = mock(OutboxRepository.class);
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         AlertNotifier notifier = mock(AlertNotifier.class);
         AlertPublisher publisher = mock(AlertPublisher.class);
         LocalFallbackCache dedup = mock(LocalFallbackCache.class);
@@ -32,11 +37,15 @@ class PaymentAlertJobTest {
         when(dedup.reserve(anyString(), any(Duration.class))).thenReturn(true);
         when(notifier.send(anyString())).thenReturn(new AlertNotifier.DeliveryResult(true, null));
 
-        new PaymentAlertJob(properties, paymentProperties, repository, notifier, publisher, dedup).evaluate();
+        when(outbox.countByStatus("DEAD")).thenReturn(0L);
+
+        new PaymentAlertJob(properties, paymentProperties, repository, outbox, notifier, publisher, dedup, meterRegistry).evaluate();
 
         verify(publisher).publish(
                 "PAYMENT_PAID_UNFULFILLED", "HIGH",
                 "已支付但未履约订单 1 笔", true, null);
+        assertThat(meterRegistry.get("btry_payment_paid_unfulfilled").gauge().value()).isEqualTo(1.0);
+        assertThat(meterRegistry.get("btry_outbox_dead").gauge().value()).isEqualTo(0.0);
     }
 
     @Test
@@ -46,6 +55,8 @@ class PaymentAlertJobTest {
         PaymentProperties paymentProperties = new PaymentProperties(
                 "alipay", false, null, 15, 60, 50, 60000, 30000, 5, 30);
         PaymentRepository repository = mock(PaymentRepository.class);
+        OutboxRepository outbox = mock(OutboxRepository.class);
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         AlertNotifier notifier = mock(AlertNotifier.class);
         AlertPublisher publisher = mock(AlertPublisher.class);
         LocalFallbackCache dedup = mock(LocalFallbackCache.class);
@@ -56,7 +67,9 @@ class PaymentAlertJobTest {
         when(dedup.reserve(anyString(), any(Duration.class))).thenReturn(true);
         when(notifier.send(anyString())).thenReturn(new AlertNotifier.DeliveryResult(true, null));
 
-        new PaymentAlertJob(properties, paymentProperties, repository, notifier, publisher, dedup).evaluate();
+        when(outbox.countByStatus("DEAD")).thenReturn(0L);
+
+        new PaymentAlertJob(properties, paymentProperties, repository, outbox, notifier, publisher, dedup, meterRegistry).evaluate();
 
         verify(publisher).publish(
                 "PAYMENT_DUPLICATE_UNREFUNDED", "HIGH",
@@ -70,6 +83,8 @@ class PaymentAlertJobTest {
         PaymentProperties paymentProperties = new PaymentProperties(
                 "alipay", false, null, 15, 60, 50, 60000, 30000, 5, 30);
         PaymentRepository repository = mock(PaymentRepository.class);
+        OutboxRepository outbox = mock(OutboxRepository.class);
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         AlertNotifier notifier = mock(AlertNotifier.class);
         AlertPublisher publisher = mock(AlertPublisher.class);
         LocalFallbackCache dedup = mock(LocalFallbackCache.class);
@@ -80,7 +95,9 @@ class PaymentAlertJobTest {
         when(dedup.reserve(anyString(), any(Duration.class))).thenReturn(true);
         when(notifier.send(anyString())).thenReturn(new AlertNotifier.DeliveryResult(true, null));
 
-        new PaymentAlertJob(properties, paymentProperties, repository, notifier, publisher, dedup).evaluate();
+        when(outbox.countByStatus("DEAD")).thenReturn(0L);
+
+        new PaymentAlertJob(properties, paymentProperties, repository, outbox, notifier, publisher, dedup, meterRegistry).evaluate();
 
         verify(publisher).publish(
                 "PAYMENT_MULTI_SUCCESS_MANUAL", "HIGH",

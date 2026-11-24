@@ -1,6 +1,5 @@
 package com.wherelee.material.modules.commerce.outbox;
 
-import com.wherelee.material.modules.commerce.payment.OrderFulfillmentService;
 import com.wherelee.material.modules.platform.alert.AlertPublisher;
 import com.wherelee.material.modules.platform.tracing.TraceSpans;
 import lombok.extern.slf4j.Slf4j;
@@ -20,18 +19,18 @@ import java.util.UUID;
 public class OutboxRelay {
 
     private final OutboxRepository outboxRepository;
-    private final OrderFulfillmentService fulfillmentService;
+    private final OutboxTransport transport;
     private final OutboxProperties properties;
     private final AlertPublisher alertPublisher;
     private final TraceSpans traceSpans;
 
     public OutboxRelay(OutboxRepository outboxRepository,
-                       OrderFulfillmentService fulfillmentService,
+                       OutboxTransport transport,
                        OutboxProperties properties,
                        AlertPublisher alertPublisher,
                        TraceSpans traceSpans) {
         this.outboxRepository = outboxRepository;
-        this.fulfillmentService = fulfillmentService;
+        this.transport = transport;
         this.properties = properties;
         this.alertPublisher = alertPublisher;
         this.traceSpans = traceSpans;
@@ -56,7 +55,7 @@ public class OutboxRelay {
 
     private boolean deliver(OutboxMessage message, String leaseToken) {
         try {
-            if (dispatch(message)) {
+            if (transport.deliver(message)) {
                 outboxRepository.markDone(message.id(), leaseToken);
                 return true;
             }
@@ -68,14 +67,6 @@ public class OutboxRelay {
             handleFailure(message, leaseToken, truncate(e.getMessage()));
             return false;
         }
-    }
-
-    private boolean dispatch(OutboxMessage message) {
-        return switch (message.messageType()) {
-            case OutboxMessage.TYPE_FULFILL -> fulfillmentService.fulfill(message.orderNo());
-            case OutboxMessage.TYPE_REVOKE -> fulfillmentService.revoke(message.orderNo(), message.reason());
-            default -> false;
-        };
     }
 
     private void handleFailure(OutboxMessage message, String leaseToken, String error) {

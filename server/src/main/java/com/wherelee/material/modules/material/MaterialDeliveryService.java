@@ -42,7 +42,7 @@ public class MaterialDeliveryService {
                 .filter(m -> MaterialRecord.ON_SALE.equals(m.saleStatus()))
                 .orElseThrow(() -> BizException.notFound("资料不存在或已下架"));
         requireFile(material);
-        return pdfFactory.preview(fileStore.loadOrGenerate(material), material.previewPages());
+        return fileStore.loadOrGeneratePreview(material);
     }
 
     public Download download(Long userId, Long materialId) {

@@ -11,7 +11,9 @@ import {
 } from '@/features/operations/api/reconciliation'
 import PageHeader from '@/components/PageHeader.vue'
 import { download } from '@/shared/api/http'
+import { hasPermission } from '@/store/session'
 
+const canOperate = computed(() => hasPermission('recon:operate'))
 const loading = ref(false)
 const uploadBusy = ref(false)
 const runBusy = ref(false)
@@ -277,7 +279,7 @@ function statusType(status) {
           <div class="el-upload__text">拖入账单文件，或<em>点击选择</em></div>
           <template #tip><div class="el-upload__tip">最大 20MB，支持 UTF-8 / GB18030 CSV 或 ZIP</div></template>
         </el-upload>
-        <el-button type="primary" :loading="uploadBusy" @click="submitUpload">导入账单</el-button>
+        <el-button v-if="canOperate" type="primary" :loading="uploadBusy" @click="submitUpload">导入账单</el-button>
       </div>
     </section>
 
@@ -318,7 +320,7 @@ function statusType(status) {
           <h2>{{ selected.fileName }}</h2>
           <p class="hint">{{ selected.provider }} · {{ selected.statementDate }} · 账单行数 {{ selected.rowCount }}</p>
         </div>
-        <el-button type="warning" :loading="runBusy" @click="runReconciliation">执行对账</el-button>
+        <el-button v-if="canOperate" type="warning" :loading="runBusy" @click="runReconciliation">执行对账</el-button>
       </div>
       <el-empty v-if="!runs.length" description="还没有对账运行" :image-size="70" />
       <template v-else>
@@ -369,9 +371,9 @@ function statusType(status) {
             <el-table-column prop="detail" label="说明" min-width="260" />
             <el-table-column label="操作" width="180" fixed="right">
               <template #default="{ row }">
-                <el-button v-if="row.status === 'OPEN'" text size="small" @click="openAction(row, 'CLAIM')">认领</el-button>
-                <el-button v-if="['OPEN', 'IN_REVIEW'].includes(row.status)" text type="primary" size="small" @click="openAction(row, 'RESOLVE')">解决</el-button>
-                <el-button v-if="['OPEN', 'IN_REVIEW'].includes(row.status)" text type="info" size="small" @click="openAction(row, 'IGNORE')">忽略</el-button>
+                <el-button v-if="canOperate && row.status === 'OPEN'" text size="small" @click="openAction(row, 'CLAIM')">认领</el-button>
+                <el-button v-if="canOperate && ['OPEN', 'IN_REVIEW'].includes(row.status)" text type="primary" size="small" @click="openAction(row, 'RESOLVE')">解决</el-button>
+                <el-button v-if="canOperate && ['OPEN', 'IN_REVIEW'].includes(row.status)" text type="info" size="small" @click="openAction(row, 'IGNORE')">忽略</el-button>
               </template>
             </el-table-column>
           </el-table>

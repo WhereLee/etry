@@ -1,6 +1,6 @@
 # Redis 降级与 MQ 边界
 
-更新日期：2026-11-03
+更新日期：2026-11-24
 
 ## 1. 原则
 
@@ -67,24 +67,31 @@ DB 是 readiness 必需依赖；Redis 是可降级依赖。
 
 Redis 恢复后不需要重启应用；熔断器会进入半开并逐步恢复 Redis 调用。
 
-## 6. 为什么暂不引入 MQ
+## 6. MQ 落点与选型（2026-11-24 更新）
 
-当前系统为单实例，支付履约已有：
+支付履约已引入 RabbitMQ，仍然只走事务性发件箱，不在支付回调里直接发消息：
 
-- MySQL 事务；
-- 支付事件表；
-- 主动查单；
-- PAID 未履约补偿任务；
-- 管理员补履约。
+1. 支付确认/退款事务同时写入 `t_outbox_message`，资金变更与消息意图同事务。
+2. `OutboxRelay` 用 `FOR UPDATE SKIP LOCKED` + 租约认领消息。
+3. `RabbitOutboxTransport` 发布到 `btry.outbox`，等待 publisher confirm 后标记 DONE。
+4. `OutboxRabbitConsumer` 幂等履约/撤销；失败重试 3 次后进 DLQ 并写告警。
+5. 原有 PAID 未履约补偿任务保留，作为 MQ 之外的最终兜底。
 
-MQ 现在不是必需组件。未来如果引入 RocketMQ，合理落点只有支付履约：
+MQ 只承载履约/撤销意图，不用于播放日志、上传完成、审计写操作或订单超时；
+这些场景当前同步写或定时扫描足够，引入 MQ 只会增加一致性与运维成本。
 
-1. 支付确认事务同时写入 `outbox_message`。
-2. 发布器将 Outbox 消息投递到 RocketMQ。
-3. 消费者幂等发放权益并将订单推进到 `FULFILLED`。
-4. 原有定时补偿任务保留，作为最终兜底。
+### 为什么是 RabbitMQ 而不是 RocketMQ
 
-不直接使用“支付回调里发 MQ”，避免数据库与消息双写不一致。
+| 维度 | RabbitMQ 3.13 | RocketMQ 5.x |
+|---|---|---|
+| 单机资源 | 512m 可稳定运行 | NameServer+Broker+Proxy 通常需 1.5g+ |
+| 本机诉求 | 低吞吐、可靠投递、死信、重试 | 高吞吐、分区顺序、事务消息 |
+| 运维复杂度 | 一个容器，管理台内置 | 多组件、JVM 参数与磁盘规划 |
+| 当前瓶颈 | 单实例资料商城，履约消息量很小 | 当前没有高吞吐/顺序消息场景 |
+
+结论：3.7G 单机还要同时承载 MySQL、Redis、后端与监控，RocketMQ 的资源开销
+换不来业务收益。`OutboxTransport` 是端口，未来若出现分区顺序或高吞吐诉求，
+可新增 RocketMQ 适配器并复用同一发件箱与幂等消费者，无需改资金链路。
 
 暂不将 MQ 用于：
 
@@ -104,3 +111,13 @@ MQ 现在不是必需组件。未来如果引入 RocketMQ，合理落点只有�
 - 幂等在 Redis 停止后仍能阻止本地重复提交，并产生 `infra.redis.fallback` 指标。
 - 播放 URL 缓存继续使用本地兜底。
 - 实测降级指标包含 `idempotent`、`login_throttle`、`public_throttle` 和 `rate_limit`。
+
+2026-11-24 生产容器复演（RabbitMQ 已启用）：
+
+- 停止 `btry-redis-1` 后：整体 `/actuator/health` 返回 503，readiness 仍为 `UP`。
+- 登录接口连续 8 次错误口令返回 401，第 9 次由本地兜底计数返回 429。
+- `infra_redis_fallback_total{component="login_throttle",operation="redis_error"} = 9`，
+  `operation="write" = 8`，说明请求均按降级路径执行。
+- 重启 Redis 后 readiness 保持 `UP`，backend `RestartCount=0`，无重启自动恢复。
+- 同期 RabbitMQ outbox 履约/撤销/死信演练见
+  `docs/evidence/2026-11-24/p2-rabbitmq.md`。

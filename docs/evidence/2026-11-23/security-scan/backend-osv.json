@@ -1,0 +1,1086 @@
+{
+  "mode": "maven",
+  "queried": 192,
+  "findings": [
+    {
+      "package": "org.springframework.boot:spring-boot",
+      "version": "3.3.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-rc42-6c7j-7h5r",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.boot:spring-boot",
+      "version": "3.3.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-wwpq-f5c3-7hvx",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.boot:spring-boot-autoconfigure",
+      "version": "3.3.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-ggg2-9786-hwc8",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "ch.qos.logback:logback-core",
+      "version": "1.5.11",
+      "ecosystem": "Maven",
+      "id": "GHSA-25qh-j22f-pwp8",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "ch.qos.logback:logback-core",
+      "version": "1.5.11",
+      "ecosystem": "Maven",
+      "id": "GHSA-6v67-2wr5-gvf4",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "ch.qos.logback:logback-core",
+      "version": "1.5.11",
+      "ecosystem": "Maven",
+      "id": "GHSA-jhq6-gfmj-v8fx",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "ch.qos.logback:logback-core",
+      "version": "1.5.11",
+      "ecosystem": "Maven",
+      "id": "GHSA-p47f-322f-whfh",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "ch.qos.logback:logback-core",
+      "version": "1.5.11",
+      "ecosystem": "Maven",
+      "id": "GHSA-pr98-23f8-jwxv",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "ch.qos.logback:logback-core",
+      "version": "1.5.11",
+      "ecosystem": "Maven",
+      "id": "GHSA-qqpg-mvqg-649v",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-23hv-mwm6-g8jf",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-25xr-qj8w-c4vf",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-27hp-xhwr-wr2m",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-3p2h-wqq4-wf4h",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-42wg-hm62-jcwg",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-563x-q5rq-57qp",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-5j33-cvvr-w245",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-5m62-pw8w-7w9f",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-5mp6-jrq3-r938",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-5v3h-fjv2-54fg",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-7895-gffq-w6jq",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-83qj-6fr2-vhqg",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-9m3c-qcxr-9x87",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-9m89-8frq-c98c",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-9xv2-5v5q-p794",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-ff77-26x5-69cr",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-fpj8-gq4v-p354",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-fv25-8xcx-gqjc",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-gcx9-497g-6cp6",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-gqp3-2cvr-x8m3",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-gx5v-xp9w-j4cg",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-h2fw-rfh5-95r3",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-h3gc-qfqq-6h8f",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-h3x4-894j-xpx5",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-h6fc-48rj-7qqh",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-h792-v28v-ppgr",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-hgrr-935x-pq79",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-mgp5-rv84-w37q",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-mqg3-r7h5-24x4",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-r29c-68gh-xp6x",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-rv64-5gf8-9qq8",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-vfww-5hm6-hx2j",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-wc4r-xq3c-5cf3",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-wmwf-9ccg-fff5",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-wr62-c79q-cv37",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.tomcat.embed:tomcat-embed-core",
+      "version": "10.1.31",
+      "ecosystem": "Maven",
+      "id": "GHSA-x4m4-345f-5h5g",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-web",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-6r3c-xf4w-jxjm",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-3chg-m5w7-qfv5",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-4773-3jfm-qmx3",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-6hcq-hmm3-jj3c",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-6p4f-wcwh-5vvm",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-72pg-x5f8-j25j",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-957g-f97v-vppc",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-cjpg-rgq5-fr37",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-h3qp-gqrc-q736",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-mq64-j8f9-9gcj",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-pc63-qcmh-9cmg",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-r936-gwx5-v52f",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-wg35-8jpf-2xv3",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-x23c-287f-qqv5",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-context",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-4wp7-92pw-q264",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-expression",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-9f52-rjqv-25qv",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-expression",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-r5w3-xv2f-j59q",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-expression",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-wxpp-56q6-5pcg",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-common",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-389x-839f-4rhx",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-common",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-xq3w-v528-46rv",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-handler",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-3qp7-7mw8-wx86",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-handler",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-4g8c-wm8x-jfhw",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-handler",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-c4c3-7fpv-j4q5",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-handler",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-c653-97m9-rcg9",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-handler",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-fccg-mwvh-qqg4",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-handler",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-x4gw-5cx5-pgmh",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-codec",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-3p8m-j85q-pgmj",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-codec",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-558v-64gr-wgg4",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.netty:netty-codec",
+      "version": "4.1.114.Final",
+      "ecosystem": "Maven",
+      "id": "GHSA-mj4r-2hfc-f8p6",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.data:spring-data-keyvalue",
+      "version": "3.3.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-xg2j-3hj6-pc24",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.data:spring-data-commons",
+      "version": "3.3.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-5m4m-73w9-8433",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.data:spring-data-commons",
+      "version": "3.3.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-5vpf-xvv7-c8vh",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.data:spring-data-commons",
+      "version": "3.3.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-9fw2-h3hf-293r",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.boot:spring-boot-starter-actuator",
+      "version": "3.3.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-mgvc-8q2h-5pgc",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.micrometer:micrometer-core",
+      "version": "1.13.6",
+      "ecosystem": "Maven",
+      "id": "GHSA-g3pr-3p32-fp23",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.opentelemetry:opentelemetry-api",
+      "version": "1.37.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-ccrj-gw8r-854m",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.opentelemetry:opentelemetry-api",
+      "version": "1.37.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-rcgg-9c38-7xpx",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "io.opentelemetry:opentelemetry-extension-trace-propagators",
+      "version": "1.37.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-rcgg-9c38-7xpx",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-core",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-72hv-8253-57qq",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-core",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-7hhh-6rmp-j9qf",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-core",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-p6pp-m3f8-5c89",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-core",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-r7wm-3cxj-wff9",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.security:spring-security-core",
+      "version": "6.3.4",
+      "ecosystem": "Maven",
+      "id": "GHSA-q3v6-hm2v-pw99",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.security:spring-security-core",
+      "version": "6.3.4",
+      "ecosystem": "Maven",
+      "id": "GHSA-vxf7-qj7q-83fh",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.security:spring-security-web",
+      "version": "6.3.4",
+      "ecosystem": "Maven",
+      "id": "GHSA-293q-567p-wmwq",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.security:spring-security-web",
+      "version": "6.3.4",
+      "ecosystem": "Maven",
+      "id": "GHSA-mf92-479x-3373",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.security:spring-security-web",
+      "version": "6.3.4",
+      "ecosystem": "Maven",
+      "id": "GHSA-x2r2-rvhq-2mqv",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework.security:spring-security-crypto",
+      "version": "6.3.4",
+      "ecosystem": "Maven",
+      "id": "GHSA-mg83-c7gq-rv5c",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.commons:commons-lang3",
+      "version": "3.14.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-j288-q9x7-2f5v",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.logging.log4j:log4j-api",
+      "version": "2.23.1",
+      "ecosystem": "Maven",
+      "id": "GHSA-qv9r-c865-cp47",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.poi:poi-ooxml",
+      "version": "5.2.5",
+      "ecosystem": "Maven",
+      "id": "GHSA-gmg8-593g-7mv3",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.commons:commons-compress",
+      "version": "1.25.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-4265-ccf5-phj5",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.apache.commons:commons-compress",
+      "version": "1.25.0",
+      "ecosystem": "Maven",
+      "id": "GHSA-4g9r-vxhx-9pgx",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-3pjw-73gf-8qr5",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-5gvw-p9qm-jgwh",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-5jmj-h7xm-6q6v",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-cxp5-3px4-pw24",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-gx83-3vf8-gh7j",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-hgj6-7826-r7m5",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-j3rv-43j4-c7qm",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-q4xh-88c3-wmh7",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-rmj7-2vxq-3g9f",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-vvgp-rfg2-7rr6",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-wjgm-6hv5-3cvf",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.17.2",
+      "ecosystem": "Maven",
+      "id": "GHSA-wv8q-qhhj-9h54",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.ini4j:ini4j",
+      "version": "0.5.4",
+      "ecosystem": "Maven",
+      "id": "GHSA-jr6h-r7vg-f9mc",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-4h8f-2wvx-gg5w",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-8xfc-gm6g-vgpv",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-hr8g-6v94-x4m9",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-v435-xc8x-wvr9",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.bouncycastle:bcprov-jdk15on",
+      "version": "1.70",
+      "ecosystem": "Maven",
+      "id": "GHSA-wjxj-5m7g-mg7q",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "dom4j:dom4j",
+      "version": "1.6.1",
+      "ecosystem": "Maven",
+      "id": "GHSA-6pcc-3rfx-4gpm",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "dom4j:dom4j",
+      "version": "1.6.1",
+      "ecosystem": "Maven",
+      "id": "GHSA-hwj3-m3p6-hj38",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-core",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-659m-px2c-25wj",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-core",
+      "version": "6.1.14",
+      "ecosystem": "Maven",
+      "id": "GHSA-jmp9-x22r-554x",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Optional observability stack. Start explicitly:
-#   docker compose -f compose.yml -f compose.observability.yml --profile observability up -d
-# It binds only to loopback and is not part of the default staging stack.
+#   docker compose -f compose.yml -f compose.server.yml -f compose.observability.yml --profile observability up -d
+# It binds only to loopback and is not part of the default application stack.
 
 services:
   prometheus:
@@ -11,11 +11,37 @@ services:
       - --storage.tsdb.retention.time=3d
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
       - prometheus-data:/prometheus
     ports:
       - "127.0.0.1:${PROMETHEUS_PORT:-19090}:9090"
     mem_limit: ${PROMETHEUS_MEM_LIMIT:-320m}
-    restart: "no"
+    restart: unless-stopped
+    depends_on:
+      - alertmanager
+    profiles: ["observability"]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-19093}:9093"
+    mem_limit: ${ALERTMANAGER_MEM_LIMIT:-64m}
+    restart: unless-stopped
+    profiles: ["observability"]
+
+  alert-sink:
+    image: python:3.12-alpine
+    command: ["python", "/app/sink.py"]
+    volumes:
+      - ./observability/alert-sink/sink.py:/app/sink.py:ro
+    mem_limit: ${ALERT_SINK_MEM_LIMIT:-32m}
+    restart: unless-stopped
     profiles: ["observability"]
 
   grafana:
@@ -34,7 +60,7 @@ services:
     mem_limit: ${GRAFANA_MEM_LIMIT:-256m}
     depends_on:
       - prometheus
-    restart: "no"
+    restart: unless-stopped
     profiles: ["observability"]
 
   jaeger:
@@ -51,3 +77,4 @@ services:
 volumes:
   prometheus-data:
   grafana-data:
+  alertmanager-data:

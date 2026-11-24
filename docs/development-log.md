@@ -327,3 +327,75 @@
 - 原因: 迁移升级为 attempt 维度时未补普通索引
 - 解决: 新增 `V24__refund_order_index.sql` 加 `idx_refund_order(order_id)`
 - 预防: 删除唯一键/改查询维度时同步评估索引覆盖
+
+## 2026-11-24 安全整改（P1）
+
+### 问题: Spring Boot 3.3.5 依赖存在 12 CRITICAL / 42 HIGH
+- 场景: OSV 对 192 个运行时依赖扫描
+- 现象: 旧 BOM 的 Tomcat/Netty/Jackson/Spring/Security 大量 advisory；支付宝 SDK 的 dom4j 1.6.1、腾讯云 SDK 的 ini4j 0.5.4、okhttp 3.12.13
+- 解决: Spring Boot 3.5.16 + Tomcat 10.1.62/Netty 4.1.137/Jackson 2.21.7 覆盖；dom4j 2.1.4；排除 ini4j（应用自读 env/~/.cos.conf）；okhttp 4.12.0；springdoc 2.8.9
+- 结果: 119 → 14（2 CRITICAL 不适用：SSE 片段/XsltView，项目未使用；12 MODERATE 列后续）
+- 预防: CI 增加 Trivy/OSV 扫描门禁；依赖升级必须跑全量集成
+
+### 问题: Trivy 漏洞库国内镜像不可达
+- 场景: 服务器首次镜像扫描
+- 现象: ghcr.io 超时、ghcr.nju.edu.cn 404、Daocloud ghcr 代理 invalid repository
+- 解决: 改用 OSV API（Maven/Alpine）+ 官方 npm audit，保留原始 JSON
+- 预防: CI 用 GitHub 网络跑 Trivy；本地/服务器保留 OSV 脚本
+
+### 问题: 容器 MySQL 默认 UTC 导致跨日对账测试失败
+- 场景: 00:39 CST 全量集成 ReconciliationIntegrationTest
+- 现象: 仅 PROVIDER_ONLY，缺 LOCAL_ONLY
+- 原因: MySQL 容器 UTC，应用/JDBC Asia/Shanghai；跨日时 paid_at 日期窗错位
+- 解决: MySQL 启动参数 --default-time-zone=+08:00；单类 6/6、全量 100/100，线上 @@global.time_zone=+08:00
+- 预防: 数据库容器时区必须与应用/JDBC 明确对齐并纳入部署检查
+
+## 2026-11-24 P1 交易内核（pay 边界/outbox SKIP LOCKED/试读缓存）
+
+### 问题: pay() 长事务持订单行锁跨支付渠道网络调用
+- 现象: 事务覆盖 markPaying/createAttempt + 渠道下单；渠道慢时锁与连接被长期占用
+- 解决: 新增 PaymentAttemptStarter 只做 DB 事务；渠道调用移到事务外；渠道失败 attempt 保留可重试
+- 验证: 单测 241，全量集成 101
+
+### 问题: outbox 多 relay 认领互相阻塞/缺少 SKIP LOCKED
+- 现象: UPDATE ... ORDER BY LIMIT 在并发 relay 下等待同一批行
+- 解决: 事务内 SELECT ... FOR UPDATE SKIP LOCKED 再按 id UPDATE；租约校验不变
+- 验证: 双 relay 并发认领测试，2 条消息不重复；Outbox 6/6
+
+### 问题: 200 VU 试读并发生成 PDF 导致 Java heap OOM
+- 现象: 9.33% 失败、p95 25s、ExitOnOutOfMemoryError、容器重启
+- 解决: 试读 PDF 磁盘缓存 + 4 并发许可；backend 1G、MySQL 768M
+- 验证: 200 VU 23830 请求、788.9 RPS、p95 233.82ms、0% 失败
+## 2026-11-24 P2/P3（RabbitMQ/Redis/RBAC/E2E/回滚）
+
+### 问题: RabbitMQ 3.13 因废弃环境变量直接退出
+- 现象: 容器 Restarting (1)，日志 `RABBITMQ_VM_MEMORY_HIGH_WATERMARK is set but deprecated`
+- 解决: 移除该环境变量，内存上限改 512m；容器恢复 healthy，backend 自动启动
+- 预防: MQ 镜像升级前核对 deprecated env；健康检查纳入 compose 依赖
+
+### 问题: Rabbit 消费者吞掉履约/撤销失败，无法重试和进死信
+- 现象: `fulfillmentService.fulfill()` 返回 false 时消费者仍 ACK
+- 解决: 返回 false 抛 IllegalStateException；新增 4 个消费者单测；生产实测重试 3 次后进 DLQ 并写 `t_alert_log`
+- 预防: 消费者必须区分“成功处理”和“业务未完成”，后者不能 ACK
+
+### 问题: Playwright 安装依赖拉取大量字体导致超时
+- 现象: `install --with-deps` 10 分钟仍在下载 fonts-noto-color-emoji 等
+- 解决: Debian 源切阿里云，仅安装 Chromium 运行必需库；浏览器用 npmmirror 镜像
+- 预防: E2E 运行镜像只装 headless 必需依赖，不装完整字体集
+
+### 问题: 外部 API 路径误用 /learn/api
+- 现象: 登录 POST 返回 405
+- 原因: `/learn/` 是前端静态，API 映射在 `/api/`
+- 解决: E2E/压测统一使用 `/api`
+- 预防: 文档明确 nginx 路由边界，避免把前端 base 当 API base
+
+### 问题: Playwright 登录按钮 name 不匹配
+- 现象: `getByRole('button', { name: '登录' })` 超时
+- 原因: 按钮实际文案为“进入学习空间”
+- 解决: 选择器改为实际文案；3 个 E2E 用例通过
+- 预防: E2E 选择器以可访问名称为准，先读模板再写断言
+
+### 回滚演练
+- 后端历史镜像回滚后登录响应不含 roles，readiness/API 200；trap 自动恢复
+- 前端 webroot 切换后入口资源 hash 改变，/learn/ 200；自动恢复当前构建
+- 最终 roles 恢复、队列消费者 3/3、web/api 200

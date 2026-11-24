@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class AuthService {
 
@@ -78,6 +80,12 @@ public class AuthService {
     }
 
     private UserInfo toInfo(User user) {
-        return new UserInfo(user.id(), user.username(), user.nickname(), user.role());
+        List<String> roles = rbacRepository.findRoleCodesByUser(user.id());
+        if (roles.isEmpty()) {
+            roles = List.of(user.role());
+        }
+        List<String> permissions = rbacRepository.findPermissionCodesByUser(user.id());
+        return new UserInfo(user.id(), user.username(), user.nickname(), user.role(),
+                List.copyOf(roles), List.copyOf(permissions));
     }
 }

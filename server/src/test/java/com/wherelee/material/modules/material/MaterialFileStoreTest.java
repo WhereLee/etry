@@ -41,6 +41,20 @@ class MaterialFileStoreTest {
                 .hasMessage("非法文件路径");
     }
 
+    @Test
+    void cachesPreviewOnDiskAndReusesIt() throws IOException {
+        MaterialFileStore store = new MaterialFileStore(new MaterialStorageProperties(tempDir.toString()), factory);
+        MaterialRecord material = material("material/preview-gen.pdf");
+
+        byte[] first = store.loadOrGeneratePreview(material);
+        Path preview = tempDir.resolve("material/preview-gen.pdf.preview-1.pdf");
+        assertThat(preview).exists();
+        assertThat(Files.readAllBytes(preview)).isEqualTo(first);
+
+        Files.write(preview, new byte[]{4, 5});
+        assertThat(store.loadOrGeneratePreview(material)).containsExactly(4, 5);
+    }
+
     private MaterialRecord material(String fileKey) {
         LocalDateTime now = LocalDateTime.now();
         return new MaterialRecord(1L, "测试资料", "EXAM_PAPER", "SENIOR", "数学", "简介",
