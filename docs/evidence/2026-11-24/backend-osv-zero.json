@@ -1,0 +1,24 @@
+{
+  "mode": "maven",
+  "queried": 228,
+  "findings": [
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.2.19",
+      "ecosystem": "Maven",
+      "id": "GHSA-j9f9-w8pj-32f8",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    },
+    {
+      "package": "org.springframework:spring-webmvc",
+      "version": "6.2.19",
+      "ecosystem": "Maven",
+      "id": "GHSA-pc63-qcmh-9cmg",
+      "summary": null,
+      "severity": "",
+      "aliases": []
+    }
+  ]
+}
